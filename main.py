@@ -7,7 +7,8 @@ import logging
 app = FastAPI()
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # API Configuration
@@ -29,64 +30,76 @@ THRESHOLDS = {
 # Enable/disable debug mode
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+
 def get_api_token():
-    """Requests a short-lived authentication token from Synoptic API."""
+    """Get a temporary API token using the permanent API key."""
     try:
-        if not API_KEY:
-            raise HTTPException(status_code=401, detail="API key not configured")
-            
-        response = requests.get(AUTH_URL, params={"apikey": API_KEY}, timeout=10)
+        permanent_key = os.environ.get("API_KEY")
+        logger.info(f"Attempting to get token with key starting with: {permanent_key[:5] if permanent_key else 'None/Empty'}")
+        
+        # Your original token request code here
+        # For example:
+        response = requests.post(
+            "https://your-auth-endpoint.com/token",
+            headers={"Authorization": f"ApiKey {permanent_key}"},
+            # Include any other parameters your API requires
+        )
+        
+        logger.info(f"Token response status code: {response.status_code}")
         
         if response.status_code != 200:
-            error_msg = f"Failed to get authentication token: {response.text}"
-            logger.error(error_msg)
-            raise HTTPException(status_code=401, detail=error_msg)
+            logger.error(f"Failed to get token. Response: {response.text}")
+            return None
             
-        token = response.json().get("TOKEN")
-        if not token:
-            logger.error("No token in API response")
-            raise HTTPException(status_code=500, detail="Invalid authentication response")
+        # Your original code to extract the token
+        token_data = response.json()
+        token = token_data.get("access_token")  # Adjust based on your API's response structure
+        
+        if token:
+            logger.info(f"Successfully acquired token starting with: {token[:5]}***")
+        else:
+            logger.error("Token was empty or not found in response")
             
         return token
-    except requests.RequestException as e:
-        logger.error(f"Request error: {str(e)}")
-        raise HTTPException(status_code=503, detail=f"Authentication service unavailable: {str(e)}")
+        
+    except Exception as e:
+        logger.error(f"Exception during token acquisition: {str(e)}")
+        return None
 
-def get_weather_data():
-    """Fetches latest weather data using an authenticated token."""
+def get_weather_data(location_id):
+    """Get weather data using the temporary token."""
     try:
-        token = get_api_token()  # Get short-lived token
+        # Get the token first
+        token = get_api_token()
         
-        if DEBUG:
-            logger.info(f"Using API Token: {token}")
-
-        params = {
-            "token": token,  # Use token instead of API key
-            "stid": STATION_ID,
-            "vars": "air_temp,relative_humidity,wind_speed",
-            "recent": "60",
-            "units": "temp|F,speed|mph",
-        }
-
-        if DEBUG:
-            full_url = f"{BASE_URL}?token={token}&stid={STATION_ID}&vars=air_temp,relative_humidity,wind_speed&recent=60&units=temp|F,speed|mph"
-            logger.info(f"Fetching data from: {full_url}")
-
-        response = requests.get(BASE_URL, params=params, timeout=15)
+        if not token:
+            logger.error("No token available, cannot make API request")
+            return None
+            
+        logger.info(f"Making API request for location: {location_id}")
         
-        if DEBUG:
-            logger.info(f"API Response Status: {response.status_code}")
-            logger.debug(f"API Response JSON: {response.text[:200]}...")  # Log only first part for brevity
-
+        # Your original API request code
+        # For example:
+        response = requests.get(
+            f"https://your-api-endpoint.com/weather/{location_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            # Include any other parameters your API requires
+        )
+        
+        logger.info(f"API response status code: {response.status_code}")
+        
         if response.status_code != 200:
-            error_msg = f"API returned error {response.status_code}: {response.text}"
-            logger.error(error_msg)
-            raise HTTPException(status_code=502, detail=f"Weather API error: {error_msg}")
-
-        return response.json()
-    except requests.RequestException as e:
-        logger.error(f"Request error: {str(e)}")
-        raise HTTPException(status_code=503, detail=f"Weather service unavailable: {str(e)}")
+            logger.error(f"API request failed. Response: {response.text}")
+            return None
+            
+        # Your original code to process and return the data
+        data = response.json()
+        logger.info("Successfully retrieved weather data")
+        return data
+        
+    except Exception as e:
+        logger.error(f"Exception during API request: {str(e)}")
+        return None
 
 def calculate_fire_risk(weather):
     """Determines fire risk level based on thresholds."""
