@@ -3,6 +3,8 @@ from fastapi.responses import HTMLResponse
 import requests
 import os
 import logging
+import sys
+import importlib.metadata
 
 # Only load .env for local development (not on Render)
 if os.getenv("RENDER") is None:
@@ -32,6 +34,29 @@ THRESHOLDS = {
     "red": {"temp": 90, "humidity": 15, "wind": 20},
     "yellow": {"temp": 80, "humidity": 25, "wind": 15},
 }
+
+@app.get("/test-api")
+def test_api():
+    """Test if Render can reach Synoptic API."""
+    try:
+        response = requests.get("https://api.synopticdata.com/v2/stations/latest")
+        return {"status": response.status_code, "response": response.text[:500]}
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
+    
+@app.get("/debug-info")
+def debug_info():
+    """Debug endpoint to check Python version and installed packages in Render."""
+    python_version = sys.version
+    try:
+        installed_packages = {pkg.metadata["Name"]: pkg.version for pkg in importlib.metadata.distributions()}
+    except Exception as e:
+        installed_packages = {"error": str(e)}
+
+    return {
+        "python_version": python_version,
+        "installed_packages": installed_packages
+    }
 
 def get_api_token():
     """Get a temporary API token using the permanent API key."""
@@ -109,7 +134,7 @@ def home():
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Fire Risk Dashboard</title>
+    <title>Sierra City Fire Risk Dashboard</title>
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
     <script>
         async function fetchFireRisk() {
@@ -150,7 +175,7 @@ def home():
     </script>
 </head>
 <body class='container mt-5'>
-    <h1>Fire Risk Dashboard</h1>
+    <h1>Sierra City Fire Risk Dashboard</h1>
     <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
     <div id='weather-details' class='mt-3'></div>
 </body>
