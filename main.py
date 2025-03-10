@@ -232,8 +232,8 @@ def home():
     <div class="attribution-container">
         <div id="timestamp" class="timestamp">Last updated: Loading...</div>
         <div class="attribution">
-            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCI+CiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMjAwIiByPSIxNDAiIGZpbGw9IiMxYTQ1OTgiIC8+CiAgPHBhdGggZD0iTTYwLDE1MCBDMTUwLDEwMCAyNTAsMTEwIDM1MCwxNTAiIHN0cm9rZT0iIzdkZDBmNSIgc3Ryb2tlLXdpZHRoPSIyNSIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNNjAsMjAwIEMxNTAsMTUwIDI1MCwxNjAgMzUwLDIwMCIgc3Ryb2tlPSIjN2RkMGY1IiBzdHJva2Utd2lkdGg9IjI1IiBmaWxsPSJub25lIiAvPgogIDxwYXRoIGQ9Ik02MCwyNTAgQzE1MCwyMDAgMjUwLDIxMCAzNTAsMjUwIiBzdHJva2U9IiM3ZGQwZjUiIHN0cm9rZS13aWR0aD0iMjUiIGZpbGw9Im5vbmUiIC8+Cjwvc3ZnPg==" alt="Synoptic Data" class="synoptic-logo">
             <a href="https://synopticdata.com/" target="_blank">Weather observations aggregated by Synoptic Data</a>
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCI+CiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMjAwIiByPSIxNDAiIGZpbGw9IiMxYTQ1OTgiIC8+CiAgPHBhdGggZD0iTTYwLDE1MCBDMTUwLDEwMCAyNTAsMTEwIDM1MCwxNTAiIHN0cm9rZT0iIzdkZDBmNSIgc3Ryb2tlLXdpZHRoPSIyNSIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNNjAsMjAwIEMxNTAsMTUwIDI1MCwxNjAgMzUwLDIwMCIgc3Ryb2tlPSIjN2RkMGY1IiBzdHJva2Utd2lkdGg9IjI1IiBmaWxsPSJub25lIiAvPgogIDxwYXRoIGQ9Ik02MCwyNTAgQzE1MCwyMDAgMjUwLDIxMCAzNTAsMjUwIiBzdHJva2U9IiM3ZGQwZjUiIHN0cm9rZS13aWR0aD0iMjUiIGZpbGw9Im5vbmUiIC8+Cjwvc3ZnPg==" alt="Synoptic Data" class="synoptic-logo">
         </div>
     </div>
 </body>
