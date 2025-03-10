@@ -1,5 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 import requests
 import os
 import logging
@@ -28,6 +31,18 @@ if not SYNOPTIC_API_KEY:
     logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
 
 app = FastAPI()
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/check-env")
 def check_env():
@@ -150,7 +165,7 @@ def fire_risk():
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    """Restored Fire Risk Dashboard with Correct Colors"""
+    """Fire Risk Dashboard with Synoptic Data Attribution and Dynamic Timestamp"""
     return """<!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -158,6 +173,7 @@ def home():
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Sierra City Fire Risk Dashboard</title>
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <link href='/static/synoptic-logo.css' rel='stylesheet'>
     <script>
         async function fetchFireRisk() {
             const response = await fetch('/fire-risk');
@@ -165,6 +181,7 @@ def home():
 
             const riskDiv = document.getElementById('fire-risk');
             const weatherDetails = document.getElementById('weather-details');
+            const timestampDiv = document.getElementById('timestamp');
 
             // Update fire risk text
             riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
@@ -191,14 +208,33 @@ def home():
                     <li>Humidity: ${data.weather.relative_humidity}%</li>
                     <li>Wind Speed: ${data.weather.wind_speed} mph</li>
                 </ul>`;
+                
+            // Update timestamp
+            const now = new Date();
+            timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`;
         }
 
-        window.onload = fetchFireRisk;
+        // Auto-refresh every 5 minutes
+        function setupRefresh() {
+            fetchFireRisk();
+            setInterval(fetchFireRisk, 300000); // 5 minutes
+        }
+
+        window.onload = setupRefresh;
     </script>
 </head>
 <body class='container mt-5'>
     <h1>Sierra City Fire Risk Dashboard</h1>
+    
     <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
     <div id='weather-details' class='mt-3'></div>
+    
+    <div class="attribution-container">
+        <div id="timestamp" class="timestamp">Last updated: Loading...</div>
+        <div class="attribution">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCI+CiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMjAwIiByPSIxNDAiIGZpbGw9IiMxYTQ1OTgiIC8+CiAgPHBhdGggZD0iTTYwLDE1MCBDMTUwLDEwMCAyNTAsMTEwIDM1MCwxNTAiIHN0cm9rZT0iIzdkZDBmNSIgc3Ryb2tlLXdpZHRoPSIyNSIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNNjAsMjAwIEMxNTAsMTUwIDI1MCwxNjAgMzUwLDIwMCIgc3Ryb2tlPSIjN2RkMGY1IiBzdHJva2Utd2lkdGg9IjI1IiBmaWxsPSJub25lIiAvPgogIDxwYXRoIGQ9Ik02MCwyNTAgQzE1MCwyMDAgMjUwLDIxMCAzNTAsMjUwIiBzdHJva2U9IiM3ZGQwZjUiIHN0cm9rZS13aWR0aD0iMjUiIGZpbGw9Im5vbmUiIC8+Cjwvc3ZnPg==" alt="Synoptic Data" class="synoptic-logo">
+            <a href="https://synopticdata.com/" target="_blank">Weather observations aggregated by Synoptic Data</a>
+        </div>
+    </div>
 </body>
 </html>"""

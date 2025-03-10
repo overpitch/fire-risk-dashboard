@@ -1,0 +1,49 @@
+.synoptic-logo {
+    width: 24px;
+    height: auto;
+    vertical-align: middle;
+    margin-right: 8px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    padding: 2px;
+}
+
+.attribution-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.timestamp {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.attribution {
+    margin-top: 5px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attribution a {
+    color: #1a4598;
+    text-decoration: none;
+}
+
+.attribution a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .synoptic-logo {
+        width: 80px;
+    }
+}
