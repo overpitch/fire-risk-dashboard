@@ -27,6 +27,8 @@ if not API_KEY:
 
 AUTH_URL = "https://api.synopticdata.com/v2/auth"
 BASE_URL = "https://api.synopticdata.com/v2/stations/latest"
+SYNOPTIC_API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
+SYNOPTIC_BASE_URL = "https://api.synopticdata.com/v2"
 STATION_ID = os.getenv("STATION_ID", "C3DLA")  # Default to C3DLA if not set
 
 # Load environment variables from .env if present
@@ -47,71 +49,74 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 def get_api_token():
     """Get a temporary API token using the permanent API key."""
+    
+    if not SYNOPTIC_API_KEY:
+        logger.error("SYNOPTIC_API_KEY is not set!")
+        return None
+
     try:
-        permanent_key = os.environ.get("API_KEY")
-        logger.info(f"Attempting to get token with key starting with: {permanent_key[:5] if permanent_key else 'None/Empty'}")
-        
-        # Your original token request code here
-        # For example:
-        response = requests.post(
-            "https://your-auth-endpoint.com/token",
-            headers={"Authorization": f"ApiKey {permanent_key}"},
-            # Include any other parameters your API requires
-        )
-        
-        logger.info(f"Token response status code: {response.status_code}")
-        
-        if response.status_code != 200:
-            logger.error(f"Failed to get token. Response: {response.text}")
-            return None
-            
-        # Your original code to extract the token
-        token_data = response.json()
-        token = token_data.get("access_token")  # Adjust based on your API's response structure
-        
+        logger.info("Attempting to get API token...")
+
+        # Construct the token request URL
+        token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={SYNOPTIC_API_KEY}"
+        logger.info(f"Fetching API token from: {token_url}")
+
+        # Make the request
+        response = requests.get(token_url)
+        response.raise_for_status()  # Raise an error for non-200 responses
+
+        token_data = response.json()  # Extract JSON response
+        logger.info(f"Full token response: {token_data}")  # Log full response
+
+        # Fix: Get token using the correct key
+        token = token_data.get("TOKEN")  # API returns "TOKEN", not "access_token"
+
         if token:
             logger.info(f"Successfully acquired token starting with: {token[:5]}***")
         else:
-            logger.error("Token was empty or not found in response")
-            
+            logger.error("Token was empty or missing in response.")
+
         return token
-        
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching API token: {e}")
+        return None
     except Exception as e:
-        logger.error(f"Exception during token acquisition: {str(e)}")
+        logger.error(f"Unexpected exception during token acquisition: {str(e)}")
         return None
 
 def get_weather_data(location_id):
     """Get weather data using the temporary token."""
     try:
-        # Get the token first
         token = get_api_token()
-        
         if not token:
             logger.error("No token available, cannot make API request")
             return None
-            
+        
         logger.info(f"Making API request for location: {location_id}")
-        
-        # Your original API request code
-        # For example:
+
+        # Make the API request
         response = requests.get(
-            f"https://your-api-endpoint.com/weather/{location_id}",
-            headers={"Authorization": f"Bearer {token}"},
-            # Include any other parameters your API requires
+            f"https://api.synopticdata.com/v2/stations/latest?&stid={location_id}&token={token}"
         )
-        
+
         logger.info(f"API response status code: {response.status_code}")
-        
+        logger.info(f"API raw response text: {response.text}")  # Log the raw response
+
         if response.status_code != 200:
             logger.error(f"API request failed. Response: {response.text}")
             return None
-            
-        # Your original code to process and return the data
-        data = response.json()
-        logger.info("Successfully retrieved weather data")
-        return data
-        
-    except Exception as e:
+
+        # Try parsing JSON
+        try:
+            data = response.json()
+            logger.info("Successfully retrieved weather data")
+            return data
+        except ValueError as e:  # Catch JSON decoding errors
+            logger.error(f"JSON decoding error: {e}")
+            return None
+
+    except requests.exceptions.RequestException as e:
         logger.error(f"Exception during API request: {str(e)}")
         return None
 
@@ -162,7 +167,7 @@ def calculate_fire_risk(weather):
 def fire_risk():
     """API endpoint to fetch fire risk status."""
     try:
-        weather_data = get_weather_data()
+        weather_data = get_weather_data(STATION_ID)
         
         # Validate API response structure
         if "STATION" not in weather_data or not weather_data["STATION"]:
