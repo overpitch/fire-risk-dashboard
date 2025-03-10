@@ -70,6 +70,33 @@ def debug_info():
         "installed_packages": installed_packages
     }
 
+def get_api_token():
+    """Get a temporary API token using the permanent API key."""
+    api_key = os.getenv("SYNOPTICDATA_API_KEY")
+    if not api_key:
+        logger.error("🚨 API KEY NOT FOUND! Environment variable is missing.")
+        return None
+
+    try:
+        token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={api_key}"
+        logger.info(f"🔎 DEBUG: Fetching API token from {token_url}")
+
+        response = requests.get(token_url)
+        response.raise_for_status()
+        token_data = response.json()
+
+        token = token_data.get("TOKEN")  # ✅ Extract token correctly
+        if token:
+            logger.info(f"✅ Received API token: {token[:5]}... (truncated)")
+        else:
+            logger.error("🚨 Token was empty or missing in response.")
+
+        return token
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"🚨 Error fetching API token: {e}")
+        return None
+
 def get_weather_data(location_id):
     """Get weather data using the temporary token."""
     token = get_api_token()
