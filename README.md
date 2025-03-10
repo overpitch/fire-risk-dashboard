@@ -11,5 +11,5 @@ This project is a public-facing dashboard that calculates and displays fire risk
 ## 🛠 Setup Instructions
 1. Clone the repository:
    ```zsh
-   git clone https://github.com/your-username/fire-risk-dashboard.git
+   git clone https://github.com/overpitch/fire-risk-dashboard.git
    cd fire-risk-dashboard

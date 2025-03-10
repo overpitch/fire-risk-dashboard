@@ -3,6 +3,10 @@ from fastapi.responses import HTMLResponse
 import requests
 import os
 import logging
+from dotenv import load_dotenv  # Load env vars from .env file (for local development)
+
+# Load environment variables from .env if present
+load_dotenv()
 
 app = FastAPI()
 
@@ -15,8 +19,12 @@ logger = logging.getLogger(__name__)
 API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
 if not API_KEY:
     logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
-    API_KEY = ""  # Empty string will cause auth to fail gracefully
     
+    # API Configuration
+    API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
+    if not API_KEY:
+        logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
+
 AUTH_URL = "https://api.synopticdata.com/v2/auth"
 BASE_URL = "https://api.synopticdata.com/v2/stations/latest"
 STATION_ID = os.getenv("STATION_ID", "C3DLA")  # Can be overridden with env var
