@@ -5,29 +5,35 @@ import os
 import logging
 from dotenv import load_dotenv  # Load env vars from .env file (for local development)
 
-# Load environment variables from .env if present
-load_dotenv()
-
-app = FastAPI()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Only load .env in local development
+if os.getenv("RENDER") is None:  # Render sets this env var automatically
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        logger.info("Loaded environment variables from .env file.")
+    except ImportError:
+        logger.warning("dotenv module not found. Install with 'pip install python-dotenv' if needed.")
+
 # API Configuration
 API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
 if not API_KEY:
     logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
-    
-    # API Configuration
-    API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
-    if not API_KEY:
-        logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
 
 AUTH_URL = "https://api.synopticdata.com/v2/auth"
 BASE_URL = "https://api.synopticdata.com/v2/stations/latest"
-STATION_ID = os.getenv("STATION_ID", "C3DLA")  # Can be overridden with env var
+STATION_ID = os.getenv("STATION_ID", "C3DLA")  # Default to C3DLA if not set
+
+# Load environment variables from .env if present
+load_dotenv()
+
+app = FastAPI()
+
 
 # Fire risk thresholds
 THRESHOLDS = {
