@@ -128,39 +128,38 @@ def get_weather_data(location_id):
         logger.error(f"Exception during API request: {str(e)}")
         return None
 
-def calculate_fire_risk(weather):
-    """Determines fire risk level based on thresholds."""
+@app.get("/fire-risk")
+def fire_risk():
+    """API endpoint to fetch fire risk status."""
     try:
-        # Check if all required data is present
-        required_keys = ["air_temp", "relative_humidity", "wind_speed"]
-        for key in required_keys:
-            if key not in weather or weather[key] is None:
-                logger.warning(f"Missing {key} in weather data")
-                return "Unknown", f"Insufficient data: missing {key}"
+        weather_data = get_weather_data(STATION_ID)  # ✅ FIX: Ensure STATION_ID is passed
         
-        temp = float(weather["air_temp"])
-        humidity = float(weather["relative_humidity"])
-        wind = float(weather["wind_speed"])
+        if not weather_data or "STATION" not in weather_data:
+            logger.error("Invalid API response: missing STATION data")
+            raise HTTPException(status_code=502, detail="Invalid weather data returned from API")
+
+        station_data = weather_data["STATION"][0]
+        if "OBSERVATIONS" not in station_data:
+            logger.error("Invalid API response: missing OBSERVATIONS data")
+            raise HTTPException(status_code=502, detail="Invalid station data returned from API")
+
+        observations = station_data["OBSERVATIONS"]
         
-        # Log the values we're using for calculation
-        if DEBUG:
-            logger.info(f"Calculating risk with temp={temp}°F, humidity={humidity}%, wind={wind}mph")
-        
-        # Check for red alert conditions
-        if (temp > THRESHOLDS["red"]["temp"] and
-            humidity < THRESHOLDS["red"]["humidity"] and
-            wind > THRESHOLDS["red"]["wind"]):
-            return "Red", "High fire risk due to high temperature, low humidity, and strong winds."
-        
-        # Check for yellow alert conditions - now including wind check
-        elif (temp > THRESHOLDS["yellow"]["temp"] and
-              humidity < THRESHOLDS["yellow"]["humidity"] and
-              wind > THRESHOLDS["yellow"]["wind"]):
-            return "Yellow", "Moderate fire risk due to warm conditions."
-        
-        # Default to green/low risk
-        else:
-            return "Green", "Low fire risk at this time."
+        latest_weather = {
+            "air_temp": observations.get("air_temp_value_1", {}).get("value"),
+            "relative_humidity": observations.get("relative_humidity_value_1", {}).get("value"),
+            "wind_speed": observations.get("wind_speed_value_1", {}).get("value"),
+        }
+
+        risk, explanation = calculate_fire_risk(latest_weather)
+        return {"risk": risk, "explanation": explanation, "weather": latest_weather}
+    
+    except HTTPException as http_err:
+        logger.error(f"HTTP Exception: {http_err.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in fire_risk endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
             
     except (ValueError, TypeError) as e:
         # Handle data type conversion errors
