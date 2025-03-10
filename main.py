@@ -46,8 +46,12 @@ def test_api():
     
 @app.get("/debug-info")
 def debug_info():
-    """Debug endpoint to check Python version and installed packages in Render."""
+    """Debug endpoint to check Python version and installed packages."""
     python_version = sys.version
+
+    # Log Python version for debugging
+    logger.info(f"DEBUG CHECK: Running with Python version {python_version}")
+
     try:
         installed_packages = {pkg.metadata["Name"]: pkg.version for pkg in importlib.metadata.distributions()}
     except Exception as e:
@@ -57,23 +61,6 @@ def debug_info():
         "python_version": python_version,
         "installed_packages": installed_packages
     }
-
-def get_api_token():
-    """Get a temporary API token using the permanent API key."""
-    if not SYNOPTIC_API_KEY:
-        logger.error("SYNOPTIC_API_KEY is not set!")
-        return None
-
-    try:
-        token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={SYNOPTIC_API_KEY}"
-        response = requests.get(token_url)
-        response.raise_for_status()
-        token_data = response.json()
-        return token_data.get("TOKEN")
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching API token: {e}")
-        return None
 
 def get_weather_data(location_id):
     """Get weather data using the temporary token."""
