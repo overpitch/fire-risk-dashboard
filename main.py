@@ -29,6 +29,14 @@ if not SYNOPTIC_API_KEY:
 
 app = FastAPI()
 
+@app.get("/check-env")
+def check_env():
+    """Check if Render environment variables are available."""
+    api_key = os.getenv("SYNOPTICDATA_API_KEY")
+    return {
+        "SYNOPTICDATA_API_KEY": api_key if api_key else "MISSING"
+    }
+
 # Fire risk thresholds
 THRESHOLDS = {
     "red": {"temp": 90, "humidity": 15, "wind": 20},
