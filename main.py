@@ -3,8 +3,16 @@ from fastapi.responses import HTMLResponse
 import requests
 import os
 import logging
-from dotenv import load_dotenv  # Load env vars from .env file (for local development)
 
+
+# Only load .env for local development (not on Render)
+if os.getenv("RENDER") is None:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        print("Loaded .env file for local development.")
+    except ImportError:
+        print("python-dotenv is not installed. Skipping .env loading.")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, 
