@@ -63,11 +63,19 @@ def check_env():
         "WUNDERGROUND_API_KEY": wunderground_key if wunderground_key else "MISSING"
     }
 
-# Fire risk thresholds (in Celsius)
-THRESHOLDS = {
-    "red": {"temp": 32.2, "humidity": 15, "wind": 20},    # 90°F converted to Celsius
-    "yellow": {"temp": 26.7, "humidity": 25, "wind": 15}, # 80°F converted to Celsius
-}
+# Fire risk thresholds from environment variables
+THRESH_TEMP = float(os.getenv("THRESH_TEMP", 90))            # Temperature threshold in Fahrenheit
+THRESH_HUMID = float(os.getenv("THRESH_HUMID", 15))          # Humidity threshold in percent
+THRESH_WIND = float(os.getenv("THRESH_WIND", 20))            # Wind speed threshold in mph
+THRESH_GUSTS = float(os.getenv("THRESH_GUSTS", 25))          # Wind gust threshold in mph
+THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 5)) # Soil moisture threshold in percent
+
+# Convert temperature threshold from Fahrenheit to Celsius for internal use
+THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
+
+logger.info(f"Using thresholds: TEMP={THRESH_TEMP}°F ({THRESH_TEMP_CELSIUS:.1f}°C), "
+            f"HUMID={THRESH_HUMID}%, WIND={THRESH_WIND}mph, "
+            f"GUSTS={THRESH_GUSTS}mph, SOIL={THRESH_SOIL_MOIST}%")
 
 @app.get("/test-api")
 def test_api():
@@ -180,26 +188,42 @@ def get_wunderground_data(station_id):
         return None
 
 def calculate_fire_risk(weather):
-    """Determines fire risk level based on weather data."""
+    """Determines fire risk level based on weather data and environmental thresholds."""
     try:
         # Ensure we have valid values by providing defaults if values are None
         air_temp = weather.get("air_temp")
         relative_humidity = weather.get("relative_humidity")
         wind_speed = weather.get("wind_speed")
+        wind_gust = weather.get("wind_gust")
+        soil_moisture_15cm = weather.get("soil_moisture_15cm")
         
         # Log the received values for debugging
-        logger.info(f"Received weather data: temp={air_temp}, humidity={relative_humidity}, wind={wind_speed}")
+        logger.info(f"Received weather data: temp={air_temp}°C, humidity={relative_humidity}%, "
+                    f"wind={wind_speed}mph, gusts={wind_gust}mph, soil={soil_moisture_15cm}%")
         
         # Use defaults if values are None
         temp = float(0 if air_temp is None else air_temp)
         humidity = float(100 if relative_humidity is None else relative_humidity)
         wind = float(0 if wind_speed is None else wind_speed)
-
-        if temp > THRESHOLDS["red"]["temp"] and humidity < THRESHOLDS["red"]["humidity"] and wind > THRESHOLDS["red"]["wind"]:
-            return "Red", "High fire risk due to high temperature, low humidity, and strong winds."
-        elif temp > THRESHOLDS["yellow"]["temp"] and humidity < THRESHOLDS["yellow"]["humidity"] and wind > THRESHOLDS["yellow"]["wind"]:
-            return "Yellow", "Moderate fire risk due to warm conditions."
-        return "Green", "Low fire risk at this time."
+        gusts = float(0 if wind_gust is None else wind_gust)
+        soil = float(100 if soil_moisture_15cm is None else soil_moisture_15cm)
+        
+        # Check if all thresholds are exceeded
+        temp_exceeded = temp > THRESH_TEMP_CELSIUS
+        humidity_exceeded = humidity < THRESH_HUMID
+        wind_exceeded = wind > THRESH_WIND
+        gusts_exceeded = gusts > THRESH_GUSTS
+        soil_exceeded = soil < THRESH_SOIL_MOIST
+        
+        # Log threshold checks
+        logger.info(f"Threshold checks: temp={temp_exceeded}, humidity={humidity_exceeded}, "
+                    f"wind={wind_exceeded}, gusts={gusts_exceeded}, soil={soil_exceeded}")
+        
+        # If all thresholds are exceeded: RED, otherwise: YELLOW
+        if temp_exceeded and humidity_exceeded and wind_exceeded and gusts_exceeded and soil_exceeded:
+            return "Red", "High fire risk due to high temperature, low humidity, strong winds, high wind gusts, and low soil moisture."
+        else:
+            return "Yellow", "Moderate fire risk. Monitor conditions carefully."
 
     except Exception as e:
         logger.error(f"Error calculating fire risk: {str(e)}")
@@ -373,15 +397,14 @@ def home():
 
             // Set appropriate background color based on risk level
             const riskLevel = data.risk;
-            let bgClass = 'bg-secondary';  // Default for unknown risk
+            let bgClass = 'bg-secondary';  // Default for unknown/error risk
 
             if (riskLevel === 'Red') {
                 bgClass = 'bg-danger text-white'; // Red: Danger
             } else if (riskLevel === 'Yellow') {
                 bgClass = 'bg-warning text-dark'; // Yellow: Warning
-            } else if (riskLevel === 'Green') {
-                bgClass = 'bg-success bg-opacity-75 text-dark'; // ✅ Light green
             }
+            // There is no longer a Green status as per requirements
 
             riskDiv.className = `alert ${bgClass} p-3`;
 
