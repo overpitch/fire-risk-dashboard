@@ -64,11 +64,11 @@ def check_env():
     }
 
 # Fire risk thresholds from environment variables
-THRESH_TEMP = float(os.getenv("THRESH_TEMP", 90))            # Temperature threshold in Fahrenheit
+THRESH_TEMP = float(os.getenv("THRESH_TEMP", 75))            # Temperature threshold in Fahrenheit
 THRESH_HUMID = float(os.getenv("THRESH_HUMID", 15))          # Humidity threshold in percent
-THRESH_WIND = float(os.getenv("THRESH_WIND", 20))            # Wind speed threshold in mph
+THRESH_WIND = float(os.getenv("THRESH_WIND", 15))            # Wind speed threshold in mph
 THRESH_GUSTS = float(os.getenv("THRESH_GUSTS", 25))          # Wind gust threshold in mph
-THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 5)) # Soil moisture threshold in percent
+THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 10)) # Soil moisture threshold in percent
 
 # Convert temperature threshold from Fahrenheit to Celsius for internal use
 THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
@@ -371,6 +371,7 @@ def home():
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Sierra City Fire Risk Dashboard</title>
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link href='/static/synoptic-logo.css' rel='stylesheet'>
     <style>
         .attribution-container {
@@ -381,6 +382,18 @@ def home():
         }
         .data-source {
             margin-bottom: 0.5rem;
+        }
+        .info-icon {
+            cursor: pointer;
+            color: #0d6efd;
+            font-weight: bold;
+            padding: 0 5px;
+            border-radius: 50%;
+            font-size: 0.8rem;
+        }
+        .info-icon:hover {
+            text-decoration: none;
+            color: #0a58ca;
         }
     </style>
     <script>
@@ -442,17 +455,12 @@ def home():
             
             detailsHTML += `
                 <ul>
-                    <li>Temperature: ${tempFahrenheit}°F (converted from ${tempCelsius}°C) <small class="text-muted">[Station: ${weatherStation}]</small></li>
-                    <li>Humidity: ${humidity} <small class="text-muted">[Station: ${weatherStation}]</small></li>
-                    <li>Wind Speed: ${windSpeed} <small class="text-muted">[Station: ${weatherStation}]</small></li>
-                    <li>Wind Gusts: ${windGust} <small class="text-muted">[Station: ${windGustStation}]</small></li>
-                    <li>Soil Moisture (15cm depth): ${soilMoisture}% <small class="text-muted">[Station: ${soilStation}]</small></li>
-                </ul>
-                <div class="alert alert-info p-2 small">
-                    <strong>Data Sources:</strong> Temperature, humidity, and wind data from station ${weatherStation}.
-                    Soil moisture data from station ${soilStation}.
-                    Wind gust data from Weather Underground station ${windGustStation}.
-                </div>`;
+                    <li>Temperature: ${tempFahrenheit}°F (converted from ${tempCelsius}°C) <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li>Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li>Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li>Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
+                    <li>Soil Moisture (15cm depth): ${soilMoisture}% <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
+                </ul>`;
                 
             weatherDetails.innerHTML = detailsHTML;
                 
@@ -463,8 +471,22 @@ def home():
 
         // Auto-refresh every 5 minutes
         function setupRefresh() {
-            fetchFireRisk();
-            setInterval(fetchFireRisk, 300000); // 5 minutes
+            fetchFireRisk().then(() => {
+                // Initialize tooltips after content is loaded
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            });
+            setInterval(() => {
+                fetchFireRisk().then(() => {
+                    // Re-initialize tooltips after content is refreshed
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                });
+            }, 300000); // 5 minutes
         }
 
         window.onload = setupRefresh;
