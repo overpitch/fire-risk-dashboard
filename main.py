@@ -73,7 +73,7 @@ THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 10)) # Soil moisture th
 # Convert temperature threshold from Fahrenheit to Celsius for internal use
 THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
 
-logger.info(f"Using thresholds: TEMP={THRESH_TEMP}°F ({THRESH_TEMP_CELSIUS:.1f}°C), "
+logger.info(f"Using thresholds: TEMP={THRESH_TEMP}°F, "
             f"HUMID={THRESH_HUMID}%, WIND={THRESH_WIND}mph, "
             f"GUSTS={THRESH_GUSTS}mph, SOIL={THRESH_SOIL_MOIST}%")
 
@@ -453,13 +453,36 @@ def home():
             const windGust = data.weather.wind_gust ? `${data.weather.wind_gust} mph` : 'N/A';
             const windGustStation = data.weather.data_sources.wind_gust_station;
             
+            // Get threshold values for color formatting
+            const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
+            const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
+            const THRESH_WIND = 15;  // Wind speed threshold in mph
+            const THRESH_GUSTS = 25; // Wind gust threshold in mph
+            const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
+            
+            // Check if values exceed thresholds for color formatting
+            const tempValue = tempCelsius ? ((tempCelsius * 9/5) + 32) : null;
+            const tempExceeds = tempValue !== null && tempValue > THRESH_TEMP;
+            
+            const humidValue = data.weather.relative_humidity;
+            const humidExceeds = humidValue !== null && humidValue < THRESH_HUMID;
+            
+            const windValue = data.weather.wind_speed;
+            const windExceeds = windValue !== null && windValue > THRESH_WIND;
+            
+            const gustValue = data.weather.wind_gust;
+            const gustExceeds = gustValue !== null && gustValue > THRESH_GUSTS;
+            
+            const soilValue = data.weather.soil_moisture_15cm;
+            const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
+            
             detailsHTML += `
                 <ul>
-                    <li>Temperature: ${tempFahrenheit}°F (converted from ${tempCelsius}°C) <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li>Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li>Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li>Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
-                    <li>Soil Moisture (15cm depth): ${soilMoisture}% <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}°F <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
+                    <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}% <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
                 </ul>`;
                 
             weatherDetails.innerHTML = detailsHTML;
