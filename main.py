@@ -52,10 +52,10 @@ def check_env():
         "SYNOPTICDATA_API_KEY": api_key if api_key else "MISSING"
     }
 
-# Fire risk thresholds
+# Fire risk thresholds (in Celsius)
 THRESHOLDS = {
-    "red": {"temp": 90, "humidity": 15, "wind": 20},
-    "yellow": {"temp": 80, "humidity": 25, "wind": 15},
+    "red": {"temp": 32.2, "humidity": 15, "wind": 20},    # 90°F converted to Celsius
+    "yellow": {"temp": 26.7, "humidity": 25, "wind": 15}, # 80°F converted to Celsius
 }
 
 @app.get("/test-api")
@@ -154,10 +154,29 @@ def fire_risk():
         raise HTTPException(status_code=502, detail="Invalid weather data returned from API")
 
     observations = weather_data["STATION"][0].get("OBSERVATIONS", {})
+    
+    # Log available soil moisture readings to check depths
+    soil_moisture_keys = [k for k in observations.keys() if 'soil_moisture' in k]
+    logger.info(f"Available soil moisture keys: {soil_moisture_keys}")
+    
+    # Check for soil moisture at 0.15m depth specifically
+    soil_moisture_15cm = None
+    for key in soil_moisture_keys:
+        if '0.15' in key or '15cm' in key or '15_cm' in key:
+            soil_moisture_15cm = observations.get(key, {}).get("value")
+            logger.info(f"Found soil moisture at 0.15m: {soil_moisture_15cm} from key {key}")
+            break
+    
+    # If we didn't find 0.15m specific measurement, look for soil_moisture_value_1
+    if soil_moisture_15cm is None:
+        soil_moisture_15cm = observations.get("soil_moisture_value_1", {}).get("value")
+        logger.info(f"Using default soil_moisture_value_1: {soil_moisture_15cm}")
+    
     latest_weather = {
         "air_temp": observations.get("air_temp_value_1", {}).get("value"),
         "relative_humidity": observations.get("relative_humidity_value_1", {}).get("value"),
         "wind_speed": observations.get("wind_speed_value_1", {}).get("value"),
+        "soil_moisture_15cm": soil_moisture_15cm,
     }
 
     risk, explanation = calculate_fire_risk(latest_weather)
@@ -201,12 +220,18 @@ def home():
             riskDiv.className = `alert ${bgClass} p-3`;
 
             // Update weather details
+            // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
+            const tempCelsius = data.weather.air_temp;
+            const tempFahrenheit = tempCelsius ? ((tempCelsius * 9/5) + 32).toFixed(1) : 'N/A';
+            const soilMoisture = data.weather.soil_moisture_15cm ? data.weather.soil_moisture_15cm : 'N/A';
+            
             weatherDetails.innerHTML = `
                 <h5>Current Weather Conditions:</h5>
                 <ul>
-                    <li>Temperature: ${data.weather.air_temp}°F</li>
+                    <li>Temperature: ${tempFahrenheit}°F (converted from ${tempCelsius}°C)</li>
                     <li>Humidity: ${data.weather.relative_humidity}%</li>
                     <li>Wind Speed: ${data.weather.wind_speed} mph</li>
+                    <li>Soil Moisture (15cm depth): ${soilMoisture}%</li>
                 </ul>`;
                 
             // Update timestamp
@@ -224,7 +249,7 @@ def home():
     </script>
 </head>
 <body class='container mt-5'>
-    <h1>Sierra City Fire Risk Dashboard</h1>
+    <h1>Sierra City Fire Weather Advisory</h1>
     
     <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
     <div id='weather-details' class='mt-3'></div>
