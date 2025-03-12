@@ -881,12 +881,133 @@ def home():
                 document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
                 document.getElementById('refresh-btn').disabled = false;
             }
+            try {
+                // Update the UI with the fetched data
+                const riskDiv = document.getElementById('fire-risk');
+                const weatherDetails = document.getElementById('weather-details');
+                const timestampDiv = document.getElementById('timestamp');
+                const cacheInfoDiv = document.getElementById('cache-info');
+
+                // Update fire risk text
+                riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+                
+                // Update cache information
+                if (data.cache_info) {
+                    const lastUpdated = new Date(data.cache_info.last_updated);
+                    const isFresh = data.cache_info.is_fresh;
+                    const refreshInProgress = data.cache_info.refresh_in_progress;
+                    let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
+                    let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
+                    
+                    if (refreshInProgress) {
+                        statusText += ' (refresh in progress...)';
+                    }
+                    
+                    cacheInfoDiv.innerHTML = `
+                        <span class="${cacheClass}">
+                            ${statusText}
+                            (Last updated: ${lastUpdated.toLocaleTimeString()})
+                        </span>`;
+                }
+
+                // Set appropriate background color based on risk level
+                const riskLevel = data.risk;
+                let bgClass = 'bg-secondary';  // Default for unknown/error risk
+
+                if (riskLevel === 'Red') {
+                    bgClass = 'bg-danger text-white'; // Red: Danger
+                } else if (riskLevel === 'Yellow') {
+                    bgClass = 'bg-warning text-dark'; // Yellow: Warning
+                }
+                // There is no longer a Green status as per requirements
+
+                riskDiv.className = `alert ${bgClass} p-3`;
+
+                // Update weather details
+                // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
+                // Round all measurements to the nearest whole number
+                const tempCelsius = data.weather.air_temp;
+                const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const weatherStation = data.weather.data_sources.weather_station;
+                const soilStation = data.weather.data_sources.soil_moisture_station;
+                
+                // Check for data issues
+                const dataStatus = data.weather.data_status;
+                const hasIssues = dataStatus && dataStatus.issues && dataStatus.issues.length > 0;
+                
+                // Build the weather details HTML
+                let detailsHTML = `<h5>Current Weather Conditions:</h5>`;
+                
+                // Add warning about data issues if applicable
+                if (hasIssues) {
+                    detailsHTML += `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>Data Quality Warning:</strong> Some data may be missing or unavailable.<br>
+                        <ul class="mb-0">
+                            ${dataStatus.issues.map(issue => `<li>${issue}</li>`).join('')}
+                        </ul>
+                    </div>`;
+                }
+                
+                // Handle potentially missing data with fallbacks - round all values to nearest whole number
+                const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const windSpeed = data.weather.wind_speed ? Math.round(data.weather.wind_speed) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const windGust = data.weather.wind_gust ? Math.round(data.weather.wind_gust) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const windGustStation = data.weather.data_sources.wind_gust_station;
+                
+                // Get threshold values for color formatting
+                const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
+                const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
+                const THRESH_WIND = 15;  // Wind speed threshold in mph
+                const THRESH_GUSTS = 25; // Wind gust threshold in mph
+                const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
+                
+                // Check if values exceed thresholds for color formatting - use rounded values
+                const tempValue = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) : null;
+                const tempExceeds = tempValue !== null && tempValue > THRESH_TEMP;
+                
+                const humidValue = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) : null;
+                const humidExceeds = humidValue !== null && humidValue < THRESH_HUMID;
+                
+                const windValue = data.weather.wind_speed ? Math.round(data.weather.wind_speed) : null;
+                const windExceeds = windValue !== null && windValue > THRESH_WIND;
+                
+                const gustValue = data.weather.wind_gust ? Math.round(data.weather.wind_gust) : null;
+                const gustExceeds = gustValue !== null && gustValue > THRESH_GUSTS;
+                
+                const soilValue = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) : null;
+                const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
+                
+                detailsHTML += `
+                    <ul>
+                        <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                        <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                        <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
+                        <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
+                        <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
+                    </ul>`;
+                    
+                weatherDetails.innerHTML = detailsHTML;
+                    
+                // Update timestamp and re-enable refresh button if it was used
+                const now = new Date();
+                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`;
+                
+                if (showSpinner) {
+                    document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
+                    document.getElementById('refresh-btn').disabled = false;
+                }
+                
+                return true; // Signal success
+                
             } catch (error) {
                 console.error("Error fetching fire risk data:", error);
                 if (showSpinner) {
                     document.getElementById('refresh-btn').innerHTML = 'Refresh Failed - Try Again';
                     document.getElementById('refresh-btn').disabled = false;
                 }
+                return false;
             }
         }
 
