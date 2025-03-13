@@ -616,9 +616,13 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     
     return result
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the data cache on startup."""
+# Create a lifespan context manager for application startup and shutdown
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
+    """Lifespan context manager for application startup and shutdown."""
+    # Startup event
     logger.info("🚀 Application startup: Initializing data cache...")
     
     # Try to fetch initial data, but don't block startup if it fails
@@ -628,6 +632,15 @@ async def startup_event():
     except Exception as e:
         logger.error(f"❌ Failed to populate initial data cache: {str(e)}")
         logger.info("Application will continue startup and retry data fetch on first request")
+    
+    # Yield control back to FastAPI during application lifetime
+    yield
+    
+    # Shutdown event (if needed in the future)
+    logger.info("🛑 Application shutting down...")
+
+# Register the lifespan context manager with FastAPI
+app.router.lifespan_context = lifespan
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -1055,10 +1068,22 @@ def home():
         window.onload = setupRefresh;
     </script>
 </head>
-<body class='container mt-5'>
-    <h1>Sierra City Fire Weather Advisory</h1>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" style="background-color: #003366 !important;">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                Sierra City Fire Weather Advisory
+            </a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#aboutUsModal">About Us</button>
+            </div>
+        </div>
+    </nav>
     
-    <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="container mt-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
         <div id="cache-info" class="cache-info">Data status: Loading...</div>
         <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
     </div>
@@ -1081,5 +1106,28 @@ def home():
             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgNDAwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCI+CiAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMjAwIiByPSIxNDAiIGZpbGw9IiMxYTQ1OTgiIC8+CiAgPHBhdGggZD0iTTYwLDE1MCBDMTUwLDEwMCAyNTAsMTEwIDM1MCwxNTAiIHN0cm9rZT0iIzdkZDBmNSIgc3Ryb2tlLXdpZHRoPSIyNSIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNNjAsMjAwIEMxNTAsMTUwIDI1MCwxNjAgMzUwLDIwMCIgc3Ryb2tlPSIjN2RkMGY1IiBzdHJva2Utd2lkdGg9IjI1IiBmaWxsPSJub25lIiAvPgogIDxwYXRoIGQ9Ik02MCwyNTAgQzE1MCwyMDAgMjUwLDIxMCAzNTAsMjUwIiBzdHJva2U9IiM3ZGQwZjUiIHN0cm9rZS13aWR0aD0iMjUiIGZpbGw9Im5vbmUiIC8+Cjwvc3ZnPg==" alt="Synoptic Data" class="synoptic-logo">
         </div>
     </div>
+    
+    <!-- About Us Modal -->
+    <div class="modal fade" id="aboutUsModal" tabindex="-1" aria-labelledby="aboutUsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutUsModalLabel">About Us</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This Fire Weather Advisory website was born from the Sierra City Community Radio1 (SCCR1) initiative. SCCR1 provides essential communication via handheld radios when power, phone, and internet services are disrupted, while also fostering stronger neighborhood connections.</p>
+                    
+                    <p>It was inspired by a January 2025 incident when high winds during low humidity reignited a burn pile. We realized many residents were unaware of these dangerous weather conditions. After community discussions, we developed this advisory system to keep our neighbors informed and safer.</p>
+                    
+                    <p>For more information about our services or to manage your notification preferences, please contact us at <a href="mailto:fredsnarf@getlost.com">fredsnarf@getlost.com</a>.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div> <!-- Close container -->
 </body>
 </html>"""
