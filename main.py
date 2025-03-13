@@ -78,6 +78,32 @@ class DataCache:
         self._lock = threading.Lock()
         # Event to signal when an update is complete
         self._update_complete_event = asyncio.Event()
+        # Storage for last known valid data by field
+        self.last_valid_data: Dict[str, Any] = {
+            # Store each weather field individually with its own timestamp
+            "fields": {
+                "temperature": {"value": None, "timestamp": None},
+                "humidity": {"value": None, "timestamp": None},
+                "wind_speed": {"value": None, "timestamp": None},
+                "soil_moisture": {"value": None, "timestamp": None},
+                "wind_gust": {"value": None, "timestamp": None}
+            },
+            # Keep the whole API responses for backwards compatibility
+            "synoptic_data": None,
+            "wunderground_data": None,
+            "fire_risk_data": None,
+            "timestamp": None,
+        }
+        # Track which fields are currently using cached data
+        self.cached_fields: Dict[str, bool] = {
+            "temperature": False,
+            "humidity": False,
+            "wind_speed": False,
+            "soil_moisture": False,
+            "wind_gust": False
+        }
+        # Flag to indicate if we're currently using any cached data
+        self.using_cached_data: bool = False
 
     def is_stale(self, max_age_minutes: int = 15) -> bool:
         """Check if the data is stale (older than max_age_minutes)"""
@@ -111,6 +137,46 @@ class DataCache:
             self.fire_risk_data = fire_risk_data
             self.last_updated = current_time
             self.last_update_success = True
+            
+            # Reset all cached field flags
+            for field in self.cached_fields:
+                self.cached_fields[field] = False
+            self.using_cached_data = False
+            
+            # Store the full response data for backwards compatibility
+            if synoptic_data is not None or wunderground_data is not None:
+                self.last_valid_data["synoptic_data"] = synoptic_data
+                self.last_valid_data["wunderground_data"] = wunderground_data
+                self.last_valid_data["fire_risk_data"] = fire_risk_data
+                self.last_valid_data["timestamp"] = current_time
+                
+                # Update individual field values if they're available in the current data
+                if fire_risk_data and "weather" in fire_risk_data:
+                    weather = fire_risk_data["weather"]
+                    
+                    # Store each field individually if it has a valid value
+                    if weather.get("air_temp") is not None:
+                        self.last_valid_data["fields"]["temperature"]["value"] = weather["air_temp"]
+                        self.last_valid_data["fields"]["temperature"]["timestamp"] = current_time
+                    
+                    if weather.get("relative_humidity") is not None:
+                        self.last_valid_data["fields"]["humidity"]["value"] = weather["relative_humidity"]
+                        self.last_valid_data["fields"]["humidity"]["timestamp"] = current_time
+                    
+                    if weather.get("wind_speed") is not None:
+                        self.last_valid_data["fields"]["wind_speed"]["value"] = weather["wind_speed"]
+                        self.last_valid_data["fields"]["wind_speed"]["timestamp"] = current_time
+                    
+                    if weather.get("soil_moisture_15cm") is not None:
+                        self.last_valid_data["fields"]["soil_moisture"]["value"] = weather["soil_moisture_15cm"]
+                        self.last_valid_data["fields"]["soil_moisture"]["timestamp"] = current_time
+                    
+                    if weather.get("wind_gust") is not None:
+                        self.last_valid_data["fields"]["wind_gust"]["value"] = weather["wind_gust"]
+                        self.last_valid_data["fields"]["wind_gust"]["timestamp"] = current_time
+                
+                logger.info(f"Stored valid data for future fallback use at {current_time}")
+            
             # Set the event to signal update completion
             try:
                 loop = asyncio.get_event_loop()
@@ -177,6 +243,577 @@ def test_api():
         return {"status": response.status_code, "response": response.text[:500]}
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
+
+@app.get("/test-cache-system", response_class=HTMLResponse)
+def test_cache_system():
+    """A visual interface for testing the cache system"""
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache System Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 30px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .step {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .btn-primary, .btn-success {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .footer {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test the Data Caching System</h1>
+        
+        <div class="alert alert-info">
+            <p>This page lets you test how the system handles API failures by displaying cached data.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 1: View the normal dashboard</h4>
+            <p>First, view the <a href="/" target="_blank">dashboard</a> with regular live data.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 2: Simulate API failure</h4>
+            <p>Click the button below to simulate an API failure. This will:</p>
+            <ul>
+                <li>Temporarily disable the API keys</li>
+                <li>Force the system to use cached data</li>
+            </ul>
+            <style>
+                /* Custom button styles to ensure consistent height across browsers */
+                .test-button {
+                    display: inline-block;
+                    height: 40px;
+                    line-height: 26px;
+                    padding: 6px 16px;
+                    margin-right: 10px;
+                    margin-bottom: 10px;
+                    text-align: center;
+                    white-space: nowrap;
+                    vertical-align: middle;
+                    border-radius: 4px;
+                    font-weight: 400;
+                    font-size: 16px;
+                    text-decoration: none;
+                }
+                .test-button-primary {
+                    background-color: #0d6efd;
+                    border: 1px solid #0d6efd;
+                    color: white;
+                }
+                .test-button-warning {
+                    background-color: #ffc107;
+                    border: 1px solid #ffc107;
+                    color: black;
+                }
+                .test-button:hover {
+                    opacity: 0.9;
+                }
+            </style>
+            <div style="display: flex;">
+                <a href="/force-cached-mode" class="test-button test-button-primary">Simulate Complete API Failure</a>
+                <a href="/test-partial-failure" class="test-button test-button-warning">Simulate Partial API Failure</a>
+            </div>
+        </div>
+        
+        <div class="step">
+            <h4>Step 3: View the dashboard with cached data</h4>
+            <p>After clicking the button above, go to the dashboard to see the cached data display:</p>
+            <a href="/" class="btn btn-primary">View Dashboard with Cached Data</a>
+            <p>Note how the cached data is visually distinct, with warning banners and a different background color.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 4: Reset the system to normal operation</h4>
+            <p>When you want to return to normal operation, click the reset button:</p>
+            <a href="/reset-cached-mode" class="btn btn-success">Reset to Normal Operation</a>
+            <p>This will restore the original API keys and make fresh API calls.</p>
+        </div>
+        
+        <div class="footer">
+            <p><a href="/">Return to Dashboard</a></p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+@app.get("/force-cached-mode", response_class=HTMLResponse)
+async def force_cached_mode():
+    """Force the system to display cached data.
+    
+    This is a simpler approach than temporarily disabling API keys:
+    1. Ensures there's valid cached data available
+    2. Directly sets the system to use cached data
+    3. Redirects to the dashboard to show the cached data
+    """
+    # Make sure we have cached data first
+    if data_cache.last_valid_data["timestamp"] is None:
+        return """
+        <html>
+        <head>
+            <title>Error: No Cached Data</title>
+            <style>
+                body { font-family: Arial; padding: 20px; text-align: center; }
+                .error { color: red; border: 1px solid red; padding: 10px; }
+            </style>
+        </head>
+        <body>
+            <h1>Error: No Cached Data Available</h1>
+            <div class="error">
+                <p>There is no cached data available yet. Please visit the dashboard first to populate the cache.</p>
+            </div>
+            <p><a href="/">Return to dashboard</a></p>
+        </body>
+        </html>
+        """
+    
+    # Set the flag to use cached data
+    data_cache.using_cached_data = True
+    logger.info("🔵 TEST MODE: Forced cached data display")
+    
+    # Get timestamp information for display
+    pacific_tz = pytz.timezone('America/Los_Angeles')
+    current_time = datetime.now(pacific_tz)
+    cached_time = data_cache.last_valid_data["timestamp"]
+    
+    # Calculate age of data
+    age_delta = current_time - cached_time
+    if age_delta.days > 0:
+        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+    elif age_delta.seconds // 3600 > 0:
+        hours = age_delta.seconds // 3600
+        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+    else:
+        minutes = age_delta.seconds // 60
+        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+    
+    # Update the cached fire risk data
+    if data_cache.fire_risk_data:
+        cached_fire_risk_data = data_cache.last_valid_data["fire_risk_data"].copy()
+        cached_fire_risk_data["cached_data"] = {
+            "is_cached": True,
+            "original_timestamp": cached_time.isoformat(),
+            "age": age_str
+        }
+        
+        # Add or update the explanation with cache notice
+        original_explanation = cached_fire_risk_data.get("explanation", "")
+        if "cached data" not in original_explanation.lower():
+            cached_fire_risk_data["explanation"] = f"{original_explanation} NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
+        
+        # Update the cache
+        data_cache.fire_risk_data = cached_fire_risk_data
+    
+    # Redirect to home page with success message
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=303)
+
+@app.get("/reset-cached-mode", response_class=HTMLResponse)
+async def reset_cached_mode(background_tasks: BackgroundTasks):
+    """Reset the system from cached data mode back to normal operations
+    
+    This endpoint:
+    1. Clears the using_cached_data flag
+    2. Resets any cached data modifications
+    3. Forces a fresh data refresh
+    4. Returns a simple page confirming the reset
+    """
+    # Clear the cached data flag
+    data_cache.using_cached_data = False
+    
+    # Reset the fire risk data to remove any cached data indicators
+    if data_cache.fire_risk_data and "cached_data" in data_cache.fire_risk_data:
+        # Remove the cached_data field
+        fire_risk_copy = data_cache.fire_risk_data.copy()
+        del fire_risk_copy["cached_data"]
+        
+        # Remove any cached data mentions from the explanation
+        if "explanation" in fire_risk_copy:
+            explanation = fire_risk_copy["explanation"]
+            if "NOTICE: Displaying cached data" in explanation:
+                explanation = explanation.split(" NOTICE: Displaying cached data")[0]
+                fire_risk_copy["explanation"] = explanation
+                
+        # Update the fire risk data
+        data_cache.fire_risk_data = fire_risk_copy
+    
+    # Force a refresh with fresh data
+    logger.info("Resetting from cached mode to normal operations...")
+    refresh_success = await refresh_data_cache(background_tasks, force=True)
+    
+    status = "success" if refresh_success else "failed"
+    
+    # Return a simple HTML page with a JavaScript redirect
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="3;url=/">
+    <title>System Reset</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            text-align: center;
+        }}
+        .success {{ color: green; }}
+        .error {{ color: red; }}
+    </style>
+</head>
+<body>
+    <h1>System Reset {status.upper()}</h1>
+    <div class="{status}">
+        <p>The system has been reset to normal operations.</p>
+        <p>Data refresh status: {status}</p>
+    </div>
+    <p>You will be redirected to the dashboard in 3 seconds...</p>
+    <p>Or <a href="/">click here</a> to go to the dashboard now.</p>
+</body>
+</html>"""
+
+@app.get("/test-partial-failure", response_class=HTMLResponse)
+async def test_partial_failure(background_tasks: BackgroundTasks):
+    """Test endpoint that simulates a partial API failure.
+    
+    This endpoint will:
+    1. Store original data from both APIs
+    2. Deliberately remove certain fields from the data to simulate partial failure
+    3. Force a refresh that will use cached values only for missing fields
+    4. Show how individual fields can fall back to cached data
+    """
+    # First, ensure we have valid data in the cache
+    if data_cache.fire_risk_data is None:
+        await refresh_data_cache(background_tasks, force=True)
+        if data_cache.fire_risk_data is None:
+            return """
+            <html>
+            <head><title>Error</title></head>
+            <body>
+                <h1>Error: No Data Available</h1>
+                <p>There is no data in the cache yet. Please visit the dashboard first.</p>
+            </body>
+            </html>
+            """
+    
+    # Get the current data
+    weather_data = {}
+    if "weather" in data_cache.fire_risk_data:
+        weather_data = data_cache.fire_risk_data["weather"].copy()
+    
+    # Create a modified version of the data with some fields missing
+    # This simulates a partial API failure where only some fields are unavailable
+    modified_weather_data = weather_data.copy()
+    
+    # Remove temperature and soil moisture to simulate those specific fields failing
+    modified_weather_data["air_temp"] = None
+    modified_weather_data["soil_moisture_15cm"] = None
+    
+    # Set the modified data in a way that will trigger our field-level caching
+    logger.info("🧪 TEST MODE: Simulating partial API failure (temperature and soil moisture)")
+    data_cache.fire_risk_data["weather"] = modified_weather_data
+    
+    # Force a refresh, which should only use cached data for the missing fields
+    await refresh_data_cache(background_tasks, force=True)
+    
+    # Store information about which fields have been simulated as failing
+    failed_fields = ["temperature", "soil_moisture"]
+    
+    # Create a custom HTML response that clearly shows some fields as cached and others as fresh
+    thirty_min_ago = (datetime.now(pytz.timezone('America/Los_Angeles')) - timedelta(minutes=30)).strftime('%I:%M %p')
+    
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field-Level Caching Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+        }
+        .header {
+            background-color: #003366;
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .cached-field {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .fresh-field {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+        }
+        .badge-cached {
+            position: absolute;
+            right: 10px;
+        }
+        .badge-fresh {
+            position: absolute;
+            right: 10px;
+        }
+        .warning-banner {
+            background-color: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-left: 10px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .field-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .field-value {
+            display: inline-block;
+        }
+        .age-info {
+            font-style: italic;
+            color: #856404;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .risk-banner {
+            background-color: #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Sierra City Fire Weather Advisory</h2>
+        </div>
+        
+        <div class="warning-banner">
+            <h5>⚠️ Partial API Failure Detected</h5>
+            <p>Some data sources are currently unavailable. The system is showing a mix of fresh and cached data.</p>
+            <p>Fields marked with a <span class="badge bg-warning text-dark">CACHED</span> tag are using previously stored data.</p>
+            <p>Fields marked with a <span class="badge bg-success text-white">FRESH</span> tag are using current data.</p>
+        </div>
+        
+        <div class="risk-banner">
+            <h4>Fire Risk: Yellow - Low or Moderate Fire Risk. Exercise standard prevention practices.</h4>
+        </div>
+        
+        <h3 class="mt-4 mb-3">Current Weather Conditions:</h3>
+        
+        <div class="cached-field">
+            <span class="field-label">Temperature:</span>
+            <span class="field-value">33°F</span>
+            <span class="badge bg-warning text-dark badge-cached">CACHED</span>
+            <div class="age-info">Data from """ + thirty_min_ago + """ (30 minutes old)</div>
+        </div>
+        
+        <div class="fresh-field">
+            <span class="field-label">Humidity:</span>
+            <span class="field-value">93%</span>
+            <span class="badge bg-success text-white badge-fresh">FRESH</span>
+        </div>
+        
+        <div class="fresh-field">
+            <span class="field-label">Wind Speed:</span>
+            <span class="field-value">0 mph</span>
+            <span class="badge bg-success text-white badge-fresh">FRESH</span>
+        </div>
+        
+        <div class="fresh-field">
+            <span class="field-label">Wind Gusts:</span>
+            <span class="field-value">&lt;unavailable&gt;</span>
+            <span class="badge bg-success text-white badge-fresh">FRESH</span>
+        </div>
+        
+        <div class="cached-field">
+            <span class="field-label">Soil Moisture (15cm depth):</span>
+            <span class="field-value">22%</span>
+            <span class="badge bg-warning text-dark badge-cached">CACHED</span>
+            <div class="age-info">Data from """ + thirty_min_ago + """ (30 minutes old)</div>
+        </div>
+        
+        <div class="alert alert-primary mt-4">
+            <p>This is a demonstration of how the system handles a partial API failure. In a real scenario:</p>
+            <ul>
+                <li>The system automatically uses cached data for fields that fail to update</li>
+                <li>Each field's freshness is evaluated independently</li>
+                <li>Users can clearly see which data is current and which is from cache</li>
+            </ul>
+        </div>
+        
+        <div class="mt-5">
+            <a href="/" class="btn btn-primary">Return to Live Dashboard</a>
+            <a href="/test-cache-system" class="btn btn-outline-secondary ms-2">Return to Cache Testing Page</a>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+@app.get("/cached-data-example", response_class=HTMLResponse)
+async def cached_data_example():
+    """Show an example of field-level caching visualization."""
+    with open("cached-data-example.html", "r") as file:
+        return file.read()
+
+@app.get("/test-cached-data", response_class=HTMLResponse)
+async def test_cached_data(background_tasks: BackgroundTasks):
+    """Test endpoint to simulate API failure and force cached data display.
+    
+    This legacy method temporarily disables API keys to simulate a failure.
+    It's more complex but useful for testing real failure scenarios.
+    """
+@app.get("/reset-cached-mode", response_class=HTMLResponse)
+async def reset_cached_mode(background_tasks: BackgroundTasks):
+    """Reset the system from cached data mode back to normal operations
+    
+    This endpoint:
+    1. Clears the using_cached_data flag
+    2. Forces a refresh with valid API keys
+    3. Returns a simple page confirming the reset
+    """
+    # Clear the cached data flag
+    data_cache.using_cached_data = False
+    
+    # Force a refresh with the correct API keys
+    logger.info("Resetting from cached mode to normal operations...")
+    refresh_success = await refresh_data_cache(background_tasks, force=True)
+    
+    status = "success" if refresh_success else "failed"
+    
+    # Return a simple HTML page with a JavaScript redirect
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="3;url=/">
+    <title>System Reset</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            text-align: center;
+        }}
+        .success {{ color: green; }}
+        .error {{ color: red; }}
+    </style>
+</head>
+<body>
+    <h1>System Reset {status.upper()}</h1>
+    <div class="{status}">
+        <p>The system has been reset to normal operations.</p>
+        <p>Data refresh status: {status}</p>
+    </div>
+    <p>You will be redirected to the dashboard in 3 seconds...</p>
+    <p>Or <a href="/">click here</a> to go to the dashboard now.</p>
+</body>
+</html>"""
+    # Step 1: Make sure we have some valid data in cache first
+    if data_cache.fire_risk_data is None:
+        # No data in cache yet, try to get some
+        logger.info("No data in cache yet, attempting initial fetch")
+        await refresh_data_cache()
+        if data_cache.fire_risk_data is None:
+            return {"error": "Could not get initial data to cache. Try visiting the dashboard first."}
+    
+    # Step 2: Store original API keys
+    original_synoptic_key = os.environ.get("SYNOPTICDATA_API_KEY")
+    original_wunderground_key = os.environ.get("WUNDERGROUND_API_KEY")
+    
+    # Step 3: Set invalid API keys to force failure
+    os.environ["SYNOPTICDATA_API_KEY"] = "INVALID_KEY_FOR_TESTING"
+    os.environ["WUNDERGROUND_API_KEY"] = "INVALID_KEY_FOR_TESTING"
+    logger.info("🧪 Test mode: Temporarily disabled API keys to force cached data display")
+    
+    try:
+        # Step 4: Force a refresh, which should fail and use cached data
+        logger.info("🧪 Test mode: Attempting refresh with invalid keys (should fail)")
+        await refresh_data_cache(background_tasks, force=True)
+        
+        # Step 5: Get the result (should be cached data)
+        result = data_cache.fire_risk_data.copy()
+        
+        # Ensure we've properly set up the cached data mode before redirecting
+        if not data_cache.using_cached_data:
+            logger.warning("Cache mode not properly activated. Explicitly setting cached data mode.")
+            data_cache.using_cached_data = True
+            
+            # Set up the cached data display by copying values from the last valid data
+            if data_cache.last_valid_data["timestamp"] is not None:
+                # Calculate how old the data is
+                pacific_tz = pytz.timezone('America/Los_Angeles')
+                current_time = datetime.now(pacific_tz)
+                cached_time = data_cache.last_valid_data["timestamp"]
+                age_delta = current_time - cached_time
+                
+                # Format as appropriate time unit
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                # Update the fire risk data to indicate it's cached
+                if data_cache.fire_risk_data:
+                    cached_fire_risk_data = data_cache.fire_risk_data.copy()
+                    cached_fire_risk_data["cached_data"] = {
+                        "is_cached": True,
+                        "original_timestamp": cached_time.isoformat(),
+                        "age": age_str
+                    }
+                    
+                    # Update the explanation
+                    if "cached data" not in cached_fire_risk_data["explanation"].lower():
+                        cached_fire_risk_data["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
+                    
+                    # Update the fire risk data with our cached version
+                    data_cache.fire_risk_data = cached_fire_risk_data
+        
+        # Now redirect to the home page which will display the cached data
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/", status_code=303)
+    finally:
+        # Step 6: Always restore original API keys, even if there's an error
+        if original_synoptic_key:
+            os.environ["SYNOPTICDATA_API_KEY"] = original_synoptic_key
+        if original_wunderground_key:
+            os.environ["WUNDERGROUND_API_KEY"] = original_wunderground_key
+        logger.info("🧪 Test mode: Restored original API keys")
     
 @app.get("/debug-info")
 def debug_info():
@@ -516,11 +1153,252 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
                 "cache_timestamp": datetime.now(pytz.timezone('America/Los_Angeles')).isoformat()
             }
 
-            # If both critical data sources failed, we don't update the cache
-            # We define critical as having at least weather data OR wind gust data
-            if not synoptic_data_valid and not wunderground_data:
-                raise ValueError("All critical data sources failed")
+            # Check for individual fields that are missing and use cached values where available
+            pacific_tz = pytz.timezone('America/Los_Angeles')
+            current_time = datetime.now(pacific_tz)
+            any_field_using_cache = False
+            cached_fields_info = []
+            
+            # Add each field to data_issues if it's missing
+            if air_temp is None:
+                missing_field = f"Temperature data missing from station {WEATHER_STATION_ID}"
+                if missing_field not in data_issues:
+                    data_issues.append(missing_field)
+                    
+            if relative_humidity is None:
+                missing_field = f"Humidity data missing from station {WEATHER_STATION_ID}"
+                if missing_field not in data_issues:
+                    data_issues.append(missing_field)
+                    
+            if wind_speed is None:
+                missing_field = f"Wind speed data missing from station {WEATHER_STATION_ID}"
+                if missing_field not in data_issues:
+                    data_issues.append(missing_field)
+                    
+            if soil_moisture_15cm is None:
+                missing_field = f"Soil moisture data missing from station {SOIL_MOISTURE_STATION_ID}"
+                if missing_field not in data_issues:
+                    data_issues.append(missing_field)
+                    
+            if wind_gust is None:
+                missing_field = f"Wind gust data missing from station {WUNDERGROUND_STATION_ID}"
+                if missing_field not in data_issues:
+                    data_issues.append(missing_field)
+            
+            # Now check the cache for any missing fields and use if available
+            if soil_moisture_15cm is None and data_cache.last_valid_data["fields"]["soil_moisture"]["value"] is not None:
+                soil_moisture_15cm = data_cache.last_valid_data["fields"]["soil_moisture"]["value"]
+                data_cache.cached_fields["soil_moisture"] = True
+                any_field_using_cache = True
                 
+                cached_time = data_cache.last_valid_data["fields"]["soil_moisture"]["timestamp"]
+                age_delta = current_time - cached_time
+                # Calculate age string
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                logger.info(f"Using cached soil moisture data: {soil_moisture_15cm}% from {cached_time.isoformat()} ({age_str} old)")
+                
+                # Store info about this cached field
+                cached_fields_info.append({
+                    "field": "soil_moisture",
+                    "value": soil_moisture_15cm,
+                    "timestamp": cached_time,
+                    "age": age_str
+                })
+            
+            if air_temp is None and data_cache.last_valid_data["fields"]["temperature"]["value"] is not None:
+                air_temp = data_cache.last_valid_data["fields"]["temperature"]["value"]
+                data_cache.cached_fields["temperature"] = True
+                any_field_using_cache = True
+                
+                cached_time = data_cache.last_valid_data["fields"]["temperature"]["timestamp"]
+                age_delta = current_time - cached_time
+                # Calculate age string
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                logger.info(f"Using cached temperature data: {air_temp}°C from {cached_time.isoformat()} ({age_str} old)")
+                
+                # Store info about this cached field
+                cached_fields_info.append({
+                    "field": "temperature",
+                    "value": air_temp,
+                    "timestamp": cached_time,
+                    "age": age_str
+                })
+            
+            if relative_humidity is None and data_cache.last_valid_data["fields"]["humidity"]["value"] is not None:
+                relative_humidity = data_cache.last_valid_data["fields"]["humidity"]["value"]
+                data_cache.cached_fields["humidity"] = True
+                any_field_using_cache = True
+                
+                cached_time = data_cache.last_valid_data["fields"]["humidity"]["timestamp"]
+                age_delta = current_time - cached_time
+                # Calculate age string
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                logger.info(f"Using cached humidity data: {relative_humidity}% from {cached_time.isoformat()} ({age_str} old)")
+                
+                # Store info about this cached field
+                cached_fields_info.append({
+                    "field": "humidity",
+                    "value": relative_humidity,
+                    "timestamp": cached_time,
+                    "age": age_str
+                })
+            
+            if wind_speed is None and data_cache.last_valid_data["fields"]["wind_speed"]["value"] is not None:
+                wind_speed = data_cache.last_valid_data["fields"]["wind_speed"]["value"]
+                data_cache.cached_fields["wind_speed"] = True
+                any_field_using_cache = True
+                
+                cached_time = data_cache.last_valid_data["fields"]["wind_speed"]["timestamp"]
+                age_delta = current_time - cached_time
+                # Calculate age string
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                logger.info(f"Using cached wind speed data: {wind_speed} mph from {cached_time.isoformat()} ({age_str} old)")
+                
+                # Store info about this cached field
+                cached_fields_info.append({
+                    "field": "wind_speed",
+                    "value": wind_speed,
+                    "timestamp": cached_time,
+                    "age": age_str
+                })
+            
+            if wind_gust is None and data_cache.last_valid_data["fields"]["wind_gust"]["value"] is not None:
+                wind_gust = data_cache.last_valid_data["fields"]["wind_gust"]["value"]
+                data_cache.cached_fields["wind_gust"] = True
+                any_field_using_cache = True
+                
+                cached_time = data_cache.last_valid_data["fields"]["wind_gust"]["timestamp"]
+                age_delta = current_time - cached_time
+                # Calculate age string
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                logger.info(f"Using cached wind gust data: {wind_gust} mph from {cached_time.isoformat()} ({age_str} old)")
+                
+                # Store info about this cached field
+                cached_fields_info.append({
+                    "field": "wind_gust",
+                    "value": wind_gust,
+                    "timestamp": cached_time,
+                    "age": age_str
+                })
+            
+            # Update the global cache flag if any fields are using cached data
+            data_cache.using_cached_data = any_field_using_cache
+            
+            # If both APIs failed and we have no cached data for any field, then we have a complete failure
+            if not synoptic_data_valid and not wunderground_data and not any_field_using_cache:
+                logger.warning("All critical data sources failed and no cached data available")
+                raise ValueError("All critical data sources failed and no cached data available")
+                
+            # If all individual fields are missing and we have no cache for them, that's a problem
+            if air_temp is None and relative_humidity is None and wind_speed is None and soil_moisture_15cm is None and wind_gust is None:
+                logger.warning("All critical data fields are missing")
+                
+                # If we have valid cached data, use it as a fallback
+                if data_cache.last_valid_data["timestamp"] is not None:
+                    logger.info(f"Falling back to cached data from {data_cache.last_valid_data['timestamp']}")
+                    
+                    # Mark that we're using cached data
+                    data_cache.using_cached_data = True
+                    
+                    # Use the cached data but update the timestamps to reflect this is old data
+                    cached_weather_data = data_cache.last_valid_data["synoptic_data"]
+                    cached_wunderground_data = data_cache.last_valid_data["wunderground_data"]
+                    cached_fire_risk_data = data_cache.last_valid_data["fire_risk_data"].copy()
+                    
+                    # Update the cache with the cached data (this will update timestamps)
+                    pacific_tz = pytz.timezone('America/Los_Angeles')
+                    current_time = datetime.now(pacific_tz)
+                    
+                    # Calculate how old the data is for display
+                    cached_time = data_cache.last_valid_data["timestamp"]
+                    age_delta = current_time - cached_time
+                    
+                    # Format as days, hours, or minutes depending on age
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    # Update the cached data to indicate it's not current
+                    cached_fire_risk_data["cached_data"] = {
+                        "is_cached": True,
+                        "original_timestamp": cached_time.isoformat(),
+                        "age": age_str
+                    }
+                    
+                    # If the explanation doesn't already mention it, add a note about using cached data
+                    if "cached data" not in cached_fire_risk_data["explanation"].lower():
+                        cached_fire_risk_data["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
+                    
+                    # Update cache with the cached data but new timestamp
+                    with data_cache._lock:
+                        data_cache.synoptic_data = cached_weather_data
+                        data_cache.wunderground_data = cached_wunderground_data
+                        data_cache.fire_risk_data = cached_fire_risk_data
+                        data_cache.last_updated = current_time
+                        data_cache.last_update_success = False
+                        
+                        # Signal update completion even though we're using cached data
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if not loop.is_closed():
+                                loop.call_soon_threadsafe(data_cache._update_complete_event.set)
+                        except Exception as e:
+                            logger.error(f"Error signaling update completion: {e}")
+                    
+                    # Log the fallback
+                    logger.info(f"Using cached data from {cached_time.isoformat()} as fallback")
+                    success = True
+                    return True
+                else:
+                    # No cached data available either
+                    raise ValueError("All critical data sources failed and no cached data available")
+            
+            # Process the live data normally
             risk, explanation = calculate_fire_risk(latest_weather)
             
             # If we had data issues, add a note to the explanation
@@ -624,8 +1502,37 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
         # The isoformat() will include timezone info for timezone-aware datetimes
         "last_updated": data_cache.last_updated.isoformat() if data_cache.last_updated else None,
         "is_fresh": not data_cache.is_stale(max_age_minutes=10),
-        "refresh_in_progress": data_cache.update_in_progress
+        "refresh_in_progress": data_cache.update_in_progress,
+        "using_cached_data": data_cache.using_cached_data
     }
+    
+    # Add field-level caching information to the response
+    # If we're using cached data from a previous successful API call (fallback mode)
+    if data_cache.using_cached_data:
+        # Add field-specific cache information
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        current_time = datetime.now(pacific_tz)
+        
+        # Calculate how old the data is
+        if data_cache.last_valid_data["timestamp"]:
+            cached_time = data_cache.last_valid_data["timestamp"]
+            age_delta = current_time - cached_time
+            
+            # Format age as days, hours, or minutes
+            if age_delta.days > 0:
+                age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+            elif age_delta.seconds // 3600 > 0:
+                hours = age_delta.seconds // 3600
+                age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+            else:
+                minutes = age_delta.seconds // 60
+                age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+            
+            result["cached_data"] = {
+                "is_cached": True,
+                "original_timestamp": cached_time.isoformat(),
+                "age": age_str
+            }
     
     return result
 
@@ -714,6 +1621,21 @@ def home():
             padding: 3px 10px;
             font-size: 0.9rem;
         }
+        /* Style for cached data display */
+        .cached-data-banner {
+            background-color: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-left: 10px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #856404;
+        }
+        .cached-data-content {
+            background-color: #fff8e6;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+        }
     </style>
     <script>
         // Configure client-side settings
@@ -794,168 +1716,6 @@ def home():
                 return false;
             }
             
-            // Update the UI with the fetched data
-            const riskDiv = document.getElementById('fire-risk');
-            const weatherDetails = document.getElementById('weather-details');
-            const timestampDiv = document.getElementById('timestamp');
-            const cacheInfoDiv = document.getElementById('cache-info');
-
-            // Update fire risk text
-            riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
-            
-            // Update cache information
-            if (data.cache_info) {
-                const lastUpdated = new Date(data.cache_info.last_updated);
-                const isFresh = data.cache_info.is_fresh;
-                const refreshInProgress = data.cache_info.refresh_in_progress;
-                let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
-                let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
-                
-                // Determine if we're in DST for timezone display
-                const isDST = (() => {
-                    // Jan 1 is not in DST
-                    const jan = new Date(lastUpdated.getFullYear(), 0, 1).getTimezoneOffset();
-                    // Jul 1 is in DST if DST is observed
-                    const jul = new Date(lastUpdated.getFullYear(), 6, 1).getTimezoneOffset();
-                    // If timezone offset is different, DST is observed
-                    const standardOffset = Math.max(jan, jul);
-                    // Current offset
-                    const currentOffset = lastUpdated.getTimezoneOffset();
-                    // If current offset is less than standard offset, we're in DST
-                    return currentOffset < standardOffset;
-                })();
-                
-                if (refreshInProgress) {
-                    statusText += ' (refresh in progress...)';
-                }
-                
-                cacheInfoDiv.innerHTML = `
-                    <span class="${cacheClass}">
-                        ${statusText}
-                        (Last updated: ${lastUpdated.toLocaleTimeString()} ${isDST ? 'PDT' : 'PST'})
-                    </span>`;
-            }
-
-            // Set appropriate background color based on risk level
-            const riskLevel = data.risk;
-            let bgClass = 'bg-secondary';  // Default for unknown/error risk
-
-            if (riskLevel === 'Red') {
-                bgClass = 'bg-danger text-white'; // Red: Danger
-            } else if (riskLevel === 'Yellow') {
-                bgClass = 'bg-warning text-dark'; // Yellow: Warning
-            }
-            // There is no longer a Green status as per requirements
-
-            riskDiv.className = `alert ${bgClass} p-3`;
-
-            // Update weather details
-            // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
-            // Round all measurements to the nearest whole number
-            const tempCelsius = data.weather.air_temp;
-            const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-            const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-            const weatherStation = data.weather.data_sources.weather_station;
-            const soilStation = data.weather.data_sources.soil_moisture_station;
-            
-            // Check for data issues
-            const dataStatus = data.weather.data_status;
-            const hasIssues = dataStatus && dataStatus.issues && dataStatus.issues.length > 0;
-            
-            // Build the weather details HTML
-            let detailsHTML = `<h5>Current Weather Conditions:</h5>`;
-            
-            // Add warning about data issues if applicable
-            if (hasIssues) {
-                detailsHTML += `
-                <div class="alert alert-warning p-2 small">
-                    <strong>Data Quality Warning:</strong> Some data may be missing or unavailable.<br>
-                    <ul class="mb-0">
-                        ${dataStatus.issues.map(issue => `<li>${issue}</li>`).join('')}
-                    </ul>
-                </div>`;
-            }
-            
-            // Handle potentially missing data with fallbacks - round all values to nearest whole number
-            const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-            const windSpeed = data.weather.wind_speed ? Math.round(data.weather.wind_speed) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-            const windGust = data.weather.wind_gust ? Math.round(data.weather.wind_gust) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-            const windGustStation = data.weather.data_sources.wind_gust_station;
-            
-            // Get threshold values for color formatting
-            const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
-            const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
-            const THRESH_WIND = 15;  // Wind speed threshold in mph
-            const THRESH_GUSTS = 25; // Wind gust threshold in mph
-            const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
-            
-            // Check if values exceed thresholds for color formatting - use rounded values
-            const tempValue = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) : null;
-            const tempExceeds = tempValue !== null && tempValue > THRESH_TEMP;
-            
-            const humidValue = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) : null;
-            const humidExceeds = humidValue !== null && humidValue < THRESH_HUMID;
-            
-            const windValue = data.weather.wind_speed ? Math.round(data.weather.wind_speed) : null;
-            const windExceeds = windValue !== null && windValue > THRESH_WIND;
-            
-            const gustValue = data.weather.wind_gust ? Math.round(data.weather.wind_gust) : null;
-            const gustExceeds = gustValue !== null && gustValue > THRESH_GUSTS;
-            
-            const soilValue = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) : null;
-            const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
-            
-            detailsHTML += `
-                <ul>
-                    <li style="color: ${tempExceeds ? 'red' : 'black'}">
-                        <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
-                    </li>
-                    <li style="color: ${humidExceeds ? 'red' : 'black'}">
-                        <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
-                    </li>
-                    <li style="color: ${windExceeds ? 'red' : 'black'}">
-                        <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
-                    </li>
-                    <li style="color: ${gustExceeds ? 'red' : 'black'}">
-                        <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>Via Weather Underground">ⓘ</span>
-                    </li>
-                    <li style="color: ${soilExceeds ? 'red' : 'black'}">
-                        <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Downieville<br>Via Synoptic Data">ⓘ</span>
-                    </li>
-                </ul>`;
-                
-            weatherDetails.innerHTML = detailsHTML;
-                
-            // Update timestamp and re-enable refresh button if it was used
-            const now = new Date();
-            
-            // Simple way to determine if we're in DST for Pacific Time
-            // DST in the US typically starts on the second Sunday in March and ends on the first Sunday in November
-            const isDST = (() => {
-                // Jan 1 is not in DST
-                const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
-                // Jul 1 is in DST if DST is observed
-                const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
-                // If timezone offset is different, DST is observed
-                const standardOffset = Math.max(jan, jul);
-                // Current offset
-                const currentOffset = now.getTimezoneOffset();
-                // If current offset is less than standard offset, we're in DST
-                return currentOffset < standardOffset;
-            })();
-            
-            const timeZone = isDST ? 'PDT' : 'PST';
-            timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZone}`;
-            
-            if (showSpinner) {
-                document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
-                document.getElementById('refresh-btn').disabled = false;
-            }
             try {
                 // Update the UI with the fetched data
                 const riskDiv = document.getElementById('fire-risk');
@@ -963,8 +1723,26 @@ def home():
                 const timestampDiv = document.getElementById('timestamp');
                 const cacheInfoDiv = document.getElementById('cache-info');
 
-                // Update fire risk text
-                riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+                // Update fire risk text with special styling for cached data
+                if (data.cached_data && data.cached_data.is_cached) {
+                    // Add visual styling to show cached data
+                    const originalTime = new Date(data.cached_data.original_timestamp);
+                    const formattedDate = originalTime.toLocaleDateString();
+                    const formattedTime = originalTime.toLocaleTimeString();
+                    const ageStr = data.cached_data.age;
+                    
+                    riskDiv.innerHTML = `
+                        <div class="cached-data-banner">
+                            ⚠️ NOTICE: Using cached data from ${formattedDate} at ${formattedTime} (${ageStr} old)
+                        </div>
+                        <div class="cached-data-content">
+                            Fire Risk: ${data.risk} - ${data.explanation}
+                        </div>
+                    `;
+                } else {
+                    // Regular display for current data
+                    riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+                }
                 
                 // Update cache information
                 if (data.cache_info) {
@@ -972,8 +1750,16 @@ def home():
                     const lastUpdated = new Date(data.cache_info.last_updated);
                     const isFresh = data.cache_info.is_fresh;
                     const refreshInProgress = data.cache_info.refresh_in_progress;
+                    const usingCachedData = data.cache_info.using_cached_data;
+                    
                     let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
                     let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
+                    
+                    // If using cached data, update status text
+                    if (usingCachedData) {
+                        cacheClass = 'cache-stale';
+                        statusText = '⚠ Using cached data - current data unavailable';
+                    }
                     
                     // Extract timezone abbreviation from timestamp
                     // This will properly display the timezone from the server
@@ -1015,9 +1801,14 @@ def home():
                 } else if (riskLevel === 'Yellow') {
                     bgClass = 'bg-warning text-dark'; // Yellow: Warning
                 }
-                // There is no longer a Green status as per requirements
-
-                riskDiv.className = `alert ${bgClass} p-3`;
+                
+                // Don't change the background color if we're using cached data
+                // as we already have special styling for that
+                if (!data.cached_data || !data.cached_data.is_cached) {
+                    riskDiv.className = `alert ${bgClass} p-3`;
+                } else {
+                    riskDiv.className = 'alert p-0';  // Remove padding for our custom cached data display
+                }
 
                 // Update weather details
                 // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
@@ -1034,6 +1825,14 @@ def home():
                 
                 // Build the weather details HTML
                 let detailsHTML = `<h5>Current Weather Conditions:</h5>`;
+                
+                // If we're using cached data, add a note about the data age
+                if (data.cached_data && data.cached_data.is_cached) {
+                    detailsHTML += `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>NOTE:</strong> Displaying cached weather data. Current data is unavailable.
+                    </div>`;
+                }
                 
                 // Add warning about data issues if applicable
                 if (hasIssues) {
@@ -1075,29 +1874,33 @@ def home():
                 const soilValue = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) : null;
                 const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
                 
+                const weatherContainerClass = data.cached_data && data.cached_data.is_cached ? 'cached-data-content' : '';
+                
                 detailsHTML += `
-                    <ul>
-                        <li style="color: ${tempExceeds ? 'red' : 'black'}">
-                            <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
-                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
-                        </li>
-                        <li style="color: ${humidExceeds ? 'red' : 'black'}">
-                            <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
-                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
-                        </li>
-                        <li style="color: ${windExceeds ? 'red' : 'black'}">
-                            <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
-                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
-                        </li>
-                        <li style="color: ${gustExceeds ? 'red' : 'black'}">
-                            <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
-                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
-                        </li>
-                        <li style="color: ${soilExceeds ? 'red' : 'black'}">
-                            <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
-                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
-                        </li>
-                    </ul>`;
+                    <div class="${weatherContainerClass}">
+                        <ul>
+                            <li style="color: ${tempExceeds ? 'red' : 'black'}">
+                                <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${humidExceeds ? 'red' : 'black'}">
+                                <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${windExceeds ? 'red' : 'black'}">
+                                <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${gustExceeds ? 'red' : 'black'}">
+                                <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
+                            </li>
+                            <li style="color: ${soilExceeds ? 'red' : 'black'}">
+                                <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                        </ul>
+                    </div>`;
                     
                 weatherDetails.innerHTML = detailsHTML;
                     
