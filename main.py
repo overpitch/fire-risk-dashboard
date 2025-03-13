@@ -315,7 +315,7 @@ def calculate_fire_risk(weather):
         if temp_exceeded and humidity_exceeded and wind_exceeded and gusts_exceeded and soil_exceeded:
             return "Red", "High fire risk due to high temperature, low humidity, strong winds, high wind gusts, and low soil moisture."
         else:
-            return "Low or Moderate Fire Risk. Exercise standard prevention practices."
+            return "Yellow", "Low or Moderate Fire Risk. Exercise standard prevention practices."
 
     except Exception as e:
         logger.error(f"Error calculating fire risk: {str(e)}")
