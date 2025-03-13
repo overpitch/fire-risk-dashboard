@@ -798,6 +798,20 @@ def home():
                 let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
                 let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
                 
+                // Determine if we're in DST for timezone display
+                const isDST = (() => {
+                    // Jan 1 is not in DST
+                    const jan = new Date(lastUpdated.getFullYear(), 0, 1).getTimezoneOffset();
+                    // Jul 1 is in DST if DST is observed
+                    const jul = new Date(lastUpdated.getFullYear(), 6, 1).getTimezoneOffset();
+                    // If timezone offset is different, DST is observed
+                    const standardOffset = Math.max(jan, jul);
+                    // Current offset
+                    const currentOffset = lastUpdated.getTimezoneOffset();
+                    // If current offset is less than standard offset, we're in DST
+                    return currentOffset < standardOffset;
+                })();
+                
                 if (refreshInProgress) {
                     statusText += ' (refresh in progress...)';
                 }
@@ -805,7 +819,7 @@ def home():
                 cacheInfoDiv.innerHTML = `
                     <span class="${cacheClass}">
                         ${statusText}
-                        (Last updated: ${lastUpdated.toLocaleTimeString()})
+                        (Last updated: ${lastUpdated.toLocaleTimeString()} ${isDST ? 'PDT' : 'PST'})
                     </span>`;
             }
 
@@ -891,7 +905,24 @@ def home():
                 
             // Update timestamp and re-enable refresh button if it was used
             const now = new Date();
-            timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`;
+            
+            // Simple way to determine if we're in DST for Pacific Time
+            // DST in the US typically starts on the second Sunday in March and ends on the first Sunday in November
+            const isDST = (() => {
+                // Jan 1 is not in DST
+                const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+                // Jul 1 is in DST if DST is observed
+                const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+                // If timezone offset is different, DST is observed
+                const standardOffset = Math.max(jan, jul);
+                // Current offset
+                const currentOffset = now.getTimezoneOffset();
+                // If current offset is less than standard offset, we're in DST
+                return currentOffset < standardOffset;
+            })();
+            
+            const timeZone = isDST ? 'PDT' : 'PST';
+            timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZone}`;
             
             if (showSpinner) {
                 document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
@@ -915,6 +946,20 @@ def home():
                     let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
                     let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
                     
+                    // Determine if we're in DST for timezone display
+                    const isDST = (() => {
+                        // Jan 1 is not in DST
+                        const jan = new Date(lastUpdated.getFullYear(), 0, 1).getTimezoneOffset();
+                        // Jul 1 is in DST if DST is observed
+                        const jul = new Date(lastUpdated.getFullYear(), 6, 1).getTimezoneOffset();
+                        // If timezone offset is different, DST is observed
+                        const standardOffset = Math.max(jan, jul);
+                        // Current offset
+                        const currentOffset = lastUpdated.getTimezoneOffset();
+                        // If current offset is less than standard offset, we're in DST
+                        return currentOffset < standardOffset;
+                    })();
+                    
                     if (refreshInProgress) {
                         statusText += ' (refresh in progress...)';
                     }
@@ -922,7 +967,7 @@ def home():
                     cacheInfoDiv.innerHTML = `
                         <span class="${cacheClass}">
                             ${statusText}
-                            (Last updated: ${lastUpdated.toLocaleTimeString()})
+                            (Last updated: ${lastUpdated.toLocaleTimeString()} ${isDST ? 'PDT' : 'PST'})
                         </span>`;
                 }
 
@@ -1008,7 +1053,24 @@ def home():
                     
                 // Update timestamp and re-enable refresh button if it was used
                 const now = new Date();
-                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`;
+                
+                // Simple way to determine if we're in DST for Pacific Time
+                // DST in the US typically starts on the second Sunday in March and ends on the first Sunday in November
+                const isDST = (() => {
+                    // Jan 1 is not in DST
+                    const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+                    // Jul 1 is in DST if DST is observed
+                    const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+                    // If timezone offset is different, DST is observed
+                    const standardOffset = Math.max(jan, jul);
+                    // Current offset
+                    const currentOffset = now.getTimezoneOffset();
+                    // If current offset is less than standard offset, we're in DST
+                    return currentOffset < standardOffset;
+                })();
+                
+                const timeZone = isDST ? 'PDT' : 'PST';
+                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZone}`;
                 
                 if (showSpinner) {
                     document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
