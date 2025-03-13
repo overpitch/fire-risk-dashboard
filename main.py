@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 import os
 import logging
@@ -13,6 +13,7 @@ import time
 import threading
 import asyncio
 from typing import Dict, Any, Optional
+import pytz
 
 # Only load .env for local development (not on Render)
 if os.getenv("RENDER") is None:
@@ -82,23 +83,33 @@ class DataCache:
         """Check if the data is stale (older than max_age_minutes)"""
         if self.last_updated is None:
             return True
-        age = datetime.now() - self.last_updated
+        # Use timezone-aware comparison
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        now = datetime.now(pacific_tz)
+        age = now - self.last_updated
         return age > timedelta(minutes=max_age_minutes)
     
     def is_critically_stale(self) -> bool:
         """Check if the data is critically stale (older than data_timeout_threshold)"""
         if self.last_updated is None:
             return True
-        age = datetime.now() - self.last_updated
+        # Use timezone-aware comparison
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        now = datetime.now(pacific_tz)
+        age = now - self.last_updated
         return age > timedelta(minutes=self.data_timeout_threshold)
     
     def update_cache(self, synoptic_data, wunderground_data, fire_risk_data):
         """Update the cache with new data"""
+        # Create timezone-aware datetime for Pacific timezone
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        current_time = datetime.now(pacific_tz)
+        
         with self._lock:
             self.synoptic_data = synoptic_data
             self.wunderground_data = wunderground_data
             self.fire_risk_data = fire_risk_data
-            self.last_updated = datetime.now()
+            self.last_updated = current_time
             self.last_update_success = True
             # Set the event to signal update completion
             try:
@@ -501,7 +512,8 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
                     "missing_stations": missing_stations,
                     "issues": data_issues
                 },
-                "cache_timestamp": datetime.now().isoformat()
+                # Use timezone-aware datetime
+                "cache_timestamp": datetime.now(pytz.timezone('America/Los_Angeles')).isoformat()
             }
 
             # If both critical data sources failed, we don't update the cache
@@ -609,6 +621,7 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     # Add cache information to the response
     result = data_cache.fire_risk_data.copy()
     result["cache_info"] = {
+        # The isoformat() will include timezone info for timezone-aware datetimes
         "last_updated": data_cache.last_updated.isoformat() if data_cache.last_updated else None,
         "is_fresh": not data_cache.is_stale(max_age_minutes=10),
         "refresh_in_progress": data_cache.update_in_progress
@@ -894,11 +907,26 @@ def home():
             
             detailsHTML += `
                 <ul>
-                    <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
-                    <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
-                    <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
-                    <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>Via Weather Underground">ⓘ</span></li>
-                    <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Downieville<br>Via Synoptic Data">ⓘ</span></li>
+                    <li style="color: ${tempExceeds ? 'red' : 'black'}">
+                        <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
+                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
+                    </li>
+                    <li style="color: ${humidExceeds ? 'red' : 'black'}">
+                        <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
+                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
+                    </li>
+                    <li style="color: ${windExceeds ? 'red' : 'black'}">
+                        <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
+                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span>
+                    </li>
+                    <li style="color: ${gustExceeds ? 'red' : 'black'}">
+                        <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
+                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>Via Weather Underground">ⓘ</span>
+                    </li>
+                    <li style="color: ${soilExceeds ? 'red' : 'black'}">
+                        <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
+                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Downieville<br>Via Synoptic Data">ⓘ</span>
+                    </li>
                 </ul>`;
                 
             weatherDetails.innerHTML = detailsHTML;
@@ -940,24 +968,31 @@ def home():
                 
                 // Update cache information
                 if (data.cache_info) {
+                    // Parse the ISO string with timezone info
                     const lastUpdated = new Date(data.cache_info.last_updated);
                     const isFresh = data.cache_info.is_fresh;
                     const refreshInProgress = data.cache_info.refresh_in_progress;
                     let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
                     let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
                     
-                    // Determine if we're in DST for timezone display
-                    const isDST = (() => {
-                        // Jan 1 is not in DST
+                    // Extract timezone abbreviation from timestamp
+                    // This will properly display the timezone from the server
+                    const timeZoneAbbr = (() => {
+                        // The timestamp from the server now includes timezone info
+                        // We can get the timezone offset directly from the parsed date
+                        const offset = lastUpdated.getTimezoneOffset();
+                        const offsetHours = Math.abs(Math.floor(offset / 60));
+                        
+                        // Check if we're in DST based on timezone offset
                         const jan = new Date(lastUpdated.getFullYear(), 0, 1).getTimezoneOffset();
-                        // Jul 1 is in DST if DST is observed
                         const jul = new Date(lastUpdated.getFullYear(), 6, 1).getTimezoneOffset();
-                        // If timezone offset is different, DST is observed
-                        const standardOffset = Math.max(jan, jul);
-                        // Current offset
-                        const currentOffset = lastUpdated.getTimezoneOffset();
-                        // If current offset is less than standard offset, we're in DST
-                        return currentOffset < standardOffset;
+                        const isDST = offset < Math.max(jan, jul);
+                        
+                        // For Pacific Time
+                        if (offset >= 420 && offset <= 480) { // -7 or -8 hours
+                            return isDST ? 'PDT' : 'PST';
+                        }
+                        return `GMT${offset <= 0 ? '+' : '-'}${offsetHours}`;
                     })();
                     
                     if (refreshInProgress) {
@@ -967,7 +1002,7 @@ def home():
                     cacheInfoDiv.innerHTML = `
                         <span class="${cacheClass}">
                             ${statusText}
-                            (Last updated: ${lastUpdated.toLocaleTimeString()} ${isDST ? 'PDT' : 'PST'})
+                            (Last updated: ${lastUpdated.toLocaleTimeString()} ${timeZoneAbbr})
                         </span>`;
                 }
 
@@ -1042,11 +1077,26 @@ def home():
                 
                 detailsHTML += `
                     <ul>
-                        <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
-                        <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
-                        <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
-                        <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span></li>
-                        <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span></li>
+                        <li style="color: ${tempExceeds ? 'red' : 'black'}">
+                            <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
+                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                        </li>
+                        <li style="color: ${humidExceeds ? 'red' : 'black'}">
+                            <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
+                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                        </li>
+                        <li style="color: ${windExceeds ? 'red' : 'black'}">
+                            <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
+                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                        </li>
+                        <li style="color: ${gustExceeds ? 'red' : 'black'}">
+                            <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
+                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
+                        </li>
+                        <li style="color: ${soilExceeds ? 'red' : 'black'}">
+                            <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
+                            <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
+                        </li>
                     </ul>`;
                     
                 weatherDetails.innerHTML = detailsHTML;
@@ -1054,23 +1104,24 @@ def home():
                 // Update timestamp and re-enable refresh button if it was used
                 const now = new Date();
                 
-                // Simple way to determine if we're in DST for Pacific Time
-                // DST in the US typically starts on the second Sunday in March and ends on the first Sunday in November
-                const isDST = (() => {
-                    // Jan 1 is not in DST
+                // Get the timezone abbreviation using the same method as above
+                const timeZoneAbbr = (() => {
+                    const offset = now.getTimezoneOffset();
+                    const offsetHours = Math.abs(Math.floor(offset / 60));
+                    
+                    // Check if we're in DST based on timezone offset
                     const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
-                    // Jul 1 is in DST if DST is observed
                     const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
-                    // If timezone offset is different, DST is observed
-                    const standardOffset = Math.max(jan, jul);
-                    // Current offset
-                    const currentOffset = now.getTimezoneOffset();
-                    // If current offset is less than standard offset, we're in DST
-                    return currentOffset < standardOffset;
+                    const isDST = offset < Math.max(jan, jul);
+                    
+                    // For Pacific Time
+                    if (offset >= 420 && offset <= 480) { // -7 or -8 hours
+                        return isDST ? 'PDT' : 'PST';
+                    }
+                    return `GMT${offset <= 0 ? '+' : '-'}${offsetHours}`;
                 })();
                 
-                const timeZone = isDST ? 'PDT' : 'PST';
-                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZone}`;
+                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZoneAbbr}`;
                 
                 if (showSpinner) {
                     document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
