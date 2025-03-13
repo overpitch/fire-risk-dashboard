@@ -638,6 +638,9 @@ def home():
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Sierra City Fire Risk Dashboard</title>
+    
+    <!-- Simple red square favicon that should work in Safari -->
+    <link rel="icon" href="/static/favicon.png" type="image/png">
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link href='/static/synoptic-logo.css' rel='stylesheet'>
@@ -864,11 +867,11 @@ def home():
             
             detailsHTML += `
                 <ul>
-                    <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                    <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
-                    <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
+                    <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
+                    <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
+                    <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Sierra City<br>Via Synoptic Data">ⓘ</span></li>
+                    <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>Via Weather Underground">ⓘ</span></li>
+                    <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="WX Station: Downieville<br>Via Synoptic Data">ⓘ</span></li>
                 </ul>`;
                 
             weatherDetails.innerHTML = detailsHTML;
@@ -981,11 +984,11 @@ def home():
                 
                 detailsHTML += `
                     <ul>
-                        <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                        <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                        <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${weatherStation} (Synoptic Data API)">ⓘ</span></li>
-                        <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${windGustStation} (Weather Underground API)">ⓘ</span></li>
-                        <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" title="Station: ${soilStation} (Synoptic Data API)">ⓘ</span></li>
+                        <li style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
+                        <li style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
+                        <li style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span></li>
+                        <li style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span></li>
+                        <li style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture} <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span></li>
                     </ul>`;
                     
                 weatherDetails.innerHTML = detailsHTML;
@@ -1062,6 +1065,14 @@ def home():
     
     <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
     <div id='weather-details' class='mt-3'></div>
+    
+    <div class="alert mt-4 mb-4" style="background-color: #d1ecff;">
+        <p>Fire weather needs to be local. A few Sierra City residents analyze local wind, humidity, temperature and soil moisture data and offer their advice in real time. This fire weather advisory is a best guess of what you should know about local fire weather conditions before there is a fire event.</p>
+        
+        <p>The advisory is distributed by email and text each morning. Should fire weather conditions change during the course of the day, additional advisories will be issued.</p>
+        
+        <p class="mb-0">This fire weather advisory is not a substitute for official notifications by law enforcement or other government or private agencies.</p>
+    </div>
     
     <div class="attribution-container">
         <div id="timestamp" class="timestamp">Last updated: Loading...</div>
