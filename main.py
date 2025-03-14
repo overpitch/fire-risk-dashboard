@@ -1876,27 +1876,35 @@ def home():
                 
                 const weatherContainerClass = data.cached_data && data.cached_data.is_cached ? 'cached-data-content' : '';
                 
+                // Create a style for the threshold display
+                const thresholdStyle = "display: inline-block; margin-left: 10px; font-size: 0.85rem; color: #6c757d; border-left: 1px solid #ddd; padding-left: 10px;";
+                
                 detailsHTML += `
                     <div class="${weatherContainerClass}">
                         <ul>
                             <li style="color: ${tempExceeds ? 'red' : 'black'}">
                                 <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_TEMP}°F</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${humidExceeds ? 'red' : 'black'}">
                                 <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
+                                <span style="${thresholdStyle}">Threshold: <${THRESH_HUMID}%</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${windExceeds ? 'red' : 'black'}">
                                 <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_WIND} mph</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${gustExceeds ? 'red' : 'black'}">
                                 <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_GUSTS} mph</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
                             </li>
                             <li style="color: ${soilExceeds ? 'red' : 'black'}">
                                 <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
+                                <span style="${thresholdStyle}">Threshold: <${THRESH_SOIL_MOIST}%</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
                             </li>
                         </ul>
