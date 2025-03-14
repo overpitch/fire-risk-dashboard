@@ -1985,8 +1985,8 @@ def home():
                 
                 // Handle potentially missing data with fallbacks - round all values to nearest whole number
                 const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-                const windSpeed = data.weather.wind_speed ? Math.round(data.weather.wind_speed) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-                const windGust = data.weather.wind_gust ? Math.round(data.weather.wind_gust) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const windSpeed = data.weather.wind_speed !== null && data.weather.wind_speed !== undefined ? Math.round(data.weather.wind_speed) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                const windGust = data.weather.wind_gust !== null && data.weather.wind_gust !== undefined ? Math.round(data.weather.wind_gust) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
                 const windGustStation = data.weather.data_sources.wind_gust_station;
                 
                 // Get threshold values for color formatting
