@@ -244,6 +244,82 @@ def test_api():
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
+@app.get("/test-synoptic-auth")
+def test_synoptic_auth():
+    """Test the Synoptic API authentication flow to diagnose 401 errors."""
+    results = {}
+    
+    # Step 1: Get the API key from environment
+    api_key = os.getenv("SYNOPTICDATA_API_KEY")
+    if not api_key:
+        return {"error": "API key not found in environment variables"}
+    
+    results["api_key_masked"] = f"{api_key[:5]}...{api_key[-3:]}"
+    
+    try:
+        # Step 2: Get a token
+        token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={api_key}"
+        token_response = requests.get(token_url)
+        token_data = token_response.json()
+        
+        results["token_request"] = {
+            "url": f"{SYNOPTIC_BASE_URL}/auth?apikey=MASKED",
+            "status_code": token_response.status_code,
+            "response": token_data
+        }
+        
+        if token_response.status_code != 200 or "TOKEN" not in token_data:
+            return results
+        
+        token = token_data.get("TOKEN")
+        results["token_masked"] = f"{token[:5]}...{token[-3:]}" if token else None
+        
+        # Step 3: Test the token with a simple request
+        station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID}"
+        data_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_ids}&token={token}"
+        data_response = requests.get(data_url)
+        
+        # Try to parse the response as JSON
+        try:
+            data_json = data_response.json()
+            # Limit the size of the response for display
+            if "STATION" in data_json and isinstance(data_json["STATION"], list):
+                # Just show station IDs instead of full data
+                station_ids = [station.get("STID") for station in data_json["STATION"]]
+                data_json["STATION"] = f"Found {len(station_ids)} stations: {', '.join(station_ids)}"
+        except:
+            data_json = {"error": "Could not parse JSON response"}
+        
+        results["data_request"] = {
+            "url": f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_ids}&token=MASKED",
+            "status_code": data_response.status_code,
+            "response_preview": data_json
+        }
+        
+        # Step 4: Test each station individually to see if any specific one is causing issues
+        for station_id in [SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID]:
+            single_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_id}&token={token}"
+            single_response = requests.get(single_url)
+            
+            try:
+                single_json = single_response.json()
+                # Simplify the response for display
+                if "STATION" in single_json and isinstance(single_json["STATION"], list):
+                    single_json["STATION"] = f"Found {len(single_json['STATION'])} stations"
+            except:
+                single_json = {"error": "Could not parse JSON response"}
+            
+            results[f"station_{station_id}_request"] = {
+                "status_code": single_response.status_code,
+                "success": single_response.status_code == 200
+            }
+        
+        return results
+        
+    except requests.exceptions.RequestException as e:
+        results["error"] = str(e)
+        return results
+
 @app.get("/test-cache-system", response_class=HTMLResponse)
 def test_cache_system():
     """A visual interface for testing the cache system"""
@@ -688,6 +764,12 @@ async def cached_data_example():
     with open("cached-data-example.html", "r") as file:
         return file.read()
 
+@app.get("/synoptic-api-test", response_class=HTMLResponse)
+async def synoptic_api_test():
+    """Serve the Synoptic API testing tool."""
+    with open("synoptic-api-test.html", "r") as file:
+        return file.read()
+
 @app.get("/test-cached-data", response_class=HTMLResponse)
 async def test_cached_data(background_tasks: BackgroundTasks):
     """Test endpoint to simulate API failure and force cached data display.
@@ -848,37 +930,92 @@ def get_api_token():
         response.raise_for_status()
         token_data = response.json()
 
+        # Log the full token response for debugging
+        logger.info(f"🔎 DEBUG: Token response: {json.dumps(token_data)}")
+
         token = token_data.get("TOKEN")  # ✅ Extract token correctly
         if token:
             logger.info(f"✅ Received API token: {token[:5]}... (truncated)")
         else:
             logger.error("🚨 Token was empty or missing in response.")
+            # Check if there's an error message in the response
+            if "error" in token_data:
+                logger.error(f"🚨 API error message: {token_data['error']}")
 
         return token
 
     except requests.exceptions.RequestException as e:
         logger.error(f"🚨 Error fetching API token: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                logger.error(f"🚨 API error details: {json.dumps(error_data)}")
+            except:
+                logger.error(f"🚨 API error status code: {e.response.status_code}")
+                logger.error(f"🚨 API error response text: {e.response.text[:200]}")
         return None
 
-def get_weather_data(location_ids):
+def get_weather_data(location_ids, retry_count=0, max_retries=2):
     """Get weather data using the temporary token.
     
     Args:
         location_ids: A string of comma-separated station IDs
+        retry_count: Current retry attempt (used internally for recursion)
+        max_retries: Maximum number of retries for 401 errors
     """
     token = get_api_token()
     if not token:
         return None
 
     try:
-        response = requests.get(
-            f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token}"
-        )
+        # Construct the full URL for logging purposes
+        request_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token}"
+        # Log the URL with the token partially masked for security
+        masked_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token[:5]}..."
+        logger.info(f"🔎 DEBUG: Making API request to {masked_url}")
+
+        response = requests.get(request_url)
+        
+        # Log the response status code
+        logger.info(f"🔎 DEBUG: API response status code: {response.status_code}")
+        
+        # Check for specific error codes
+        if response.status_code == 401:
+            logger.error("🚨 Authentication failed (401 Unauthorized). The API token may be invalid or expired.")
+            # Try to get error details from response
+            try:
+                error_data = response.json()
+                logger.error(f"🚨 API error details: {json.dumps(error_data)}")
+            except:
+                logger.error(f"🚨 API error response text: {response.text[:200]}")
+            
+            # If we haven't exceeded max retries, get a fresh token and try again
+            if retry_count < max_retries:
+                logger.info(f"🔄 Retrying with a fresh token (attempt {retry_count + 1}/{max_retries})")
+                # Force a new token by clearing any cached token (if we had token caching)
+                # Then recursively call this function with incremented retry count
+                return get_weather_data(location_ids, retry_count + 1, max_retries)
+            else:
+                logger.error(f"❌ Exceeded maximum retries ({max_retries}) for 401 errors")
+                return None
+        
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Log a snippet of the response data
+        logger.info(f"✅ Successfully received data from Synoptic API")
+        
+        return data
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Exception during API request: {str(e)}")
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                logger.error(f"🚨 API error details: {json.dumps(error_data)}")
+            except:
+                logger.error(f"🚨 API error status code: {e.response.status_code}")
+                logger.error(f"🚨 API error response text: {e.response.text[:200]}")
         return None
 
 def get_wunderground_data(station_id):
@@ -992,6 +1129,7 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
         # Define functions to run in thread pool
         def fetch_synoptic():
             station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID}"
+            # Use the retry mechanism built into get_weather_data
             return get_weather_data(station_ids)
             
         def fetch_wunderground():
