@@ -731,7 +731,7 @@ async def test_partial_failure(background_tasks: BackgroundTasks):
         </div>
         
         <div class="risk-banner">
-            <h4>Fire Risk: Yellow - Low or Moderate Fire Risk. Exercise standard prevention practices.</h4>
+            <h4>Fire Risk: Orange - Low or Moderate Fire Risk. Exercise standard prevention practices.</h4>
         </div>
         
         <h3 class="mt-4 mb-3">Current Weather Conditions:</h3>
@@ -982,11 +982,11 @@ def calculate_fire_risk(weather):
         logger.info(f"Threshold checks: temp={temp_exceeded}, humidity={humidity_exceeded}, "
                     f"wind={wind_exceeded}, gusts={gusts_exceeded}, soil={soil_exceeded}")
         
-        # If all thresholds are exceeded: RED, otherwise: YELLOW
+        # If all thresholds are exceeded: RED, otherwise: ORANGE
         if temp_exceeded and humidity_exceeded and wind_exceeded and gusts_exceeded and soil_exceeded:
             return "Red", "High fire risk due to high temperature, low humidity, strong winds, high wind gusts, and low soil moisture."
         else:
-            return "Yellow", "Low or Moderate Fire Risk. Exercise standard prevention practices."
+            return "Orange", "Low or Moderate Fire Risk. Exercise standard prevention practices."
 
     except Exception as e:
         logger.error(f"Error calculating fire risk: {str(e)}")
@@ -1833,8 +1833,8 @@ def home():
 
                 if (riskLevel === 'Red') {
                     bgClass = 'bg-danger text-white'; // Red: Danger
-                } else if (riskLevel === 'Yellow') {
-                    bgClass = 'bg-warning text-dark'; // Yellow: Warning
+                } else if (riskLevel === 'Orange') {
+                    bgClass = 'bg-warning text-dark'; // Orange: Warning
                 }
                 
                 // Don't change the background color if we're using cached data
@@ -2053,7 +2053,7 @@ def home():
     <div class="alert mt-4 mb-4" style="background-color: #d1ecff;">
         <p>Fire weather needs to be local. A few Sierra City residents analyze local wind, humidity, temperature and soil moisture data and offer their advice in real time. This fire weather advisory is a best guess of what you should know about local fire weather conditions before there is a fire event.</p>
         
-        <p>The two-stage advisory (Yellow for Low or Moderate Risk, Red for Extreme Risk) is distributed via email and text each morning. Should fire weather conditions change during the course of the day, additional advisories will be issued.</p>
+        <p>The two-stage advisory (Orange for Low or Moderate Risk, Red for Extreme Risk) is distributed via email and text each morning. Should fire weather conditions change during the course of the day, additional advisories will be issued.</p>
         
         <p class="mb-0">This fire weather advisory is not a substitute for official notifications by law enforcement or other government or private agencies.</p>
     </div>
