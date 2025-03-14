@@ -1830,19 +1830,24 @@ def home():
                 // Set appropriate background color based on risk level
                 const riskLevel = data.risk;
                 let bgClass = 'bg-secondary';  // Default for unknown/error risk
+                let customStyle = '';
 
                 if (riskLevel === 'Red') {
-                    bgClass = 'bg-danger text-white'; // Red: Danger
+                    bgClass = 'text-white'; // Text color for Red risk
+                    customStyle = 'background-color: #FF0000;'; // Red hex color
                 } else if (riskLevel === 'Orange') {
-                    bgClass = 'bg-warning text-dark'; // Orange: Warning
+                    bgClass = 'text-dark'; // Text color for Orange risk
+                    customStyle = 'background-color: #FFA500;'; // Orange hex color
                 }
                 
                 // Don't change the background color if we're using cached data
                 // as we already have special styling for that
                 if (!data.cached_data || !data.cached_data.is_cached) {
                     riskDiv.className = `alert ${bgClass} p-3`;
+                    riskDiv.style = customStyle; // Apply custom hex color
                 } else {
                     riskDiv.className = 'alert p-0';  // Remove padding for our custom cached data display
+                    riskDiv.style = ''; // Clear any custom styles
                 }
 
                 // Update weather details
