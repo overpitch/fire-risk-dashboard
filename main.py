@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta, timezone
@@ -12,8 +12,9 @@ import json
 import time
 import threading
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 import pytz
+import functools
 
 # Only load .env for local development (not on Render)
 if os.getenv("RENDER") is None:
@@ -23,6 +24,20 @@ if os.getenv("RENDER") is None:
         print("Loaded .env file for local development.")
     except ImportError:
         print("python-dotenv is not installed. Skipping .env loading.")
+
+# Determine if we're running in production mode
+IS_PRODUCTION = os.getenv("RENDER") is not None
+
+# Decorator to conditionally register endpoints based on environment
+def dev_only_endpoint(func):
+    """Decorator to make an endpoint available only in development mode."""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        if IS_PRODUCTION:
+            # In production, return a 404 Not Found
+            raise HTTPException(status_code=404, detail="Endpoint not available in production")
+        return await func(*args, **kwargs)
+    return wrapper
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -212,8 +227,12 @@ class DataCache:
 data_cache = DataCache()
 
 @app.get("/check-env")
-def check_env():
-    """Check if Render environment variables are available."""
+@dev_only_endpoint
+async def check_env():
+    """Check if Render environment variables are available.
+    
+    This endpoint is only available in development mode for security reasons.
+    """
     synoptic_key = os.getenv("SYNOPTICDATA_API_KEY")
     wunderground_key = os.getenv("WUNDERGROUND_API_KEY")
     return {
@@ -236,8 +255,12 @@ logger.info(f"Using thresholds: TEMP={THRESH_TEMP}°F, "
             f"GUSTS={THRESH_GUSTS}mph, SOIL={THRESH_SOIL_MOIST}%")
 
 @app.get("/test-api")
-def test_api():
-    """Test if Render can reach Synoptic API."""
+@dev_only_endpoint
+async def test_api():
+    """Test if Render can reach Synoptic API.
+    
+    This endpoint is only available in development mode.
+    """
     try:
         response = requests.get("https://api.synopticdata.com/v2/stations/latest")
         return {"status": response.status_code, "response": response.text[:500]}
@@ -245,7 +268,8 @@ def test_api():
         return {"error": str(e)}
 
 @app.get("/test-synoptic-auth")
-def test_synoptic_auth():
+@dev_only_endpoint
+async def test_synoptic_auth():
     """Test the Synoptic API authentication flow to diagnose 401 errors."""
     results = {}
     
@@ -321,7 +345,8 @@ def test_synoptic_auth():
         return results
 
 @app.get("/test-cache-system", response_class=HTMLResponse)
-def test_cache_system():
+@dev_only_endpoint
+async def test_cache_system():
     """A visual interface for testing the cache system"""
     return """<!DOCTYPE html>
 <html lang="en">
@@ -439,6 +464,7 @@ def test_cache_system():
 </html>"""
 
 @app.get("/force-cached-mode", response_class=HTMLResponse)
+@dev_only_endpoint
 async def force_cached_mode():
     """Force the system to display cached data.
     
@@ -510,6 +536,7 @@ async def force_cached_mode():
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/reset-cached-mode", response_class=HTMLResponse)
+@dev_only_endpoint
 async def reset_cached_mode(background_tasks: BackgroundTasks):
     """Reset the system from cached data mode back to normal operations
     
@@ -573,6 +600,7 @@ async def reset_cached_mode(background_tasks: BackgroundTasks):
 </html>"""
 
 @app.get("/test-partial-failure", response_class=HTMLResponse)
+@dev_only_endpoint
 async def test_partial_failure(background_tasks: BackgroundTasks):
     """Test endpoint that simulates a partial API failure.
     
@@ -758,147 +786,16 @@ async def test_partial_failure(background_tasks: BackgroundTasks):
 </html>
 """
 
-@app.get("/cached-data-example", response_class=HTMLResponse)
-async def cached_data_example():
-    """Show an example of field-level caching visualization."""
-    with open("cached-data-example.html", "r") as file:
-        return file.read()
-
 @app.get("/synoptic-api-test", response_class=HTMLResponse)
+@dev_only_endpoint
 async def synoptic_api_test():
     """Serve the Synoptic API testing tool."""
     with open("synoptic-api-test.html", "r") as file:
         return file.read()
 
-@app.get("/test-cached-data", response_class=HTMLResponse)
-async def test_cached_data(background_tasks: BackgroundTasks):
-    """Test endpoint to simulate API failure and force cached data display.
-    
-    This legacy method temporarily disables API keys to simulate a failure.
-    It's more complex but useful for testing real failure scenarios.
-    """
-@app.get("/reset-cached-mode", response_class=HTMLResponse)
-async def reset_cached_mode(background_tasks: BackgroundTasks):
-    """Reset the system from cached data mode back to normal operations
-    
-    This endpoint:
-    1. Clears the using_cached_data flag
-    2. Forces a refresh with valid API keys
-    3. Returns a simple page confirming the reset
-    """
-    # Clear the cached data flag
-    data_cache.using_cached_data = False
-    
-    # Force a refresh with the correct API keys
-    logger.info("Resetting from cached mode to normal operations...")
-    refresh_success = await refresh_data_cache(background_tasks, force=True)
-    
-    status = "success" if refresh_success else "failed"
-    
-    # Return a simple HTML page with a JavaScript redirect
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="3;url=/">
-    <title>System Reset</title>
-    <style>
-        body {{
-            font-family: Arial, sans-serif;
-            margin: 2rem;
-            text-align: center;
-        }}
-        .success {{ color: green; }}
-        .error {{ color: red; }}
-    </style>
-</head>
-<body>
-    <h1>System Reset {status.upper()}</h1>
-    <div class="{status}">
-        <p>The system has been reset to normal operations.</p>
-        <p>Data refresh status: {status}</p>
-    </div>
-    <p>You will be redirected to the dashboard in 3 seconds...</p>
-    <p>Or <a href="/">click here</a> to go to the dashboard now.</p>
-</body>
-</html>"""
-    # Step 1: Make sure we have some valid data in cache first
-    if data_cache.fire_risk_data is None:
-        # No data in cache yet, try to get some
-        logger.info("No data in cache yet, attempting initial fetch")
-        await refresh_data_cache()
-        if data_cache.fire_risk_data is None:
-            return {"error": "Could not get initial data to cache. Try visiting the dashboard first."}
-    
-    # Step 2: Store original API keys
-    original_synoptic_key = os.environ.get("SYNOPTICDATA_API_KEY")
-    original_wunderground_key = os.environ.get("WUNDERGROUND_API_KEY")
-    
-    # Step 3: Set invalid API keys to force failure
-    os.environ["SYNOPTICDATA_API_KEY"] = "INVALID_KEY_FOR_TESTING"
-    os.environ["WUNDERGROUND_API_KEY"] = "INVALID_KEY_FOR_TESTING"
-    logger.info("🧪 Test mode: Temporarily disabled API keys to force cached data display")
-    
-    try:
-        # Step 4: Force a refresh, which should fail and use cached data
-        logger.info("🧪 Test mode: Attempting refresh with invalid keys (should fail)")
-        await refresh_data_cache(background_tasks, force=True)
-        
-        # Step 5: Get the result (should be cached data)
-        result = data_cache.fire_risk_data.copy()
-        
-        # Ensure we've properly set up the cached data mode before redirecting
-        if not data_cache.using_cached_data:
-            logger.warning("Cache mode not properly activated. Explicitly setting cached data mode.")
-            data_cache.using_cached_data = True
-            
-            # Set up the cached data display by copying values from the last valid data
-            if data_cache.last_valid_data["timestamp"] is not None:
-                # Calculate how old the data is
-                pacific_tz = pytz.timezone('America/Los_Angeles')
-                current_time = datetime.now(pacific_tz)
-                cached_time = data_cache.last_valid_data["timestamp"]
-                age_delta = current_time - cached_time
-                
-                # Format as appropriate time unit
-                if age_delta.days > 0:
-                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
-                elif age_delta.seconds // 3600 > 0:
-                    hours = age_delta.seconds // 3600
-                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
-                else:
-                    minutes = age_delta.seconds // 60
-                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
-                
-                # Update the fire risk data to indicate it's cached
-                if data_cache.fire_risk_data:
-                    cached_fire_risk_data = data_cache.fire_risk_data.copy()
-                    cached_fire_risk_data["cached_data"] = {
-                        "is_cached": True,
-                        "original_timestamp": cached_time.isoformat(),
-                        "age": age_str
-                    }
-                    
-                    # Update the explanation
-                    if "cached data" not in cached_fire_risk_data["explanation"].lower():
-                        cached_fire_risk_data["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
-                    
-                    # Update the fire risk data with our cached version
-                    data_cache.fire_risk_data = cached_fire_risk_data
-        
-        # Now redirect to the home page which will display the cached data
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/", status_code=303)
-    finally:
-        # Step 6: Always restore original API keys, even if there's an error
-        if original_synoptic_key:
-            os.environ["SYNOPTICDATA_API_KEY"] = original_synoptic_key
-        if original_wunderground_key:
-            os.environ["WUNDERGROUND_API_KEY"] = original_wunderground_key
-        logger.info("🧪 Test mode: Restored original API keys")
-    
 @app.get("/debug-info")
-def debug_info():
+@dev_only_endpoint
+async def debug_info():
     """Debug endpoint to check Python version and installed packages."""
     python_version = sys.version
 
