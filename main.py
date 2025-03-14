@@ -244,7 +244,7 @@ async def check_env():
 THRESH_TEMP = float(os.getenv("THRESH_TEMP", 75))            # Temperature threshold in Fahrenheit
 THRESH_HUMID = float(os.getenv("THRESH_HUMID", 15))          # Humidity threshold in percent
 THRESH_WIND = float(os.getenv("THRESH_WIND", 15))            # Wind speed threshold in mph
-THRESH_GUSTS = float(os.getenv("THRESH_GUSTS", 25))          # Wind gust threshold in mph
+THRESH_GUSTS = float(os.getenv("THRESH_GUSTS", 20))          # Wind gust threshold in mph
 THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 10)) # Soil moisture threshold in percent
 
 # Convert temperature threshold from Fahrenheit to Celsius for internal use
@@ -1890,7 +1890,7 @@ def home():
                 const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
                 const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
                 const THRESH_WIND = 15;  // Wind speed threshold in mph
-                const THRESH_GUSTS = 25; // Wind gust threshold in mph
+                const THRESH_GUSTS = 20; // Wind gust threshold in mph
                 const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
                 
                 // Check if values exceed thresholds for color formatting - use rounded values
