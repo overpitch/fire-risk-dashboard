@@ -1364,6 +1364,153 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
                 logger.warning("All critical data sources failed and no cached data available")
                 raise ValueError("All critical data sources failed and no cached data available")
                 
+            # Always use cached data for any missing fields, regardless of whether some fields are available
+            # This ensures we always show the best available data for each field
+            
+            # Check each field individually and use cached data if available
+            if air_temp is None:
+                if data_cache.last_valid_data["fields"]["temperature"]["value"] is not None:
+                    air_temp = data_cache.last_valid_data["fields"]["temperature"]["value"]
+                    data_cache.cached_fields["temperature"] = True
+                    any_field_using_cache = True
+                    
+                    cached_time = data_cache.last_valid_data["fields"]["temperature"]["timestamp"]
+                    age_delta = current_time - cached_time
+                    # Calculate age string
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    logger.info(f"Using cached temperature data: {air_temp}°C from {cached_time.isoformat()} ({age_str} old)")
+                    
+                    # Store info about this cached field
+                    cached_fields_info.append({
+                        "field": "temperature",
+                        "value": air_temp,
+                        "timestamp": cached_time,
+                        "age": age_str
+                    })
+            
+            if relative_humidity is None:
+                if data_cache.last_valid_data["fields"]["humidity"]["value"] is not None:
+                    relative_humidity = data_cache.last_valid_data["fields"]["humidity"]["value"]
+                    data_cache.cached_fields["humidity"] = True
+                    any_field_using_cache = True
+                    
+                    cached_time = data_cache.last_valid_data["fields"]["humidity"]["timestamp"]
+                    age_delta = current_time - cached_time
+                    # Calculate age string
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    logger.info(f"Using cached humidity data: {relative_humidity}% from {cached_time.isoformat()} ({age_str} old)")
+                    
+                    # Store info about this cached field
+                    cached_fields_info.append({
+                        "field": "humidity",
+                        "value": relative_humidity,
+                        "timestamp": cached_time,
+                        "age": age_str
+                    })
+            
+            if wind_speed is None:
+                if data_cache.last_valid_data["fields"]["wind_speed"]["value"] is not None:
+                    wind_speed = data_cache.last_valid_data["fields"]["wind_speed"]["value"]
+                    data_cache.cached_fields["wind_speed"] = True
+                    any_field_using_cache = True
+                    
+                    cached_time = data_cache.last_valid_data["fields"]["wind_speed"]["timestamp"]
+                    age_delta = current_time - cached_time
+                    # Calculate age string
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    logger.info(f"Using cached wind speed data: {wind_speed} mph from {cached_time.isoformat()} ({age_str} old)")
+                    
+                    # Store info about this cached field
+                    cached_fields_info.append({
+                        "field": "wind_speed",
+                        "value": wind_speed,
+                        "timestamp": cached_time,
+                        "age": age_str
+                    })
+            
+            if soil_moisture_15cm is None:
+                if data_cache.last_valid_data["fields"]["soil_moisture"]["value"] is not None:
+                    soil_moisture_15cm = data_cache.last_valid_data["fields"]["soil_moisture"]["value"]
+                    data_cache.cached_fields["soil_moisture"] = True
+                    any_field_using_cache = True
+                    
+                    cached_time = data_cache.last_valid_data["fields"]["soil_moisture"]["timestamp"]
+                    age_delta = current_time - cached_time
+                    # Calculate age string
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    logger.info(f"Using cached soil moisture data: {soil_moisture_15cm}% from {cached_time.isoformat()} ({age_str} old)")
+                    
+                    # Store info about this cached field
+                    cached_fields_info.append({
+                        "field": "soil_moisture",
+                        "value": soil_moisture_15cm,
+                        "timestamp": cached_time,
+                        "age": age_str
+                    })
+            
+            if wind_gust is None:
+                if data_cache.last_valid_data["fields"]["wind_gust"]["value"] is not None:
+                    wind_gust = data_cache.last_valid_data["fields"]["wind_gust"]["value"]
+                    data_cache.cached_fields["wind_gust"] = True
+                    any_field_using_cache = True
+                    
+                    cached_time = data_cache.last_valid_data["fields"]["wind_gust"]["timestamp"]
+                    age_delta = current_time - cached_time
+                    # Calculate age string
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    logger.info(f"Using cached wind gust data: {wind_gust} mph from {cached_time.isoformat()} ({age_str} old)")
+                    
+                    # Store info about this cached field
+                    cached_fields_info.append({
+                        "field": "wind_gust",
+                        "value": wind_gust,
+                        "timestamp": cached_time,
+                        "age": age_str
+                    })
+            
+            # Update the global cache flag if any fields are using cached data
+            data_cache.using_cached_data = any_field_using_cache
+            
             # If all individual fields are missing and we have no cache for them, that's a problem
             if air_temp is None and relative_humidity is None and wind_speed is None and soil_moisture_15cm is None and wind_gust is None:
                 logger.warning("All critical data fields are missing")
