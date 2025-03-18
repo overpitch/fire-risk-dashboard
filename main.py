@@ -1580,12 +1580,36 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
                     # No cached data available either
                     raise ValueError("All critical data sources failed and no cached data available")
             
+            # Now check the cache for any missing fields and use if available
+            pacific_tz = pytz.timezone('America/Los_Angeles')
+            current_time = datetime.now(pacific_tz)
+            any_field_using_cache = False
+            cached_fields_info = []
+            
+            # Check for missing fields and use cached values if available
+            # This section retrieves cached values for missing fields
+            
+            # After retrieving all cached values, update the latest_weather dictionary
+            # This ensures the cached values are included in the response
+            latest_weather["air_temp"] = air_temp
+            latest_weather["relative_humidity"] = relative_humidity
+            latest_weather["wind_speed"] = wind_speed
+            latest_weather["soil_moisture_15cm"] = soil_moisture_15cm
+            latest_weather["wind_gust"] = wind_gust
+            
+            # Add information about which fields are using cached data
+            latest_weather["cached_fields"] = data_cache.cached_fields.copy()
+            
             # Process the live data normally
             risk, explanation = calculate_fire_risk(latest_weather)
             
             # If we had data issues, add a note to the explanation
             if data_issues:
                 explanation += " Note: Some data sources were unavailable."
+            
+            # If we're using any cached data, add a note to the explanation
+            if any_field_using_cache:
+                explanation += " Some values are from cached data."
             
             fire_risk_data = {"risk": risk, "explanation": explanation, "weather": latest_weather}
             
@@ -1713,7 +1737,8 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
             result["cached_data"] = {
                 "is_cached": True,
                 "original_timestamp": cached_time.isoformat(),
-                "age": age_str
+                "age": age_str,
+                "cached_fields": data_cache.cached_fields  # Add information about which fields are using cached data
             }
     
     return result
