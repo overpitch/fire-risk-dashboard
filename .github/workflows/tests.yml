@@ -25,10 +25,4 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest --cov=main --cov-report=xml tests/
-    
-    - name: Upload coverage report
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
+        pytest --cov=main tests/
