@@ -146,17 +146,45 @@ class DataCache:
         pacific_tz = pytz.timezone('America/Los_Angeles')
         current_time = datetime.now(pacific_tz)
         
+        # Store the current cached_fields and using_cached_data state
+        cached_fields_state = self.cached_fields.copy()
+        using_cached_data_state = self.using_cached_data
+        
         with self._lock:
             self.synoptic_data = synoptic_data
             self.wunderground_data = wunderground_data
+            
+            # If we're using cached data, make sure the fire_risk_data has a cached_data field
+            if using_cached_data_state and "cached_data" not in fire_risk_data:
+                # Get timestamp information for display
+                cached_time = self.last_valid_data["timestamp"]
+                if cached_time:
+                    # Calculate age of data
+                    age_delta = current_time - cached_time
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    # Add cached_data field to fire_risk_data
+                    fire_risk_data["cached_data"] = {
+                        "is_cached": True,
+                        "original_timestamp": cached_time.isoformat(),
+                        "age": age_str,
+                        "cached_fields": cached_fields_state.copy()
+                    }
+            
             self.fire_risk_data = fire_risk_data
             self.last_updated = current_time
             self.last_update_success = True
             
-            # Reset all cached field flags
-            for field in self.cached_fields:
-                self.cached_fields[field] = False
-            self.using_cached_data = False
+            # Restore the cached_fields and using_cached_data state
+            self.cached_fields = cached_fields_state
+            self.using_cached_data = using_cached_data_state
             
             # Store the full response data for backwards compatibility
             if synoptic_data is not None or wunderground_data is not None:
@@ -496,6 +524,11 @@ async def force_cached_mode():
     
     # Set the flag to use cached data
     data_cache.using_cached_data = True
+    
+    # Set all cached fields to true since we're using all cached data
+    for field in data_cache.cached_fields:
+        data_cache.cached_fields[field] = True
+        
     logger.info("🔵 TEST MODE: Forced cached data display")
     
     # Get timestamp information for display
@@ -1610,8 +1643,49 @@ async def refresh_data_cache(background_tasks: BackgroundTasks = None, force: bo
             # If we're using any cached data, add a note to the explanation
             if any_field_using_cache:
                 explanation += " Some values are from cached data."
+                
+                # Add a notice about using cached data
+                cached_time = data_cache.last_valid_data["timestamp"]
+                if cached_time:
+                    age_delta = current_time - cached_time
+                    if age_delta.days > 0:
+                        age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                    elif age_delta.seconds // 3600 > 0:
+                        hours = age_delta.seconds // 3600
+                        age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                    else:
+                        minutes = age_delta.seconds // 60
+                        age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                    
+                    explanation += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
             
             fire_risk_data = {"risk": risk, "explanation": explanation, "weather": latest_weather}
+            
+            # If we're using cached data, add the cached_data field
+            if any_field_using_cache:
+                # Get timestamp information for display
+                pacific_tz = pytz.timezone('America/Los_Angeles')
+                current_time = datetime.now(pacific_tz)
+                cached_time = data_cache.last_valid_data["timestamp"]
+                
+                # Calculate age of data
+                age_delta = current_time - cached_time
+                if age_delta.days > 0:
+                    age_str = f"{age_delta.days} day{'s' if age_delta.days != 1 else ''}"
+                elif age_delta.seconds // 3600 > 0:
+                    hours = age_delta.seconds // 3600
+                    age_str = f"{hours} hour{'s' if hours != 1 else ''}"
+                else:
+                    minutes = age_delta.seconds // 60
+                    age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
+                
+                # Add cached_data field to fire_risk_data
+                fire_risk_data["cached_data"] = {
+                    "is_cached": True,
+                    "original_timestamp": cached_time.isoformat(),
+                    "age": age_str,
+                    "cached_fields": data_cache.cached_fields.copy()
+                }
             
             # Update cache with new data
             data_cache.update_cache(weather_data, wunderground_data, fire_risk_data)
@@ -1734,12 +1808,17 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                 minutes = age_delta.seconds // 60
                 age_str = f"{minutes} minute{'s' if minutes != 1 else ''}"
             
+            # Add cached_data field to the response
             result["cached_data"] = {
                 "is_cached": True,
                 "original_timestamp": cached_time.isoformat(),
                 "age": age_str,
                 "cached_fields": data_cache.cached_fields  # Add information about which fields are using cached data
             }
+            
+            # Make sure the explanation includes the notice about cached data
+            if "explanation" in result and "NOTICE: Displaying cached data" not in result["explanation"]:
+                result["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
     
     return result
 
@@ -2026,8 +2105,17 @@ def home():
                 // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
                 // Round all measurements to the nearest whole number
                 const tempCelsius = data.weather.air_temp;
-                const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-                const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                // Check if we have cached values for any missing fields
+                const isCachedTemp = data.weather.cached_fields && data.weather.cached_fields.temperature;
+                const isCachedSoilMoisture = data.weather.cached_fields && data.weather.cached_fields.soil_moisture;
+                
+                // Use cached values if available, otherwise show unavailable
+                const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : 
+                                      (isCachedTemp ? Math.round((tempCelsius * 9/5) + 32) + '°F (cached)' : 
+                                      '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : 
+                                    (isCachedSoilMoisture ? Math.round(data.weather.soil_moisture_15cm) + '% (cached)' : 
+                                    '<span class="unavailable">&lt;unavailable&gt;</span>');
                 const weatherStation = data.weather.data_sources.weather_station;
                 const soilStation = data.weather.data_sources.soil_moisture_station;
                 
@@ -2058,9 +2146,23 @@ def home():
                 }
                 
                 // Handle potentially missing data with fallbacks - round all values to nearest whole number
-                const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-                const windSpeed = data.weather.wind_speed !== null && data.weather.wind_speed !== undefined ? Math.round(data.weather.wind_speed) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
-                const windGust = data.weather.wind_gust !== null && data.weather.wind_gust !== undefined ? Math.round(data.weather.wind_gust) + ' mph' : '<span class="unavailable">&lt;unavailable&gt;</span>';
+                // Check if we have cached values for any missing fields
+                const isCachedHumidity = data.weather.cached_fields && data.weather.cached_fields.humidity;
+                const isCachedWindSpeed = data.weather.cached_fields && data.weather.cached_fields.wind_speed;
+                const isCachedWindGust = data.weather.cached_fields && data.weather.cached_fields.wind_gust;
+                
+                // Use cached values if available, otherwise show unavailable
+                const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : 
+                                (isCachedHumidity ? Math.round(data.weather.relative_humidity) + '% (cached)' : 
+                                '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const windSpeed = data.weather.wind_speed !== null && data.weather.wind_speed !== undefined ? 
+                                Math.round(data.weather.wind_speed) + ' mph' : 
+                                (isCachedWindSpeed ? Math.round(data.weather.wind_speed) + ' mph (cached)' : 
+                                '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const windGust = data.weather.wind_gust !== null && data.weather.wind_gust !== undefined ? 
+                               Math.round(data.weather.wind_gust) + ' mph' : 
+                               (isCachedWindGust ? Math.round(data.weather.wind_gust) + ' mph (cached)' : 
+                               '<span class="unavailable">&lt;unavailable&gt;</span>');
                 const windGustStation = data.weather.data_sources.wind_gust_station;
                 
                 // Get threshold values for color formatting
