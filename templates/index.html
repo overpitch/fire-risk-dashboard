@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sierra City Fire Risk Dashboard</title>
+    <link rel="icon" href="/static/favicon.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="/static/synoptic-logo.css" rel="stylesheet">
+    <style>
+        /* existing styles */
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" style="background-color: #003366 !important;">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">Sierra City Fire Weather Advisory</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#aboutUsModal">About Us</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div id="simulation-banner" class="alert alert-warning d-none" role="alert">
+            <strong>Simulation Mode:</strong> Using custom threshold values.
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
+            <div id="cache-info" class="cache-info">Data status: Loading...</div>
+            <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
+            <button id="what-if-btn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#whatIfModal" onclick="openWhatIfModal()">What If?</button>
+        </div>
+        <div id="fire-risk" class="alert alert-info">Loading fire risk data...</div>
+        <div id="simulation-results"></div>
+        <div id="weather-details" class="mt-3"></div>
+        <div class="alert mt-4 mb-4" style="background-color: #d1ecff;">
+            <p>Fire weather needs to be local. A few Sierra City residents analyze local wind, humidity, temperature and soil moisture data and offer their advice in real time. This fire weather advisory is a best guess of what you should know about local fire weather conditions before there is a fire event.</p>
+            <p>The two-stage advisory (Orange for Low or Moderate Risk, Red for Extreme Risk) is distributed via email and text each morning. Should fire weather conditions change during the course of the day, additional advisories will be issued.</p>
+            <p class="mb-0">This fire weather advisory is not a substitute for official notifications by law enforcement or other government or private agencies.</p>
+        </div>
+        <div class="attribution-container">
+            <div id="timestamp" class="timestamp">Last updated: Loading...</div>
+            <div class="attribution">
+                Weather observations aggregated by&nbsp;<a href="https://www.wunderground.com/" target="_blank">Weather Underground</a>&nbsp;and&nbsp;<a href="https://synopticdata.com/" target="_blank">Synoptic Data</a>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MDAgODAwIj4KICA8Y2lyY2xlIGN4PSI0MDAiIGN5PSI0MDAiIHI9IjI4MCIgZmlsbD0iIzAwMzNjYyIgLz4KICA8cGF0aCBkPSJNMTIwLDMwMCBDMzAwLDIwMCA1MDAsMjIwIDcwMCwzMDAiIHN0cm9rZT0iIzdmZmZmZiIgc3Ryb2tlLXdpZHRoPSI1MCIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNMTIwLDQwMCBDMzAwLDMwMCA1MDAsMzIwIDcwMCw0MDAiIHN0cm9rZT0iIzdmZmZmZiIgc3Ryb2tlLXdpZHRoPSI1MCIgZmlsbD0ibm9uZSIgLz4KICA8cGF0aCBkPSJNMTIwLDUwMCBDMzAwLDQwMCA1MDAsNDIwIDcwMCw1MDAiIHN0cm9rZT0iIzdmZmZmZiIgc3Ryb2tlLXdpZHRoPSI1MCIgZmlsbD0ibm9uZSIgLz4KPC9zdmc+" alt="Synoptic Data" class="synoptic-logo">
+            </div>
+        </div>
+
+        <div class="modal fade" id="whatIfModal" tabindex="-1" aria-labelledby="whatIfModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="whatIfModalLabel">What If?</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="what-if-form">
+                            <div class="mb-3">
+                                <label for="temp-threshold" class="form-label">Temperature Threshold (°F):</label>
+                                <input type="number" class="form-control" id="temp-threshold" name="temp">
+                            </div>
+                            <div class="mb-3">
+                                <label for="humid-threshold" class="form-label">Humidity Threshold (%):</label>
+                                <input type="number" class="form-control" id="humid-threshold" name="humid">
+                            </div>
+                            <div class="mb-3">
+                                <label for="wind-threshold" class="form-label">Wind Threshold (mph):</label>
+                                <input type="number" class="form-control" id="wind-threshold" name="wind">
+                            </div>
+                            <div class="mb-3">
+                                <label for="gusts-threshold" class="form-label">Gusts Threshold (mph):</label>
+                                <input type="number" class="form-control" id="gusts-threshold" name="gusts">
+                            </div>
+                            <div class="mb-3">
+                                <label for="soil-threshold" class="form-label">Soil Moisture Threshold (%):</label>
+                                <input type="number" class="form-control" id="soil-threshold" name="soil">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="runSimulation()">Run Simulation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Us Modal -->
+        <div class="modal fade" id="aboutUsModal" tabindex="-1" aria-labelledby="aboutUsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="aboutUsModalLabel">About Us</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>This Fire Weather Advisory website was born from the Sierra City Community Radio1 (SCCR1) initiative. SCCR1 provides essential communication via handheld radios when power, phone, and internet services are disrupted, while also fostering stronger neighborhood connections.</p>
+                        <p>It was inspired by a January 2025 incident when high winds during low humidity reignited a burn pile. We realized many residents were unaware of these dangerous weather conditions. After community discussions, we developed this advisory system to keep our neighbors informed and safer.</p>
+                        <p>For more information about our services or to manage your notification preferences, please contact us at <a href="mailto:fredsnarf@getlost.com">fredsnarf@getlost.com</a>.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get threshold values from server-side template variables
+        // Note: These are Jinja2 template variables that will be replaced with actual values when the template is rendered
+        // The JavaScript linter in VSCode may show errors for these lines, but they are not actual errors
+        /* eslint-disable */
+        const THRESH_TEMP = {{ THRESH_TEMP|tojson }};
+        const THRESH_HUMID = {{ THRESH_HUMID|tojson }};
+        const THRESH_WIND = {{ THRESH_WIND|tojson }};
+        const THRESH_GUSTS = {{ THRESH_GUSTS|tojson }};
+        const THRESH_SOIL_MOIST = {{ THRESH_SOIL_MOIST|tojson }};
+        /* eslint-enable */
+
+        function openWhatIfModal() {
+            document.getElementById('temp-threshold').value = THRESH_TEMP;
+            document.getElementById('humid-threshold').value = THRESH_HUMID;
+            document.getElementById('wind-threshold').value = THRESH_WIND;
+            document.getElementById('gusts-threshold').value = THRESH_GUSTS;
+            document.getElementById('soil-threshold').value = THRESH_SOIL_MOIST;
+        }
+
+        async function runSimulation() {
+            const form = document.getElementById('what-if-form');
+            const formData = new FormData(form);
+            const customThresholds = {};
+            for (const [key, value] of formData.entries()) {
+                customThresholds[key] = parseFloat(value);
+            }
+
+            try {
+                const response = await fetch('/simulate-fire-risk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(customThresholds)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Simulation failed: ${errorData.detail}`);
+                }
+
+                const data = await response.json();
+                displaySimulationResults(data);
+                // Use plain JavaScript to hide the modal
+                const whatIfModal = document.getElementById('whatIfModal');
+                const modal = bootstrap.Modal.getInstance(whatIfModal);
+                modal.hide();
+
+            } catch (error) {
+                console.error('Error running simulation:', error);
+                alert(error.message);
+            }
+        }
+
+        function displaySimulationResults(data) {
+            const resultsDiv = document.getElementById('simulation-results');
+            const risk = data.risk;
+            const explanation = data.explanation;
+
+            const resultsHTML = `
+            <div class="alert alert-warning" role="alert">
+                <strong>Simulation Results:</strong>
+                Fire Risk: ${risk} - ${explanation}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="resetSimulation()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            `;
+
+            resultsDiv.innerHTML = resultsHTML;
+            document.getElementById('fire-risk').style.display = 'none'; // Hide actual risk
+            document.getElementById('simulation-banner').classList.remove('d-none'); // Show simulation banner
+        }
+
+        async function resetSimulation() {
+            try {
+                const response = await fetch('/reset-simulation');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Reset failed: ${errorData.detail}`);
+                }
+
+                // Reset UI to display actual risk
+                document.getElementById('fire-risk').style.display = 'block';
+                document.getElementById('simulation-banner').classList.add('d-none');
+                document.getElementById('simulation-results').innerHTML = '';
+
+            } catch (error) {
+                console.error('Error resetting simulation:', error);
+                alert(error.message);
+            }
+        }
+
+        async function setupRefresh() {
+            try {
+                const response = await fetch('/fire-risk');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error fetching fire risk data: ${errorData.detail}`);
+                }
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error("Error setting up refresh:", error);
+                alert(error.message);
+            }
+        }
+
+        async function manualRefresh() {
+            try {
+                const response = await fetch('/fire-risk');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error fetching fire risk data: ${errorData.detail}`);
+                }
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error("Error during manual refresh:", error);
+                alert(error.message);
+            }
+        }
+
+        window.onload = setupRefresh;
+
+        function updateDashboard(data) {
+            console.log("Updating dashboard with:", data);
+
+            // Update cache info
+            const cacheInfoDiv = document.getElementById('cache-info');
+            if (cacheInfoDiv) {
+                if (data.cache_info) {
+                    const lastUpdated = data.cache_info.last_updated ? new Date(data.cache_info.last_updated) : null;
+                    
+                    if (data.cached_data && data.cached_data.is_cached) {
+                        const originalTimestamp = new Date(data.cached_data.original_timestamp);
+                        cacheInfoDiv.textContent = `▲ Using cached data - current data unavailable (Last updated: ${originalTimestamp.toLocaleString()})`;
+                        cacheInfoDiv.className = 'alert alert-warning';
+                    } else if (lastUpdated) {
+                        cacheInfoDiv.textContent = `✓ Data is fresh (Last updated: ${lastUpdated.toLocaleString()})`;
+                        cacheInfoDiv.className = 'alert alert-success';
+                    } else {
+                        cacheInfoDiv.textContent = "Data status: Loading...";
+                        cacheInfoDiv.className = 'alert alert-info';
+                    }
+                } else {
+                    cacheInfoDiv.textContent = "Data status: Loading...";
+                    cacheInfoDiv.className = 'alert alert-info';
+                }
+            }
+
+            // Update fire risk display
+            const fireRiskDiv = document.getElementById('fire-risk');
+            if (fireRiskDiv && data.explanation) {
+                fireRiskDiv.textContent = data.explanation;
+                
+                // Set appropriate color based on risk level
+                if (data.risk === 'Red') {
+                    fireRiskDiv.className = 'alert alert-danger';
+                } else if (data.risk === 'Orange') {
+                    fireRiskDiv.className = 'alert alert-warning';
+                } else {
+                    fireRiskDiv.className = 'alert alert-info';
+                }
+            }
+
+            // Update weather details
+            const weatherDetailsDiv = document.getElementById('weather-details');
+            if (weatherDetailsDiv && data.weather) {
+                let weatherHTML = "<h5>Current Weather Conditions:</h5><ul>";
+                
+                // Add each weather parameter with its threshold
+                const weatherParams = [
+                    { key: 'air_temp', label: 'Temperature', unit: '°F', threshold: THRESH_TEMP },
+                    { key: 'relative_humidity', label: 'Humidity', unit: '%', threshold: THRESH_HUMID },
+                    { key: 'wind_speed', label: 'Wind Speed', unit: 'mph', threshold: THRESH_WIND },
+                    { key: 'wind_gust', label: 'Wind Gusts', unit: 'mph', threshold: THRESH_GUSTS },
+                    { key: 'soil_moisture_15cm', label: 'Soil Moisture', unit: '%', threshold: THRESH_SOIL_MOIST }
+                ];
+                
+                for (const param of weatherParams) {
+                    if (data.weather[param.key] !== undefined) {
+                        const value = data.weather[param.key];
+                        const isCached = data.weather.cached_fields && data.weather.cached_fields[param.key.replace('_15cm', '')];
+                        const cachedLabel = isCached ? ' (cached)' : '';
+                        
+                        weatherHTML += `<li>${param.label}: ${value}${param.unit}${cachedLabel} (Threshold: ${param.threshold}${param.unit})</li>`;
+                    }
+                }
+                
+                weatherHTML += "</ul>";
+                weatherDetailsDiv.innerHTML = weatherHTML;
+            }
+
+            // Update timestamp
+            const timestampDiv = document.getElementById('timestamp');
+            if (timestampDiv) {
+                if (data.cache_info && data.cache_info.last_updated) {
+                    const lastUpdatedDate = new Date(data.cache_info.last_updated);
+                    timestampDiv.textContent = "Last updated: " + lastUpdatedDate.toLocaleString();
+                } else {
+                    const now = new Date();
+                    timestampDiv.textContent = "Last updated: " + now.toLocaleString();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

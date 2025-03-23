@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field-Level Caching Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+        }
+        .header {
+            background-color: #003366;
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .cached-field {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .fresh-field {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+        }
+        .badge-cached {
+            position: absolute;
+            right: 10px;
+        }
+        .badge-fresh {
+            position: absolute;
+            right: 10px;
+        }
+        .warning-banner {
+            background-color: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-left: 10px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Field-Level Caching Demo</h1>
+            <p>This page demonstrates how individual fields can fall back to cached data when a partial API failure occurs.</p>
+        </div>
+        <div class="warning-banner">
+            <p><strong>Simulating Partial API Failure:</strong> The following fields are currently using cached data (from approximately {{ thirty_min_ago }}):</p>
+            <ul>
+                {% for field in failed_fields %}
+                    <li>{{ field.capitalize() }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="weather-data">
+            {% for field, value in weather_data.items() %}
+                {% if field in failed_fields %}
+                    <div class="cached-field"><strong>{{ field.capitalize() }}:</strong> {{ value }} <span class="badge badge-warning badge-cached">CACHED</span></div>
+                {% else %}
+                    <div class="fresh-field"><strong>{{ field.capitalize() }}:</strong> {{ value }} <span class="badge badge-success badge-fresh">FRESH</span></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="footer">
+            <p><a href="/">Return to Dashboard</a></p>
+        </div>
+    </div>
+</body>
+</html>

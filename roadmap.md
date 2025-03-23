@@ -1,13 +1,24 @@
-# 🔥 Fire Risk Dashboard Refactoring Roadmap
+# 🔥 Fire Risk Dashboard Roadmap
 
 ## Current Status
 - **Phase 0**: ✅ Initial assessment and roadmap creation
-- **Phase 1**: 🔄 Project structure reorganization (Not started)
-- **Phase 2**: ⏱️ Best practice implementations (Not started)
-- **Phase 3**: ⏱️ Testing strategy implementation (Not started)
-- **Phase 4**: ⏱️ Documentation improvements (Not started)
-- **Phase 5**: ⏱️ Performance optimizations (Not started)
-- **Phase 6**: ⏱️ Deployment improvements (Not started)
+- **Phase 1**: 🔄 "What if?" Threshold Simulation Feature - Addressing regressions and bugs
+
+## Current Focus: Bug Fixes and Regressions
+
+**High Priority:**
+- Restore core dashboard functionality (data fetching, caching, display)
+- Fix "Can't find variable: $" error in "What If?" modal
+
+**Medium Priority:**
+- Address regressions in assessment colors, caching behavior, and threshold displays
+
+**Low Priority:**
+- General roadmap updates and future enhancements
+
+
+---
+
 
 ---
 
@@ -17,7 +28,7 @@
 **Objectives**:
 - Analyze the current codebase
 - Identify areas for improvement
-- Create a comprehensive roadmap for refactoring
+- Create a comprehensive roadmap for feature enhancement
 
 **Tasks**:
 - [x] Review the main.py file
@@ -27,8 +38,57 @@
 
 ---
 
-## Phase 1: Project Structure Reorganization
-**Status**: 🔄 Not started
+## Phase 1: "What if?" Threshold Simulation Feature
+**Status**: ✅ Completed
+
+**Objectives**:
+- Add ability for users to experiment with different environmental thresholds
+- Show how threshold adjustments affect fire risk assessment
+- Provide intuitive UI for threshold manipulation
+- Allow users to compare actual vs. simulated risk
+
+**Tasks**:
+- [x] Backend Changes:
+  - [x] Add new `/simulate-fire-risk` endpoint
+  - [x] Implement `calculate_fire_risk` function to accept custom thresholds
+  - [x] Ensure proper error handling for invalid threshold values
+  
+- [x] Frontend Changes:
+  - [x] Add "What if?" button beside existing "Refresh Data" button
+  - [x] Create Bootstrap modal dialog for threshold adjustment
+  - [x] Implement sliders/inputs for each threshold with default values
+  - [x] Add JavaScript to handle the simulation request and response:
+    - [x] Implement `openWhatIfModal()`
+    - [x] Implement `runSimulation()`
+    - [x] Implement `displaySimulationResults()`
+    - [x] Implement `resetSimulation()`
+  - [x] Create clear visual indicators for simulation mode
+  
+- [ ] User Experience Improvements:
+  - [ ] Add tooltips explaining threshold meanings
+  - [ ] Show visual feedback when thresholds are exceeded
+  - [ ] Display comparison between actual and simulated risk
+  - [ ] Add reset functionality to exit simulation mode
+  
+- [ ] Testing:
+  - [ ] Test the new endpoint with various threshold combinations
+  - [ ] Verify UI works correctly across different browsers
+  - [ ] Ensure proper error handling for edge cases
+
+**Completion Criteria**:
+- Users can click "What if?" button to enter simulation mode
+- Users can adjust all five threshold values
+- System displays simulated fire risk based on custom thresholds
+- Clear visual indicators show when simulation mode is active
+- Users can easily exit simulation mode
+
+---
+
+## Appendix: Candidate Enhancements
+
+*These items represent potential future enhancements that may be moved into the active roadmap as priorities dictate.*
+
+### Project Structure Reorganization
 
 **Objectives**:
 - Break down the monolithic app into modular components
@@ -36,68 +96,91 @@
 - Separate concerns (configuration, API clients, business logic, routes)
 
 **Tasks**:
-- [ ] Create the directory structure:
-  ```
-  fire-risk-dashboard/
-  ├── app/
-  │   ├── __init__.py
-  │   ├── main.py                 # Application entry point
-  │   ├── config.py               # Configuration and environment variables
-  │   ├── api/
-  │   │   ├── __init__.py
-  │   │   ├── synoptic.py         # Synoptic Data API client
-  │   │   └── wunderground.py     # Weather Underground API client
-  │   ├── core/
-  │   │   ├── __init__.py
-  │   │   ├── cache.py            # Data caching system
-  │   │   └── risk.py             # Fire risk calculation logic
-  │   ├── routes/
-  │   │   ├── __init__.py
-  │   │   ├── dashboard.py        # Main dashboard routes
-  │   │   └── dev.py              # Development-only routes
-  │   └── templates/
-  │       └── dashboard.html      # HTML template for the dashboard
-  ├── static/                     # Static files (unchanged)
-  ├── tests/                      # New directory for tests
-  │   ├── __init__.py
-  │   ├── test_api.py
-  │   ├── test_cache.py
-  │   └── test_risk.py
-  ├── requirements.txt
-  ├── render-start.zsh
-  └── README.md
-  ```
-- [ ] Extract configuration to config.py
-  - [ ] Move API keys, base URLs, and station IDs
-  - [ ] Create Pydantic settings models for configuration
-  - [ ] Implement environment variable loading
-- [ ] Extract API clients
-  - [ ] Create synoptic.py for Synoptic Data API interactions
-  - [ ] Create wunderground.py for Weather Underground API interactions
-  - [ ] Implement proper error handling and retry logic
-- [ ] Extract core logic
-  - [ ] Move DataCache class to cache.py
-  - [ ] Move fire risk calculation to risk.py
-  - [ ] Implement proper type annotations
-- [ ] Extract routes
-  - [ ] Move main dashboard route to dashboard.py
-  - [ ] Move development-only routes to dev.py
-  - [ ] Implement proper dependency injection
-- [ ] Extract HTML template
-  - [ ] Move HTML content to dashboard.html
-  - [ ] Set up Jinja2 templating
-- [ ] Update main.py to import and use the new modules
-- [ ] Ensure the refactored app works exactly like the original
+- Create a modular directory structure
+- Extract configuration to config.py
+- Extract API clients to separate modules
+- Extract core logic to separate modules
+- Extract routes to separate modules
+- Extract HTML template
+- Update main.py to import and use the new modules
 
-**Completion Criteria**:
-- The application is split into logical modules
-- All functionality is preserved
-- The application runs successfully with the new structure
-- No functionality regression
+### Best Practice Implementations
+
+**Objectives**:
+- Address identified best practice issues
+- Improve code quality and maintainability
+- Implement modern Python and FastAPI patterns
+
+**Tasks**:
+- Implement proper HTML template handling
+- Implement consistent error handling
+- Improve configuration management
+- Fix async/sync mixing
+- Enhance logging strategy
+- Add comprehensive type annotations
+- Implement dependency injection
+- Improve API documentation
+
+### Testing Strategy Implementation
+
+**Objectives**:
+- Add comprehensive tests
+- Ensure code quality and reliability
+- Prevent regression during future changes
+
+**Tasks**:
+- Set up testing framework
+- Implement unit tests
+- Implement integration tests
+- Set up CI/CD for tests
+
+### Documentation Improvements
+
+**Objectives**:
+- Improve code documentation
+- Create comprehensive API documentation
+- Update project documentation
+
+**Tasks**:
+- Add docstrings to all modules, classes, and functions
+- Enhance API documentation
+- Update README.md
+- Create additional documentation
+
+### Performance Optimizations
+
+**Objectives**:
+- Identify and address performance bottlenecks
+- Optimize data fetching and caching
+- Improve response times
+
+**Tasks**:
+- Profile the application
+- Optimize data fetching
+- Enhance caching strategy
+- Optimize database queries (if applicable)
+- Implement frontend optimizations
+
+### Deployment Improvements
+
+**Objectives**:
+- Streamline the deployment process
+- Improve reliability and scalability
+- Enhance monitoring and logging
+
+**Tasks**:
+- Containerize the application
+- Improve deployment scripts
+- Enhance monitoring
+- Improve logging for production
 
 ---
 
-## Phase 2: Best Practice Implementations
+## How to Use This Roadmap
+
+This roadmap is designed to be a living document that guides the development process. Each phase has clear objectives, tasks, and completion criteria. As we complete each phase, we'll update the "Current Status" section at the top of the document.
+
+Priority items are included in the main roadmap, while potential future enhancements are listed in the Appendix. Items will be moved from the Appendix to the main roadmap as priorities dictate.
 **Status**: ⏱️ Not started
 
 **Objectives**:
