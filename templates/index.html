@@ -10,6 +10,89 @@
     <link href="/static/synoptic-logo.css" rel="stylesheet">
     <style>
         /* existing styles */
+        .cache-info {
+            margin-bottom: 15px;
+        }
+        .cache-info.fresh {
+            color: #2e7d32;
+        }
+        .cache-info.cached {
+            color: #ef6c00;
+        }
+        .cache-info.loading {
+            color: #0277bd;
+        }
+        
+        /* Weather details styles */
+        .weather-details h5 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .weather-details ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+        }
+        
+        .weather-details li {
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+        
+        .weather-value {
+            font-weight: bold;
+        }
+        
+        .weather-threshold {
+            color: #6c757d;
+            margin-left: 0.5rem;
+            border-left: 1px solid #dee2e6;
+            padding-left: 0.5rem;
+        }
+        
+        /* Info icon and tooltip styles */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background-color: #0d6efd;
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        
+        /* Bootstrap tooltip customization */
+        .tooltip {
+            font-size: 0.8rem;
+        }
+        
+        .tooltip-inner {
+            max-width: 150px;
+            padding: 4px 8px;
+            background-color: #212529;
+        }
+        
+        /* Fire risk styles */
+        .fire-risk-orange {
+            background-color: #FFA500; /* Orange color for the background */
+            color: #000000; /* Black text */
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .fire-risk-red {
+            background-color: #dc3545; /* Red color for extreme risk */
+            color: #ffffff; /* White text for better contrast */
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -208,6 +291,12 @@
                 }
                 const data = await response.json();
                 updateDashboard(data);
+                
+                // Initialize Bootstrap tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
             } catch (error) {
                 console.error("Error setting up refresh:", error);
                 alert(error.message);
@@ -223,6 +312,12 @@
                 }
                 const data = await response.json();
                 updateDashboard(data);
+                
+                // Re-initialize Bootstrap tooltips after refresh
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
             } catch (error) {
                 console.error("Error during manual refresh:", error);
                 alert(error.message);
@@ -242,32 +337,53 @@
                     
                     if (data.cached_data && data.cached_data.is_cached) {
                         const originalTimestamp = new Date(data.cached_data.original_timestamp);
-                        cacheInfoDiv.textContent = `▲ Using cached data - current data unavailable (Last updated: ${originalTimestamp.toLocaleString()})`;
-                        cacheInfoDiv.className = 'alert alert-warning';
+                        // Format time with timezone
+                        const timeOptions = { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit', 
+                            hour12: true,
+                            timeZoneName: 'short'
+                        };
+                        const formattedTime = originalTimestamp.toLocaleTimeString('en-US', timeOptions);
+                        
+                        cacheInfoDiv.textContent = `▲ Using cached data - current data unavailable (Last updated: ${formattedTime})`;
+                        cacheInfoDiv.className = 'cache-info cached';
                     } else if (lastUpdated) {
-                        cacheInfoDiv.textContent = `✓ Data is fresh (Last updated: ${lastUpdated.toLocaleString()})`;
-                        cacheInfoDiv.className = 'alert alert-success';
+                        // Format time with timezone
+                        const timeOptions = { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit', 
+                            hour12: true,
+                            timeZoneName: 'short'
+                        };
+                        const formattedTime = lastUpdated.toLocaleTimeString('en-US', timeOptions);
+                        
+                        cacheInfoDiv.textContent = `✓ Data is fresh (Last updated: ${formattedTime})`;
+                        cacheInfoDiv.className = 'cache-info fresh';
                     } else {
                         cacheInfoDiv.textContent = "Data status: Loading...";
-                        cacheInfoDiv.className = 'alert alert-info';
+                        cacheInfoDiv.className = 'cache-info loading';
                     }
                 } else {
                     cacheInfoDiv.textContent = "Data status: Loading...";
-                    cacheInfoDiv.className = 'alert alert-info';
+                    cacheInfoDiv.className = 'cache-info loading';
                 }
             }
 
             // Update fire risk display
             const fireRiskDiv = document.getElementById('fire-risk');
             if (fireRiskDiv && data.explanation) {
-                fireRiskDiv.textContent = data.explanation;
-                
-                // Set appropriate color based on risk level
+                // Format the text to include "Fire Risk: [Color] - " before the explanation
                 if (data.risk === 'Red') {
-                    fireRiskDiv.className = 'alert alert-danger';
+                    fireRiskDiv.textContent = `Fire Risk: Red - ${data.explanation}`;
+                    fireRiskDiv.className = 'fire-risk-red';
                 } else if (data.risk === 'Orange') {
-                    fireRiskDiv.className = 'alert alert-warning';
+                    fireRiskDiv.textContent = `Fire Risk: Orange - ${data.explanation}`;
+                    fireRiskDiv.className = 'fire-risk-orange';
                 } else {
+                    fireRiskDiv.textContent = `Fire Risk: ${data.risk} - ${data.explanation}`;
                     fireRiskDiv.className = 'alert alert-info';
                 }
             }
@@ -275,15 +391,55 @@
             // Update weather details
             const weatherDetailsDiv = document.getElementById('weather-details');
             if (weatherDetailsDiv && data.weather) {
-                let weatherHTML = "<h5>Current Weather Conditions:</h5><ul>";
+                let weatherHTML = "<h5>Current Weather Conditions:</h5><ul class='weather-details'>";
                 
                 // Add each weather parameter with its threshold
                 const weatherParams = [
-                    { key: 'air_temp', label: 'Temperature', unit: '°F', threshold: window.THRESH_TEMP },
-                    { key: 'relative_humidity', label: 'Humidity', unit: '%', threshold: window.THRESH_HUMID },
-                    { key: 'wind_speed', label: 'Wind Speed', unit: 'mph', threshold: window.THRESH_WIND },
-                    { key: 'wind_gust', label: 'Wind Gusts', unit: 'mph', threshold: window.THRESH_GUSTS },
-                    { key: 'soil_moisture_15cm', label: 'Soil Moisture', unit: '%', threshold: window.THRESH_SOIL_MOIST }
+                    { 
+                        key: 'air_temp', 
+                        label: 'Temperature', 
+                        unit: '°F', 
+                        threshold: window.THRESH_TEMP,
+                        thresholdPrefix: '>',
+                        source: data.weather.sources?.air_temp || 'Synoptic Data',
+                        location: 'Sierra City'
+                    },
+                    { 
+                        key: 'relative_humidity', 
+                        label: 'Humidity', 
+                        unit: '%', 
+                        threshold: window.THRESH_HUMID,
+                        thresholdPrefix: '<',
+                        source: data.weather.sources?.relative_humidity || 'Synoptic Data',
+                        location: 'Sierra City'
+                    },
+                    { 
+                        key: 'wind_speed', 
+                        label: 'Wind Speed', 
+                        unit: 'mph', 
+                        threshold: window.THRESH_WIND,
+                        thresholdPrefix: '>',
+                        source: data.weather.sources?.wind_speed || 'Synoptic Data',
+                        location: 'Sierra City'
+                    },
+                    { 
+                        key: 'wind_gust', 
+                        label: 'Wind Gusts', 
+                        unit: 'mph', 
+                        threshold: window.THRESH_GUSTS,
+                        thresholdPrefix: '>',
+                        source: data.weather.sources?.wind_gust || 'Wunderground',
+                        location: 'KCASIERR68'
+                    },
+                    { 
+                        key: 'soil_moisture_15cm', 
+                        label: 'Soil Moisture (15cm depth)', 
+                        unit: '%', 
+                        threshold: window.THRESH_SOIL_MOIST,
+                        thresholdPrefix: '<',
+                        source: data.weather.sources?.soil_moisture || 'Synoptic Data',
+                        location: 'Downieville'
+                    }
                 ];
                 
                 for (const param of weatherParams) {
@@ -292,12 +448,19 @@
                         const isCached = data.weather.cached_fields && data.weather.cached_fields[param.key.replace('_15cm', '')];
                         const cachedLabel = isCached ? ' (cached)' : '';
                         
-                        weatherHTML += `<li>${param.label}: ${value}${param.unit}${cachedLabel} (Threshold: ${param.threshold}${param.unit})</li>`;
+                        weatherHTML += `
+                            <li>
+                                <span class="weather-value">${param.label}: ${value}${param.unit}${cachedLabel}</span>
+                                <span class="weather-threshold">Threshold: ${param.thresholdPrefix}${param.threshold}${param.unit}</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${param.location}<br>From: ${param.source}">i</span>
+                            </li>
+                        `;
                     }
                 }
                 
                 weatherHTML += "</ul>";
                 weatherDetailsDiv.innerHTML = weatherHTML;
+                weatherDetailsDiv.className = 'weather-details mt-3';
             }
 
             // Update timestamp
@@ -305,10 +468,26 @@
             if (timestampDiv) {
                 if (data.cache_info && data.cache_info.last_updated) {
                     const lastUpdatedDate = new Date(data.cache_info.last_updated);
-                    timestampDiv.textContent = "Last updated: " + lastUpdatedDate.toLocaleString();
+                    // Format time with timezone
+                    const timeOptions = { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: true,
+                        timeZoneName: 'short'
+                    };
+                    const formattedTime = lastUpdatedDate.toLocaleTimeString('en-US', timeOptions);
+                    timestampDiv.textContent = "Last updated: " + formattedTime;
                 } else {
                     const now = new Date();
-                    timestampDiv.textContent = "Last updated: " + now.toLocaleString();
+                    const formattedTime = now.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: true,
+                        timeZoneName: 'short'
+                    });
+                    timestampDiv.textContent = "Last updated: " + formattedTime;
                 }
             }
         }
