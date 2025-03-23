@@ -112,19 +112,19 @@
         // Note: These are Jinja2 template variables that will be replaced with actual values when the template is rendered
         // The JavaScript linter in VSCode may show errors for these lines, but they are not actual errors
         /* eslint-disable */
-        const THRESH_TEMP = {{ THRESH_TEMP|tojson }};
-        const THRESH_HUMID = {{ THRESH_HUMID|tojson }};
-        const THRESH_WIND = {{ THRESH_WIND|tojson }};
-        const THRESH_GUSTS = {{ THRESH_GUSTS|tojson }};
-        const THRESH_SOIL_MOIST = {{ THRESH_SOIL_MOIST|tojson }};
+        window.THRESH_TEMP = "{{ THRESH_TEMP|tojson }}".replace(/^"|"$/g, '');
+        window.THRESH_HUMID = "{{ THRESH_HUMID|tojson }}".replace(/^"|"$/g, '');
+        window.THRESH_WIND = "{{ THRESH_WIND|tojson }}".replace(/^"|"$/g, '');
+        window.THRESH_GUSTS = "{{ THRESH_GUSTS|tojson }}".replace(/^"|"$/g, '');
+        window.THRESH_SOIL_MOIST = "{{ THRESH_SOIL_MOIST|tojson }}".replace(/^"|"$/g, '');
         /* eslint-enable */
 
         function openWhatIfModal() {
-            document.getElementById('temp-threshold').value = THRESH_TEMP;
-            document.getElementById('humid-threshold').value = THRESH_HUMID;
-            document.getElementById('wind-threshold').value = THRESH_WIND;
-            document.getElementById('gusts-threshold').value = THRESH_GUSTS;
-            document.getElementById('soil-threshold').value = THRESH_SOIL_MOIST;
+            document.getElementById('temp-threshold').value = window.THRESH_TEMP;
+            document.getElementById('humid-threshold').value = window.THRESH_HUMID;
+            document.getElementById('wind-threshold').value = window.THRESH_WIND;
+            document.getElementById('gusts-threshold').value = window.THRESH_GUSTS;
+            document.getElementById('soil-threshold').value = window.THRESH_SOIL_MOIST;
         }
 
         async function runSimulation() {
@@ -279,11 +279,11 @@
                 
                 // Add each weather parameter with its threshold
                 const weatherParams = [
-                    { key: 'air_temp', label: 'Temperature', unit: '°F', threshold: THRESH_TEMP },
-                    { key: 'relative_humidity', label: 'Humidity', unit: '%', threshold: THRESH_HUMID },
-                    { key: 'wind_speed', label: 'Wind Speed', unit: 'mph', threshold: THRESH_WIND },
-                    { key: 'wind_gust', label: 'Wind Gusts', unit: 'mph', threshold: THRESH_GUSTS },
-                    { key: 'soil_moisture_15cm', label: 'Soil Moisture', unit: '%', threshold: THRESH_SOIL_MOIST }
+                    { key: 'air_temp', label: 'Temperature', unit: '°F', threshold: window.THRESH_TEMP },
+                    { key: 'relative_humidity', label: 'Humidity', unit: '%', threshold: window.THRESH_HUMID },
+                    { key: 'wind_speed', label: 'Wind Speed', unit: 'mph', threshold: window.THRESH_WIND },
+                    { key: 'wind_gust', label: 'Wind Gusts', unit: 'mph', threshold: window.THRESH_GUSTS },
+                    { key: 'soil_moisture_15cm', label: 'Soil Moisture', unit: '%', threshold: window.THRESH_SOIL_MOIST }
                 ];
                 
                 for (const param of weatherParams) {
