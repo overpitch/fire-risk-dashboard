@@ -93,6 +93,28 @@
             border-radius: 5px;
             margin-bottom: 15px;
         }
+        
+        /* Temporary threshold style */
+        .temporary-threshold {
+            font-weight: bold;
+            margin-left: 0.5rem;
+            border-left: 1px solid #dee2e6;
+            padding-left: 0.5rem;
+        }
+        
+        /* Use exactly #FFA500 as requested */
+        .orange-text {
+            color: #FFA500 !important;
+        }
+        
+        /* Custom alert class with exact #FFA500 background */
+        .alert-custom-orange {
+            background-color: #FFA500;
+            color: #000000;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -201,6 +223,9 @@
         window.THRESH_GUSTS = "{{ THRESH_GUSTS|tojson }}".replace(/^"|"$/g, '');
         window.THRESH_SOIL_MOIST = "{{ THRESH_SOIL_MOIST|tojson }}".replace(/^"|"$/g, '');
         /* eslint-enable */
+        
+        // Global variable to store custom thresholds
+        window.customThresholds = null;
 
         function openWhatIfModal() {
             document.getElementById('temp-threshold').value = window.THRESH_TEMP;
@@ -249,60 +274,13 @@
             const risk = data.risk;
             const explanation = data.explanation;
             const customThresholds = data.custom_thresholds;
-            const weatherData = data.weather;
-
-            // Create a comparison table for thresholds - always show the table
-            let thresholdComparisonHTML = `
-            <div class="card mt-3 mb-3">
-                <div class="card-header bg-primary text-white">
-                    <strong>Temporary Thresholds Comparison</strong>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Parameter</th>
-                                    <th>Current Value</th>
-                                    <th>Temporary Threshold</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Temperature</strong></td>
-                                    <td>${weatherData?.air_temp ? weatherData.air_temp : 'N/A'}°F</td>
-                                    <td class="table-warning">${customThresholds?.temp ? customThresholds.temp : 'N/A'}°F</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Humidity</strong></td>
-                                    <td>${weatherData?.relative_humidity ? weatherData.relative_humidity : 'N/A'}%</td>
-                                    <td class="table-warning">${customThresholds?.humid ? customThresholds.humid : 'N/A'}%</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Wind Speed</strong></td>
-                                    <td>${weatherData?.wind_speed ? weatherData.wind_speed : 'N/A'} mph</td>
-                                    <td class="table-warning">${customThresholds?.wind ? customThresholds.wind : 'N/A'} mph</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Wind Gusts</strong></td>
-                                    <td>${weatherData?.wind_gust ? weatherData.wind_gust : 'N/A'} mph</td>
-                                    <td class="table-warning">${customThresholds?.gusts ? customThresholds.gusts : 'N/A'} mph</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Soil Moisture</strong></td>
-                                    <td>${weatherData?.soil_moisture_15cm ? weatherData.soil_moisture_15cm : 'N/A'}%</td>
-                                    <td class="table-warning">${customThresholds?.soil ? customThresholds.soil : 'N/A'}%</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            `;
-
-            // Create a more prominent alert with the risk result
+            
+            // Store custom thresholds in global variable for use in updateDashboard
+            window.customThresholds = customThresholds;
+            
+            // Create a risk alert with the simulation results
             const resultsHTML = `
-            <div class="alert ${risk === 'Red' ? 'alert-danger' : 'alert-warning'} mb-4" role="alert">
+            <div class="${risk === 'Red' ? 'alert alert-danger' : 'alert-custom-orange'} mb-4" role="alert">
                 <h4 class="alert-heading">Results with Temporary Thresholds</h4>
                 <p class="mb-0"><strong>Fire Risk: ${risk}</strong> - ${explanation}</p>
                 <hr>
@@ -312,12 +290,56 @@
                     </button>
                 </div>
             </div>
-            ${thresholdComparisonHTML}
             `;
 
             resultsDiv.innerHTML = resultsHTML;
             document.getElementById('fire-risk').style.display = 'none'; // Hide actual risk
             document.getElementById('temporary-thresholds-banner').classList.remove('d-none'); // Show temporary thresholds banner
+            
+            // Update cache info
+            updateCacheInfo(data);
+            
+            // Update the dashboard to show custom thresholds
+            updateDashboard(data);
+        }
+        
+        function updateCacheInfo(data) {
+            const cacheInfoDiv = document.getElementById('cache-info');
+            if (cacheInfoDiv && data.cache_info) {
+                const lastUpdated = data.cache_info.last_updated ? new Date(data.cache_info.last_updated) : null;
+                
+                if (data.cached_data && data.cached_data.is_cached) {
+                    const originalTimestamp = new Date(data.cached_data.original_timestamp);
+                    // Format time with timezone
+                    const timeOptions = { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: true,
+                        timeZoneName: 'short'
+                    };
+                    const formattedTime = originalTimestamp.toLocaleTimeString('en-US', timeOptions);
+                    
+                    cacheInfoDiv.textContent = `▲ Using cached data - current data unavailable (Last updated: ${formattedTime})`;
+                    cacheInfoDiv.className = 'cache-info cached';
+                } else if (lastUpdated) {
+                    // Format time with timezone
+                    const timeOptions = { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: true,
+                        timeZoneName: 'short'
+                    };
+                    const formattedTime = lastUpdated.toLocaleTimeString('en-US', timeOptions);
+                    
+                    cacheInfoDiv.textContent = `✓ Data is fresh (Last updated: ${formattedTime})`;
+                    cacheInfoDiv.className = 'cache-info fresh';
+                } else {
+                    cacheInfoDiv.textContent = "Data status: Loading...";
+                    cacheInfoDiv.className = 'cache-info loading';
+                }
+            }
         }
 
         async function resetThresholds() {
@@ -328,10 +350,16 @@
                     throw new Error(`Reset failed: ${errorData.detail}`);
                 }
 
+                // Clear custom thresholds
+                window.customThresholds = null;
+                
                 // Reset UI to display actual risk
                 document.getElementById('fire-risk').style.display = 'block';
                 document.getElementById('temporary-thresholds-banner').classList.add('d-none');
                 document.getElementById('threshold-results').innerHTML = '';
+                
+                // Refresh the dashboard to remove custom thresholds
+                await manualRefresh();
 
             } catch (error) {
                 console.error('Error resetting thresholds:', error);
@@ -386,48 +414,8 @@
         function updateDashboard(data) {
             console.log("Updating dashboard with:", data);
 
-            // Update cache info
-            const cacheInfoDiv = document.getElementById('cache-info');
-            if (cacheInfoDiv) {
-                if (data.cache_info) {
-                    const lastUpdated = data.cache_info.last_updated ? new Date(data.cache_info.last_updated) : null;
-                    
-                    if (data.cached_data && data.cached_data.is_cached) {
-                        const originalTimestamp = new Date(data.cached_data.original_timestamp);
-                        // Format time with timezone
-                        const timeOptions = { 
-                            hour: '2-digit', 
-                            minute: '2-digit', 
-                            second: '2-digit', 
-                            hour12: true,
-                            timeZoneName: 'short'
-                        };
-                        const formattedTime = originalTimestamp.toLocaleTimeString('en-US', timeOptions);
-                        
-                        cacheInfoDiv.textContent = `▲ Using cached data - current data unavailable (Last updated: ${formattedTime})`;
-                        cacheInfoDiv.className = 'cache-info cached';
-                    } else if (lastUpdated) {
-                        // Format time with timezone
-                        const timeOptions = { 
-                            hour: '2-digit', 
-                            minute: '2-digit', 
-                            second: '2-digit', 
-                            hour12: true,
-                            timeZoneName: 'short'
-                        };
-                        const formattedTime = lastUpdated.toLocaleTimeString('en-US', timeOptions);
-                        
-                        cacheInfoDiv.textContent = `✓ Data is fresh (Last updated: ${formattedTime})`;
-                        cacheInfoDiv.className = 'cache-info fresh';
-                    } else {
-                        cacheInfoDiv.textContent = "Data status: Loading...";
-                        cacheInfoDiv.className = 'cache-info loading';
-                    }
-                } else {
-                    cacheInfoDiv.textContent = "Data status: Loading...";
-                    cacheInfoDiv.className = 'cache-info loading';
-                }
-            }
+            // Update cache info using the shared function
+            updateCacheInfo(data);
 
             // Update fire risk display
             const fireRiskDiv = document.getElementById('fire-risk');
@@ -505,10 +493,45 @@
                         const isCached = data.weather.cached_fields && data.weather.cached_fields[param.key.replace('_15cm', '')];
                         const cachedLabel = isCached ? ' (cached)' : '';
                         
+                        // Check if we have custom thresholds to display
+                        let customThresholdHTML = '';
+                        if (window.customThresholds) {
+                            let customValue;
+                            let standardValue;
+                            
+                            if (param.key === 'air_temp') {
+                                customValue = window.customThresholds.temp;
+                                standardValue = parseFloat(window.THRESH_TEMP);
+                            }
+                            else if (param.key === 'relative_humidity') {
+                                customValue = window.customThresholds.humid;
+                                standardValue = parseFloat(window.THRESH_HUMID);
+                            }
+                            else if (param.key === 'wind_speed') {
+                                customValue = window.customThresholds.wind;
+                                standardValue = parseFloat(window.THRESH_WIND);
+                            }
+                            else if (param.key === 'wind_gust') {
+                                customValue = window.customThresholds.gusts;
+                                standardValue = parseFloat(window.THRESH_GUSTS);
+                            }
+                            else if (param.key === 'soil_moisture_15cm') {
+                                customValue = window.customThresholds.soil;
+                                standardValue = parseFloat(window.THRESH_SOIL_MOIST);
+                            }
+                            
+                            // Only show temporary threshold if it's different from the standard one
+                            if (customValue !== undefined && customValue !== standardValue) {
+                                // Force the color to be exactly #FFA500 with inline style and !important
+                                customThresholdHTML = `<span class="temporary-threshold" style="color: #FFA500 !important;">Temporary: ${param.thresholdPrefix}${customValue}${param.unit}</span>`;
+                            }
+                        }
+                        
                         weatherHTML += `
                             <li>
                                 <span class="weather-value">${param.label}: ${value}${param.unit}${cachedLabel}</span>
                                 <span class="weather-threshold">Threshold: ${param.thresholdPrefix}${param.threshold}${param.unit}</span>
+                                ${customThresholdHTML}
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${param.location}<br>From: ${param.source}">i</span>
                             </li>
                         `;
