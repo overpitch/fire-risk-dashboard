@@ -395,7 +395,13 @@ async def simulate_fire_risk(request: Request, thresholds: Dict[str, float]):
     # Calculate fire risk using custom thresholds
     simulated_risk, explanation = calculate_fire_risk(modified_weather_data, custom_thresholds=thresholds)
 
-    return {"risk": simulated_risk, "explanation": explanation}
+    # Include the custom thresholds in the response
+    return {
+        "risk": simulated_risk, 
+        "explanation": explanation,
+        "custom_thresholds": thresholds,
+        "weather": weather_data
+    }
 
 
 

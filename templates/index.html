@@ -106,16 +106,16 @@
     </nav>
 
     <div class="container mt-5">
-        <div id="simulation-banner" class="alert alert-warning d-none" role="alert">
-            <strong>Simulation Mode:</strong> Using custom threshold values.
+        <div id="temporary-thresholds-banner" class="alert alert-warning d-none" role="alert">
+            <strong>Temporary Thresholds Mode:</strong> Using user-defined threshold values.
         </div>
         <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
             <div id="cache-info" class="cache-info">Data status: Loading...</div>
             <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
-            <button id="what-if-btn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#whatIfModal" onclick="openWhatIfModal()">What If?</button>
+            <button id="what-if-btn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#whatIfModal" onclick="openWhatIfModal()">Change Thresholds</button>
         </div>
         <div id="fire-risk" class="alert alert-info">Loading fire risk data...</div>
-        <div id="simulation-results"></div>
+        <div id="threshold-results"></div>
         <div id="weather-details" class="mt-3"></div>
         <div class="alert mt-4 mb-4" style="background-color: #d1ecff;">
             <p>Fire weather needs to be local. A few Sierra City residents analyze local wind, humidity, temperature and soil moisture data and offer their advice in real time. This fire weather advisory is a best guess of what you should know about local fire weather conditions before there is a fire event.</p>
@@ -134,7 +134,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="whatIfModalLabel">What If?</h5>
+                        <h5 class="modal-title" id="whatIfModalLabel">Adjust Thresholds</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -163,7 +163,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" onclick="runSimulation()">Run Simulation</button>
+                        <button type="button" class="btn btn-primary" onclick="applyThresholds()">Apply Thresholds</button>
                     </div>
                 </div>
             </div>
@@ -210,7 +210,7 @@
             document.getElementById('soil-threshold').value = window.THRESH_SOIL_MOIST;
         }
 
-        async function runSimulation() {
+        async function applyThresholds() {
             const form = document.getElementById('what-if-form');
             const formData = new FormData(form);
             const customThresholds = {};
@@ -227,43 +227,100 @@
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(`Simulation failed: ${errorData.detail}`);
+                    throw new Error(`Failed to apply thresholds: ${errorData.detail}`);
                 }
 
                 const data = await response.json();
-                displaySimulationResults(data);
+                displayThresholdResults(data);
                 // Use plain JavaScript to hide the modal
                 const whatIfModal = document.getElementById('whatIfModal');
                 const modal = bootstrap.Modal.getInstance(whatIfModal);
                 modal.hide();
 
             } catch (error) {
-                console.error('Error running simulation:', error);
+                console.error('Error applying thresholds:', error);
                 alert(error.message);
             }
         }
 
-        function displaySimulationResults(data) {
-            const resultsDiv = document.getElementById('simulation-results');
+        function displayThresholdResults(data) {
+            console.log("Displaying threshold results with data:", data);
+            const resultsDiv = document.getElementById('threshold-results');
             const risk = data.risk;
             const explanation = data.explanation;
+            const customThresholds = data.custom_thresholds;
+            const weatherData = data.weather;
 
-            const resultsHTML = `
-            <div class="alert alert-warning" role="alert">
-                <strong>Simulation Results:</strong>
-                Fire Risk: ${risk} - ${explanation}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="resetSimulation()">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+            // Create a comparison table for thresholds - always show the table
+            let thresholdComparisonHTML = `
+            <div class="card mt-3 mb-3">
+                <div class="card-header bg-primary text-white">
+                    <strong>Temporary Thresholds Comparison</strong>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Current Value</th>
+                                    <th>Temporary Threshold</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Temperature</strong></td>
+                                    <td>${weatherData?.air_temp ? weatherData.air_temp : 'N/A'}°F</td>
+                                    <td class="table-warning">${customThresholds?.temp ? customThresholds.temp : 'N/A'}°F</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Humidity</strong></td>
+                                    <td>${weatherData?.relative_humidity ? weatherData.relative_humidity : 'N/A'}%</td>
+                                    <td class="table-warning">${customThresholds?.humid ? customThresholds.humid : 'N/A'}%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Wind Speed</strong></td>
+                                    <td>${weatherData?.wind_speed ? weatherData.wind_speed : 'N/A'} mph</td>
+                                    <td class="table-warning">${customThresholds?.wind ? customThresholds.wind : 'N/A'} mph</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Wind Gusts</strong></td>
+                                    <td>${weatherData?.wind_gust ? weatherData.wind_gust : 'N/A'} mph</td>
+                                    <td class="table-warning">${customThresholds?.gusts ? customThresholds.gusts : 'N/A'} mph</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Soil Moisture</strong></td>
+                                    <td>${weatherData?.soil_moisture_15cm ? weatherData.soil_moisture_15cm : 'N/A'}%</td>
+                                    <td class="table-warning">${customThresholds?.soil ? customThresholds.soil : 'N/A'}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+            `;
+
+            // Create a more prominent alert with the risk result
+            const resultsHTML = `
+            <div class="alert ${risk === 'Red' ? 'alert-danger' : 'alert-warning'} mb-4" role="alert">
+                <h4 class="alert-heading">Results with Temporary Thresholds</h4>
+                <p class="mb-0"><strong>Fire Risk: ${risk}</strong> - ${explanation}</p>
+                <hr>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="resetThresholds()">
+                        Reset to Default Thresholds
+                    </button>
+                </div>
+            </div>
+            ${thresholdComparisonHTML}
             `;
 
             resultsDiv.innerHTML = resultsHTML;
             document.getElementById('fire-risk').style.display = 'none'; // Hide actual risk
-            document.getElementById('simulation-banner').classList.remove('d-none'); // Show simulation banner
+            document.getElementById('temporary-thresholds-banner').classList.remove('d-none'); // Show temporary thresholds banner
         }
 
-        async function resetSimulation() {
+        async function resetThresholds() {
             try {
                 const response = await fetch('/reset-simulation');
                 if (!response.ok) {
@@ -273,11 +330,11 @@
 
                 // Reset UI to display actual risk
                 document.getElementById('fire-risk').style.display = 'block';
-                document.getElementById('simulation-banner').classList.add('d-none');
-                document.getElementById('simulation-results').innerHTML = '';
+                document.getElementById('temporary-thresholds-banner').classList.add('d-none');
+                document.getElementById('threshold-results').innerHTML = '';
 
             } catch (error) {
-                console.error('Error resetting simulation:', error);
+                console.error('Error resetting thresholds:', error);
                 alert(error.message);
             }
         }

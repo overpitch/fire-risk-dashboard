@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: rudhq-uu6vl
+created: 2025-03-24T11:33:18-07:00
