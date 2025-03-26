@@ -69,16 +69,16 @@
             border: 1px solid #ffeeba;
             padding: 15px;
         }
-        /* Custom style for wider wind gust tooltip */
+        /* Custom style for wind gust tooltip */
         .tooltip-wide {
-            min-width: 350px;
-            max-width: 400px;
+            min-width: 250px;
+            max-width: 280px;
             text-align: center;
             font-size: 1.1em;
         }
         .tooltip-wide .tooltip-inner {
-            max-width: 400px;
-            padding: 10px;
+            max-width: 280px;
+            padding: 8px 5px;
         }
     </style>
     <script>
@@ -449,7 +449,7 @@
                 return "Wind gust data unavailable";
             }
             
-            let tooltipContent = "<strong>Wind Gust Data</strong><br><br>";
+            let tooltipContent = "<strong>Wind Gust Data</strong><br>";
             let hasData = false;
             
             // Loop through each station
@@ -469,15 +469,15 @@
                         const ageMinutes = Math.floor((now - timestamp) / (1000 * 60));
                         
                         if (ageMinutes < 60) {
-                            ageInfo = ` - ${ageMinutes} min old`;
+                            ageInfo = ` ${ageMinutes}m old`;
                         } else {
                             const ageHours = Math.floor(ageMinutes / 60);
-                            ageInfo = ` - ${ageHours} hour${ageHours !== 1 ? 's' : ''} old`;
+                            ageInfo = ` ${ageHours}h old`;
                         }
                     }
                     
-                    const statusIndicator = isCached ? `⚠️ cached${ageInfo}` : "✓ current";
-                    tooltipContent += `<div style="margin: 5px 0;">${stationId}: <strong>${value}</strong> (${statusIndicator})</div>`;
+                    const statusIndicator = isCached ? `⚠️${ageInfo}` : "✓";
+                    tooltipContent += `<div style="margin: 3px 0;">${stationId}: <strong>${value}</strong> ${statusIndicator}</div>`;
                 }
             }
             
@@ -485,7 +485,7 @@
                 return "No wind gust data available from any station";
             }
             
-            tooltipContent += "<br><div style='margin-top: 5px; border-top: 1px solid #ddd; padding-top: 5px;'>Data source: Wunderground</div>";
+            tooltipContent += "<div style='margin-top: 3px; font-size: 0.9em;'>From: Wunderground</div>";
             return tooltipContent;
         }
         
