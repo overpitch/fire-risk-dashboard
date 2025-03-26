@@ -69,6 +69,17 @@
             border: 1px solid #ffeeba;
             padding: 15px;
         }
+        /* Custom style for wider wind gust tooltip */
+        .tooltip-wide {
+            min-width: 350px;
+            max-width: 400px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+        .tooltip-wide .tooltip-inner {
+            max-width: 400px;
+            padding: 10px;
+        }
     </style>
     <script>
         // Configure client-side settings
@@ -361,7 +372,8 @@
                             <li style="color: ${gustExceeds ? 'red' : 'black'}">
                                 <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
                                 <span style="${thresholdStyle}">Threshold: >${THRESH_GUSTS} mph</span>
-                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
+                                <span class="info-icon wind-gust-info" data-bs-toggle="tooltip" data-bs-html="true" 
+                                      title="Loading wind gust data...">ⓘ</span>
                             </li>
                             <li style="color: ${soilExceeds ? 'red' : 'black'}">
                                 <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
@@ -400,6 +412,25 @@
                     document.getElementById('refresh-btn').disabled = false;
                 }
                 
+                // Update the wind gust tooltip with station data
+                if (data.weather.wind_gust_stations) {
+                    const tooltipContent = buildWindGustTooltip(data.weather.wind_gust_stations);
+                    const windGustTooltip = document.querySelector('.wind-gust-info');
+                    if (windGustTooltip) {
+                        // Update the tooltip content
+                        const tooltip = bootstrap.Tooltip.getInstance(windGustTooltip);
+                        if (tooltip) {
+                            tooltip.dispose(); // Remove existing tooltip
+                        }
+                        windGustTooltip.setAttribute('title', tooltipContent);
+                        // Reinitialize the tooltip with the wide template
+                        new bootstrap.Tooltip(windGustTooltip, {
+                            template: '<div class="tooltip tooltip-wide" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>',
+                            html: true
+                        });
+                    }
+                }
+                
                 return true; // Signal success
                 
             } catch (error) {
@@ -412,10 +443,63 @@
             }
         }
 
+        // Build tooltip content for wind gust stations
+        function buildWindGustTooltip(stationsData) {
+            if (!stationsData) {
+                return "Wind gust data unavailable";
+            }
+            
+            let tooltipContent = "<strong>Wind Gust Data</strong><br><br>";
+            let hasData = false;
+            
+            // Loop through each station
+            for (const stationId in stationsData) {
+                const stationData = stationsData[stationId];
+                
+                if (stationData) {
+                    hasData = true;
+                    const value = stationData.value !== null ? Math.round(stationData.value) + " mph" : "unavailable";
+                    const isCached = stationData.is_cached;
+                    
+                    // Format timestamp if available
+                    let ageInfo = "";
+                    if (isCached && stationData.timestamp) {
+                        const now = new Date();
+                        const timestamp = new Date(stationData.timestamp);
+                        const ageMinutes = Math.floor((now - timestamp) / (1000 * 60));
+                        
+                        if (ageMinutes < 60) {
+                            ageInfo = ` - ${ageMinutes} min old`;
+                        } else {
+                            const ageHours = Math.floor(ageMinutes / 60);
+                            ageInfo = ` - ${ageHours} hour${ageHours !== 1 ? 's' : ''} old`;
+                        }
+                    }
+                    
+                    const statusIndicator = isCached ? `⚠️ cached${ageInfo}` : "✓ current";
+                    tooltipContent += `<div style="margin: 5px 0;">${stationId}: <strong>${value}</strong> (${statusIndicator})</div>`;
+                }
+            }
+            
+            if (!hasData) {
+                return "No wind gust data available from any station";
+            }
+            
+            tooltipContent += "<br><div style='margin-top: 5px; border-top: 1px solid #ddd; padding-top: 5px;'>Data source: Wunderground</div>";
+            return tooltipContent;
+        }
+        
         // Initialize tooltips
         function initializeTooltips() {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function (tooltipTriggerEl) {
+                // Apply the wide class to the wind gust tooltip only
+                if (tooltipTriggerEl.closest('li') && tooltipTriggerEl.closest('li').textContent.includes('Wind Gusts')) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl, {
+                        template: '<div class="tooltip tooltip-wide" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
+                    });
+                }
+                // Use default tooltip for all other elements
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
         }

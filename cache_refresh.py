@@ -6,6 +6,7 @@ from fastapi import BackgroundTasks
 
 from config import TIMEZONE, logger
 from api_clients import get_synoptic_data, get_wunderground_data
+from config import WUNDERGROUND_STATION_IDS
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache
@@ -46,6 +47,7 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             return get_synoptic_data()
             
         def fetch_wunderground():
+            # Get data for all stations
             return get_wunderground_data()
         
         # Run both API calls concurrently in thread pool
@@ -68,6 +70,16 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             if isinstance(wunderground_data, Exception):
                 logger.error(f"Error fetching Weather Underground data: {wunderground_data}")
                 wunderground_data = None
+            else:
+                # Log summary of station data
+                if wunderground_data:
+                    successful_stations = [station_id for station_id, data in wunderground_data.items() if data is not None]
+                    failed_stations = [station_id for station_id, data in wunderground_data.items() if data is None]
+                    
+                    if successful_stations:
+                        logger.info(f"Successfully fetched data from {len(successful_stations)} Weather Underground stations: {', '.join(successful_stations)}")
+                    if failed_stations:
+                        logger.warning(f"Failed to fetch data from {len(failed_stations)} Weather Underground stations: {', '.join(failed_stations)}")
                 
             return weather_data, wunderground_data
                 

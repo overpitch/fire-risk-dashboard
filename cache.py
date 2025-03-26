@@ -33,7 +33,14 @@ class DataCache:
                 "humidity": {"value": None, "timestamp": None},
                 "wind_speed": {"value": None, "timestamp": None},
                 "soil_moisture": {"value": None, "timestamp": None},
-                "wind_gust": {"value": None, "timestamp": None}
+                "wind_gust": {
+                    "value": None,  # Average value for backward compatibility
+                    "timestamp": None,
+                    "stations": {
+                        # Store per-station data
+                        # Each station will have {"value": float, "timestamp": datetime}
+                    }
+                }
             },
             # Keep the whole API responses for backwards compatibility
             "synoptic_data": None,
@@ -143,9 +150,26 @@ class DataCache:
                         self.last_valid_data["fields"]["soil_moisture"]["value"] = weather["soil_moisture_15cm"]
                         self.last_valid_data["fields"]["soil_moisture"]["timestamp"] = current_time
                     
+                    # Store wind gust data - both the average and per-station values
                     if weather.get("wind_gust") is not None:
+                        # Store the average value for backward compatibility
                         self.last_valid_data["fields"]["wind_gust"]["value"] = weather["wind_gust"]
                         self.last_valid_data["fields"]["wind_gust"]["timestamp"] = current_time
+                        
+                        # Store per-station data if available
+                        if weather.get("wind_gust_stations"):
+                            for station_id, station_data in weather["wind_gust_stations"].items():
+                                # Initialize the station entry if it doesn't exist
+                                if station_id not in self.last_valid_data["fields"]["wind_gust"]["stations"]:
+                                    self.last_valid_data["fields"]["wind_gust"]["stations"][station_id] = {}
+                                
+                                # Only update if this is fresh data (not cached)
+                                if not station_data.get("is_cached", False) and station_data.get("value") is not None:
+                                    self.last_valid_data["fields"]["wind_gust"]["stations"][station_id] = {
+                                        "value": station_data["value"],
+                                        "timestamp": station_data.get("timestamp", current_time)
+                                    }
+                                    logger.info(f"Cached wind gust data for station {station_id}: {station_data['value']} mph")
                 
                 logger.info(f"Stored valid data for future fallback use at {current_time}")
             

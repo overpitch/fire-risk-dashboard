@@ -30,7 +30,8 @@ WUNDERGROUND_BASE_URL = "https://api.weather.com/v2/pws"
 # Station IDs (hard-coded)
 SOIL_MOISTURE_STATION_ID = "C3DLA"  # Station for soil moisture data
 WEATHER_STATION_ID = "SEYC1"        # Station for temperature, humidity, and winds
-WUNDERGROUND_STATION_ID = "KCASIERR68"  # Station for wind gusts data
+# Multiple stations for wind gusts data (for averaging)
+WUNDERGROUND_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"]
 
 # Fire risk thresholds from environment variables
 THRESH_TEMP = float(os.getenv("THRESH_TEMP", 75))            # Temperature threshold in Fahrenheit
