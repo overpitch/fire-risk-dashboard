@@ -151,10 +151,10 @@ def process_wunderground_data(wunderground_data: Dict[str, Optional[Dict[str, An
                 if cached_station_data and cached_station_data.get("value") is not None:
                     cached_timestamp = cached_station_data.get("timestamp")
                     
-                    # Only use cached data if it's less than 2 hours old
+                    # Only use cached data if it's less than 1 hour old
                     if cached_timestamp:
                         cache_age = current_time - cached_timestamp
-                        if cache_age < timedelta(hours=2):
+                        if cache_age < timedelta(hours=1):
                             wind_gust = cached_station_data["value"]
                             valid_gusts.append(wind_gust)
                             station_data[station_id]["value"] = wind_gust
