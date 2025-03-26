@@ -21,3 +21,5 @@ Feedback/
 
 # Ignore macOS system files
 .DS_Store
+
+GIT commits.txt

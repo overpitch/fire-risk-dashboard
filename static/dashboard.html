@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Sierra City Fire Risk Dashboard</title>
+    
+    <!-- Simple red square favicon that should work in Safari -->
+    <link rel="icon" href="/static/favicon.png" type="image/png">
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href='/static/synoptic-logo.css' rel='stylesheet'>
+    <style>
+        .attribution-container {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+        .data-source {
+            margin-bottom: 0.5rem;
+        }
+        .info-icon {
+            cursor: pointer;
+            color: #0d6efd;
+            font-weight: bold;
+            padding: 0 5px;
+            border-radius: 50%;
+            font-size: 0.8rem;
+        }
+        .info-icon:hover {
+            text-decoration: none;
+            color: #0a58ca;
+        }
+        .unavailable {
+            background-color: #ffff99;
+            padding: 0 4px;
+            border-radius: 3px;
+            font-style: italic;
+        }
+        .cache-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+        .cache-fresh {
+            color: #198754;
+        }
+        .cache-stale {
+            color: #fd7e14;
+        }
+        #refresh-btn {
+            margin-left: 10px;
+            padding: 3px 10px;
+            font-size: 0.9rem;
+        }
+        /* Style for cached data display */
+        .cached-data-banner {
+            background-color: #fff3cd;
+            border: 2px dashed #ffc107;
+            border-left: 10px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #856404;
+        }
+        .cached-data-content {
+            background-color: #fff8e6;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+        }
+    </style>
+    <script>
+        // Configure client-side settings
+        const settings = {
+            refreshInterval: 300000, // 5 minutes
+            maxRetries: 3,
+            retryDelay: 2000, // 2 seconds
+            waitForFreshTimeout: 15000 // 15 seconds
+        };
+        
+        async function fetchWithTimeout(url, options, timeout) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+            
+        async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
+            // Show loading state if requested (for manual refresh)
+            if (showSpinner) {
+                document.getElementById('refresh-btn').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+                document.getElementById('refresh-btn').disabled = true;
+            }
+            
+            let retries = 0;
+            let success = false;
+            let data;
+            
+            while (!success && retries < settings.maxRetries) {
+                try {
+                    // Add wait_for_fresh parameter if specified
+                    const apiUrl = waitForFresh ?
+                        '/fire-risk?wait_for_fresh=true' :
+                        '/fire-risk';
+                    
+                    // Use timeout to prevent indefinite waiting
+                    const timeout = waitForFresh ?
+                        settings.waitForFreshTimeout :
+                        10000; // 10 seconds for normal requests
+                    
+                    const response = await fetchWithTimeout(apiUrl, {}, timeout);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    
+                    data = await response.json();
+                    success = true;
+                    
+                } catch (error) {
+                    retries++;
+                    console.error(`Error fetching data (attempt ${retries}/${settings.maxRetries}):`, error);
+                    
+                    if (retries < settings.maxRetries) {
+                        // Add exponential backoff for retries
+                        const delay = settings.retryDelay * Math.pow(2, retries - 1);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            
+            if (!success) {
+                // All retries failed
+                if (showSpinner) {
+                    document.getElementById('refresh-btn').innerHTML = 'Refresh Failed - Try Again';
+                    document.getElementById('refresh-btn').disabled = false;
+                }
+                return false;
+            }
+            
+            try {
+                // Update the UI with the fetched data
+                const riskDiv = document.getElementById('fire-risk');
+                const weatherDetails = document.getElementById('weather-details');
+                const timestampDiv = document.getElementById('timestamp');
+                const cacheInfoDiv = document.getElementById('cache-info');
+
+                // Update fire risk text with special styling for cached data
+                if (data.cached_data && data.cached_data.is_cached) {
+                    // Add visual styling to show cached data
+                    const originalTime = new Date(data.cached_data.original_timestamp);
+                    const formattedDate = originalTime.toLocaleDateString();
+                    const formattedTime = originalTime.toLocaleTimeString();
+                    const ageStr = data.cached_data.age;
+                    
+                    riskDiv.innerHTML = `
+                        <div class="cached-data-banner">
+                            ⚠️ NOTICE: Using cached data from ${formattedDate} at ${formattedTime} (${ageStr} old)
+                        </div>
+                        <div class="cached-data-content">
+                            Fire Risk: ${data.risk} - ${data.explanation}
+                        </div>
+                    `;
+                } else {
+                    // Regular display for current data
+                    riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+                }
+                
+                // Update cache information
+                if (data.cache_info) {
+                    // Parse the ISO string with timezone info
+                    const lastUpdated = new Date(data.cache_info.last_updated);
+                    const isFresh = data.cache_info.is_fresh;
+                    const refreshInProgress = data.cache_info.refresh_in_progress;
+                    const usingCachedData = data.cache_info.using_cached_data;
+                    
+                    let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
+                    let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
+                    
+                    // If using cached data, update status text
+                    if (usingCachedData) {
+                        cacheClass = 'cache-stale';
+                        statusText = '⚠ Using cached data - current data unavailable';
+                    }
+                    
+                    // Extract timezone abbreviation from timestamp
+                    // This will properly display the timezone from the server
+                    const timeZoneAbbr = (() => {
+                        // The timestamp from the server now includes timezone info
+                        // We can get the timezone offset directly from the parsed date
+                        const offset = lastUpdated.getTimezoneOffset();
+                        const offsetHours = Math.abs(Math.floor(offset / 60));
+                        
+                        // Check if we're in DST based on timezone offset
+                        const jan = new Date(lastUpdated.getFullYear(), 0, 1).getTimezoneOffset();
+                        const jul = new Date(lastUpdated.getFullYear(), 6, 1).getTimezoneOffset();
+                        const isDST = offset < Math.max(jan, jul);
+                        
+                        // For Pacific Time
+                        if (offset >= 420 && offset <= 480) { // -7 or -8 hours
+                            return isDST ? 'PDT' : 'PST';
+                        }
+                        return `GMT${offset <= 0 ? '+' : '-'}${offsetHours}`;
+                    })();
+                    
+                    if (refreshInProgress) {
+                        statusText += ' (refresh in progress...)';
+                    }
+                    
+                    cacheInfoDiv.innerHTML = `
+                        <span class="${cacheClass}">
+                            ${statusText}
+                            (Last updated: ${lastUpdated.toLocaleTimeString()} ${timeZoneAbbr})
+                        </span>`;
+                }
+
+                // Set appropriate background color based on risk level
+                const riskLevel = data.risk;
+                let bgClass = 'bg-secondary';  // Default for unknown/error risk
+                let customStyle = '';
+
+                if (riskLevel === 'Red') {
+                    bgClass = 'text-white'; // Text color for Red risk
+                    customStyle = 'background-color: #FF0000;'; // Red hex color
+                } else if (riskLevel === 'Orange') {
+                    bgClass = 'text-dark'; // Text color for Orange risk
+                    customStyle = 'background-color: #FFA500;'; // Orange hex color
+                }
+                
+                // Don't change the background color if we're using cached data
+                // as we already have special styling for that
+                if (!data.cached_data || !data.cached_data.is_cached) {
+                    riskDiv.className = `alert ${bgClass} p-3`;
+                    riskDiv.style = customStyle; // Apply custom hex color
+                } else {
+                    riskDiv.className = 'alert p-0';  // Remove padding for our custom cached data display
+                    riskDiv.style = ''; // Clear any custom styles
+                }
+
+                // Update weather details
+                // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
+                // Round all measurements to the nearest whole number
+                const tempCelsius = data.weather.air_temp;
+                // Check if we have cached values for any missing fields
+                const isCachedTemp = data.weather.cached_fields && data.weather.cached_fields.temperature;
+                const isCachedSoilMoisture = data.weather.cached_fields && data.weather.cached_fields.soil_moisture;
+                
+                // Use cached values if available, otherwise show unavailable
+                const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : 
+                                      (isCachedTemp ? Math.round((tempCelsius * 9/5) + 32) + '°F (cached)' : 
+                                      '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : 
+                                    (isCachedSoilMoisture ? Math.round(data.weather.soil_moisture_15cm) + '% (cached)' : 
+                                    '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const weatherStation = data.weather.data_sources.weather_station;
+                const soilStation = data.weather.data_sources.soil_moisture_station;
+                
+                // Check for data issues
+                const dataStatus = data.weather.data_status;
+                const hasIssues = dataStatus && dataStatus.issues && dataStatus.issues.length > 0;
+                
+                // Build the weather details HTML
+                let detailsHTML = `<h5>Current Weather Conditions:</h5>`;
+                
+                // If we're using cached data, add a note about the data age
+                if (data.cached_data && data.cached_data.is_cached) {
+                    detailsHTML += `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>NOTE:</strong> Displaying cached weather data. Current data is unavailable.
+                    </div>`;
+                }
+                
+                // Add warning about data issues if applicable
+                if (hasIssues) {
+                    detailsHTML += `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>Data Quality Warning:</strong> Some data may be missing or unavailable.<br>
+                        <ul class="mb-0">
+                            ${dataStatus.issues.map(issue => `<li>${issue}</li>`).join('')}
+                        </ul>
+                    </div>`;
+                }
+                
+                // Handle potentially missing data with fallbacks - round all values to nearest whole number
+                // Check if we have cached values for any missing fields
+                const isCachedHumidity = data.weather.cached_fields && data.weather.cached_fields.humidity;
+                const isCachedWindSpeed = data.weather.cached_fields && data.weather.cached_fields.wind_speed;
+                const isCachedWindGust = data.weather.cached_fields && data.weather.cached_fields.wind_gust;
+                
+                // Use cached values if available, otherwise show unavailable
+                const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : 
+                                (isCachedHumidity ? Math.round(data.weather.relative_humidity) + '% (cached)' : 
+                                '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const windSpeed = data.weather.wind_speed !== null && data.weather.wind_speed !== undefined ? 
+                                Math.round(data.weather.wind_speed) + ' mph' : 
+                                (isCachedWindSpeed ? Math.round(data.weather.wind_speed) + ' mph (cached)' : 
+                                '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const windGust = data.weather.wind_gust !== null && data.weather.wind_gust !== undefined ? 
+                               Math.round(data.weather.wind_gust) + ' mph' : 
+                               (isCachedWindGust ? Math.round(data.weather.wind_gust) + ' mph (cached)' : 
+                               '<span class="unavailable">&lt;unavailable&gt;</span>');
+                const windGustStation = data.weather.data_sources.wind_gust_station;
+                
+                // Get threshold values for color formatting
+                const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
+                const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
+                const THRESH_WIND = 15;  // Wind speed threshold in mph
+                const THRESH_GUSTS = 20; // Wind gust threshold in mph
+                const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
+                
+                // Check if values exceed thresholds for color formatting - use rounded values
+                const tempValue = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) : null;
+                const tempExceeds = tempValue !== null && tempValue > THRESH_TEMP;
+                
+                const humidValue = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) : null;
+                const humidExceeds = humidValue !== null && humidValue < THRESH_HUMID;
+                
+                const windValue = data.weather.wind_speed ? Math.round(data.weather.wind_speed) : null;
+                const windExceeds = windValue !== null && windValue > THRESH_WIND;
+                
+                const gustValue = data.weather.wind_gust ? Math.round(data.weather.wind_gust) : null;
+                const gustExceeds = gustValue !== null && gustValue > THRESH_GUSTS;
+                
+                const soilValue = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) : null;
+                const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
+                
+                const weatherContainerClass = data.cached_data && data.cached_data.is_cached ? 'cached-data-content' : '';
+                
+                // Create a style for the threshold display
+                const thresholdStyle = "display: inline-block; margin-left: 10px; font-size: 0.85rem; color: #6c757d; border-left: 1px solid #ddd; padding-left: 10px;";
+                
+                detailsHTML += `
+                    <div class="${weatherContainerClass}">
+                        <ul>
+                            <li style="color: ${tempExceeds ? 'red' : 'black'}">
+                                <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_TEMP}°F</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${humidExceeds ? 'red' : 'black'}">
+                                <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
+                                <span style="${thresholdStyle}">Threshold: <${THRESH_HUMID}%</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${windExceeds ? 'red' : 'black'}">
+                                <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_WIND} mph</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                            <li style="color: ${gustExceeds ? 'red' : 'black'}">
+                                <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
+                                <span style="${thresholdStyle}">Threshold: >${THRESH_GUSTS} mph</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="${windGustStation}<br>From: Wunderground">ⓘ</span>
+                            </li>
+                            <li style="color: ${soilExceeds ? 'red' : 'black'}">
+                                <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
+                                <span style="${thresholdStyle}">Threshold: <${THRESH_SOIL_MOIST}%</span>
+                                <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
+                            </li>
+                        </ul>
+                    </div>`;
+                    
+                weatherDetails.innerHTML = detailsHTML;
+                    
+                // Update timestamp and re-enable refresh button if it was used
+                const now = new Date();
+                
+                // Get the timezone abbreviation using the same method as above
+                const timeZoneAbbr = (() => {
+                    const offset = now.getTimezoneOffset();
+                    const offsetHours = Math.abs(Math.floor(offset / 60));
+                    
+                    // Check if we're in DST based on timezone offset
+                    const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+                    const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+                    const isDST = offset < Math.max(jan, jul);
+                    
+                    // For Pacific Time
+                    if (offset >= 420 && offset <= 480) { // -7 or -8 hours
+                        return isDST ? 'PDT' : 'PST';
+                    }
+                    return `GMT${offset <= 0 ? '+' : '-'}${offsetHours}`;
+                })();
+                
+                timestampDiv.innerText = `Last updated: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()} ${timeZoneAbbr}`;
+                
+                if (showSpinner) {
+                    document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
+                    document.getElementById('refresh-btn').disabled = false;
+                }
+                
+                return true; // Signal success
+                
+            } catch (error) {
+                console.error("Error fetching fire risk data:", error);
+                if (showSpinner) {
+                    document.getElementById('refresh-btn').innerHTML = 'Refresh Failed - Try Again';
+                    document.getElementById('refresh-btn').disabled = false;
+                }
+                return false;
+            }
+        }
+
+        // Initialize tooltips
+        function initializeTooltips() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+        
+        // Handle manual refresh button click - uses waitForFresh=true to ensure we get fresh data
+        function manualRefresh() {
+            // Pass true for both showSpinner and waitForFresh
+            fetchFireRisk(true, true).then(success => {
+                if (success !== false) {
+                    initializeTooltips();
+                }
+            });
+        }
+
+        // Auto-refresh functionality
+        function setupRefresh() {
+            // Initial load without waiting for fresh data
+            fetchFireRisk().then(success => {
+                if (success !== false) {
+                    initializeTooltips();
+                }
+            });
+            
+            // Setup auto-refresh
+            setInterval(() => {
+                // Don't wait for fresh data on auto-refresh, to prevent hanging the UI
+                fetchFireRisk(false, false).then(success => {
+                    if (success !== false) {
+                        initializeTooltips();
+                    }
+                });
+            }, settings.refreshInterval);
+        }
+
+        window.onload = setupRefresh;
+    </script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" style="background-color: #003366 !important;">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                Sierra City Fire Weather Advisory
+            </a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#aboutUsModal">About Us</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container mt-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
+        <div id="cache-info" class="cache-info">Data status: Loading...</div>
+        <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
+    </div>
+    
+    <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
+    <div id='weather-details' class='mt-3'></div>
+    
+    <div class="alert mt-4 mb-4" style="background-color: #d1ecff;">
+        <p>Fire weather needs to be local. A few Sierra City residents analyze local wind, humidity, temperature and soil moisture data and offer their advice in real time. This fire weather advisory is a best guess of what you should know about local fire weather conditions before there is a fire event.</p>
+        
+        <p>The two-stage advisory (Orange for Low or Moderate Risk, Red for Extreme Risk) is distributed via email and text each morning. Should fire weather conditions change during the course of the day, additional advisories will be issued.</p>
+        
+        <p class="mb-0">This fire weather advisory is not a substitute for official notifications by law enforcement or other government or private agencies.</p>
+    </div>
+    
+    <div class="attribution-container">
+        <div id="timestamp" class="timestamp">Last updated: Loading...</div>
+        <div class="attribution">
+            Weather observations aggregated by&nbsp;<a href="https://www.wunderground.com/" target="_blank">Weather Underground</a>&nbsp;and&nbsp;<a href="https://synopticdata.com/" target="_blank">Synoptic Data</a>
+            <img src="/static/synoptic-logo.svg" alt="Synoptic Data" class="synoptic-logo" width="150" height="150">
+        </div>
+    </div>
+    
+    <!-- About Us Modal -->
+    <div class="modal fade" id="aboutUsModal" tabindex="-1" aria-labelledby="aboutUsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutUsModalLabel">About Us</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This Fire Weather Advisory website was born from the Sierra City Community Radio1 (SCCR1) initiative. SCCR1 provides essential communication via handheld radios when power, phone, and internet services are disrupted, while also fostering stronger neighborhood connections.</p>
+                    
+                    <p>It was inspired by a January 2025 incident when high winds during low humidity reignited a burn pile. We realized many residents were unaware of these dangerous weather conditions. After community discussions, we developed this advisory system to keep our neighbors informed and safer.</p>
+                    
+                    <p>For more information about our services or to manage your notification preferences, please contact us at <a href="mailto:fredsnarf@getlost.com">fredsnarf@getlost.com</a>.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div> <!-- Close container -->
+</body>
+</html>
