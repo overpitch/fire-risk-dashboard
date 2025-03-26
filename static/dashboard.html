@@ -94,6 +94,8 @@
           color: #6c757d;
           border-left: 1px solid #ddd;
           padding-left: 10px;
+          width: 100px;
+          text-align: right;
         }
     </style>
     <script>
@@ -373,28 +375,28 @@
                                 <span class="weather-value-label">
                                     <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
                                 </span>
-                                <span class="threshold-info">Threshold: >${THRESH_TEMP}°F</span>
+                                <span class="threshold-info">Thresholds: >${THRESH_TEMP}°F</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${humidExceeds ? 'red' : 'black'}">
                                 <span class="weather-value-label">
                                     <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
                                 </span>
-                                <span class="threshold-info">Threshold: <${THRESH_HUMID}%</span>
+                                <span class="threshold-info"><${THRESH_HUMID}%</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${windExceeds ? 'red' : 'black'}">
                                 <span class="weather-value-label">
                                     <span style="color: ${windExceeds ? 'red' : 'black'}">Wind Speed: ${windSpeed}</span>
                                 </span>
-                                <span class="threshold-info">Threshold: >${THRESH_WIND} mph</span>
+                                <span class="threshold-info">>${THRESH_WIND} mph</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
                             </li>
                             <li style="color: ${gustExceeds ? 'red' : 'black'}">
                                 <span class="weather-value-label">
                                     <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gusts: ${windGust}</span>
                                 </span>
-                                <span class="threshold-info">Threshold: >${THRESH_GUSTS} mph</span>
+                                <span class="threshold-info">>${THRESH_GUSTS} mph</span>
                                 <span class="info-icon wind-gust-info" data-bs-toggle="tooltip" data-bs-html="true" 
                                       title="Loading wind gust data...">ⓘ</span>
                             </li>
@@ -402,7 +404,7 @@
                                 <span class="weather-value-label">
                                     <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
                                 </span>
-                                <span class="threshold-info">Threshold: <${THRESH_SOIL_MOIST}%</span>
+                                <span class="threshold-info"><${THRESH_SOIL_MOIST}%</span>
                                 <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
                             </li>
                         </ul>
