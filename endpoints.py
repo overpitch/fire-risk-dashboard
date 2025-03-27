@@ -88,8 +88,41 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                 "is_cached": True,
                 "original_timestamp": cached_time.isoformat(),
                 "age": age_str,
-                "cached_fields": data_cache.cached_fields  # Add information about which fields are using cached data
+                "cached_fields": data_cache.cached_fields.copy() # Use a copy
             }
+
+            # --- START NEW CODE ---
+            # Ensure the weather data in the result reflects the cached values
+            if "weather" in result and "weather" in data_cache.last_valid_data:
+                cached_weather = data_cache.last_valid_data["weather"]
+                target_weather = result["weather"]
+                cached_fields_map = data_cache.cached_fields # The flags set by cache_refresh
+
+                # Map internal cache field names to response field names
+                field_mapping = {
+                    "temperature": "air_temp",
+                    "humidity": "relative_humidity",
+                    "wind_speed": "wind_speed",
+                    "wind_gust": "wind_gust",
+                    "soil_moisture": "soil_moisture_15cm"
+                }
+
+                for cache_field_name, use_cached in cached_fields_map.items():
+                    if use_cached:
+                        response_field_name = field_mapping.get(cache_field_name)
+                        # Check if the cached value exists in last_valid_data
+                        if response_field_name and response_field_name in cached_weather:
+                            cached_value = cached_weather.get(response_field_name)
+                            # Only update if the cached value is not None
+                            if cached_value is not None:
+                                target_weather[response_field_name] = cached_value
+                                logger.debug(f"Endpoint: Merged cached value for {response_field_name}: {cached_value}")
+                            else:
+                                logger.warning(f"Endpoint: Cached flag set for {response_field_name}, but no value found in last_valid_data.")
+                        else:
+                             logger.warning(f"Endpoint: Cannot map cache field '{cache_field_name}' or field missing in cached_weather.")
+
+            # --- END NEW CODE ---
             
             # Make sure the explanation includes the notice about cached data
             if "explanation" in result and "NOTICE: Displaying cached data" not in result["explanation"]:
