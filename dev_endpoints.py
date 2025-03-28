@@ -345,7 +345,6 @@ async def force_cached_mode():
     return RedirectResponse(url="/", status_code=303)
 
 @router.get("/toggle-test-mode", response_class=JSONResponse)
-@dev_only_endpoint
 async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = False):
     """Toggle test mode on or off via API
     
