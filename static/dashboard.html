@@ -98,6 +98,15 @@
           width: 100px;
           text-align: right;
         }
+        
+        .data-age {
+          font-size: 0.8rem;
+          color: #fd7e14;
+          font-style: italic;
+          display: block;
+          margin-top: 2px;
+          margin-left: 12px; /* Indent slightly */
+        }
     </style>
     <script>
         // Configure client-side settings
@@ -198,15 +207,41 @@
                     const refreshInProgress = data.cache_info.refresh_in_progress;
                     // const usingCachedData = data.cache_info.using_cached_data; // No longer needed here
 
-                    // Update new Data Status Button
-                    if (isFresh) {
+                    // Check if any data is older than 1 hour (stale)
+                    const hasStaleData = () => {
+                        if (!data.weather.cached_fields || !data.weather.cached_fields.timestamp) {
+                            return false; // No cached data
+                        }
+                        
+                        const now = new Date();
+                        const ONE_HOUR_MS = 60 * 60 * 1000;
+                        
+                        // Check each timestamp field
+                        for (const field in data.weather.cached_fields.timestamp) {
+                            if (data.weather.cached_fields.timestamp[field]) {
+                                const dataTime = new Date(data.weather.cached_fields.timestamp[field]);
+                                const ageMs = now - dataTime;
+                                
+                                if (ageMs >= ONE_HOUR_MS) {
+                                    return true; // Found stale data
+                                }
+                            }
+                        }
+                        
+                        return false; // No stale data found
+                    };
+                    
+                    // Update data status button based on staleness (over 1 hour old)
+                    const dataIsStale = hasStaleData();
+                    
+                    if (!dataIsStale) {
                         dataStatusBtn.textContent = 'Fresh Data';
-                        dataStatusBtn.classList.remove('btn-warning'); // Use warning for stale
+                        dataStatusBtn.classList.remove('btn-warning');
                         dataStatusBtn.classList.add('btn-success');
                     } else {
-                        dataStatusBtn.textContent = 'Stale Data';
+                        dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
                         dataStatusBtn.classList.remove('btn-success');
-                        dataStatusBtn.classList.add('btn-warning'); // Orange for stale
+                        dataStatusBtn.classList.add('btn-warning');
                     }
                     dataStatusBtn.disabled = false; // Enable button once data loads
 
@@ -291,12 +326,58 @@
                 const isCachedSoilMoisture = data.weather.cached_fields && data.weather.cached_fields.soil_moisture;
                 
                 // Use cached values if available, otherwise show unavailable
-                const tempFahrenheit = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) + '°F' : 
-                                      (isCachedTemp ? Math.round((tempCelsius * 9/5) + 32) + '°F (cached)' : 
-                                      '<span class="unavailable">&lt;unavailable&gt;</span>');
-                const soilMoisture = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) + '%' : 
-                                    (isCachedSoilMoisture ? Math.round(data.weather.soil_moisture_15cm) + '% (cached)' : 
-                                    '<span class="unavailable">&lt;unavailable&gt;</span>');
+                // Format age for cached data
+                const formatAge = (timestamp) => {
+                    if (!timestamp) return "";
+                    
+                    const now = new Date();
+                    const dataTime = new Date(timestamp);
+                    const ageMs = now - dataTime;
+                    
+                    // Convert to minutes
+                    const ageMinutes = Math.round(ageMs / (1000 * 60));
+                    
+                    if (ageMinutes < 60) {
+                        return `${ageMinutes} minute${ageMinutes !== 1 ? 's' : ''} old`;
+                    } else if (ageMinutes < 24 * 60) {
+                        const hours = Math.round(ageMinutes / 60);
+                        return `${hours} hour${hours !== 1 ? 's' : ''} old`;
+                    } else if (ageMinutes < 7 * 24 * 60) {
+                        const days = Math.round(ageMinutes / (60 * 24));
+                        return `${days} day${days !== 1 ? 's' : ''} old`;
+                    } else {
+                        const weeks = Math.round(ageMinutes / (60 * 24 * 7));
+                        return `${weeks} week${weeks !== 1 ? 's' : ''} old`;
+                    }
+                };
+                
+                // Add age info as a second line for cached data
+                const getTempDisplay = () => {
+                    if (tempCelsius) {
+                        return Math.round((tempCelsius * 9/5) + 32) + '°F';
+                    } else if (isCachedTemp && data.weather.cached_fields.timestamp) {
+                        const tempValue = Math.round((data.weather.cached_fields.temperature * 9/5) + 32) + '°F';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.temperature);
+                        return `${tempValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else {
+                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                    }
+                };
+                
+                const getSoilMoistureDisplay = () => {
+                    if (data.weather.soil_moisture_15cm) {
+                        return Math.round(data.weather.soil_moisture_15cm) + '%';
+                    } else if (isCachedSoilMoisture && data.weather.cached_fields.timestamp) {
+                        const moistureValue = Math.round(data.weather.cached_fields.soil_moisture) + '%';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.soil_moisture);
+                        return `${moistureValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else {
+                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                    }
+                };
+                
+                const tempFahrenheit = getTempDisplay();
+                const soilMoisture = getSoilMoistureDisplay();
                 const weatherStation = data.weather.data_sources.weather_station;
                 const soilStation = data.weather.data_sources.soil_moisture_station;
                 
@@ -312,18 +393,47 @@
                 const isCachedWindSpeed = data.weather.cached_fields && data.weather.cached_fields.wind_speed;
                 const isCachedWindGust = data.weather.cached_fields && data.weather.cached_fields.wind_gust;
                 
-                // Use cached values if available, otherwise show unavailable
-                const humidity = data.weather.relative_humidity ? Math.round(data.weather.relative_humidity) + '%' : 
-                                (isCachedHumidity ? Math.round(data.weather.relative_humidity) + '% (cached)' : 
-                                '<span class="unavailable">&lt;unavailable&gt;</span>');
-                const windSpeed = data.weather.wind_speed !== null && data.weather.wind_speed !== undefined ? 
-                                Math.round(data.weather.wind_speed) + ' mph' : 
-                                (isCachedWindSpeed ? Math.round(data.weather.wind_speed) + ' mph (cached)' : 
-                                '<span class="unavailable">&lt;unavailable&gt;</span>');
-                const windGust = data.weather.wind_gust !== null && data.weather.wind_gust !== undefined ? 
-                               Math.round(data.weather.wind_gust) + ' mph' : 
-                               (isCachedWindGust ? Math.round(data.weather.wind_gust) + ' mph (cached)' : 
-                               '<span class="unavailable">&lt;unavailable&gt;</span>');
+                // Create display functions for remaining weather metrics with age-based formatting
+                const getHumidityDisplay = () => {
+                    if (data.weather.relative_humidity) {
+                        return Math.round(data.weather.relative_humidity) + '%';
+                    } else if (isCachedHumidity && data.weather.cached_fields.timestamp) {
+                        const humidValue = Math.round(data.weather.cached_fields.humidity) + '%';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.humidity);
+                        return `${humidValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else {
+                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                    }
+                };
+                
+                const getWindSpeedDisplay = () => {
+                    if (data.weather.wind_speed !== null && data.weather.wind_speed !== undefined) {
+                        return Math.round(data.weather.wind_speed) + ' mph';
+                    } else if (isCachedWindSpeed && data.weather.cached_fields.timestamp) {
+                        const speedValue = Math.round(data.weather.cached_fields.wind_speed) + ' mph';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.wind_speed);
+                        return `${speedValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else {
+                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                    }
+                };
+                
+                const getWindGustDisplay = () => {
+                    if (data.weather.wind_gust !== null && data.weather.wind_gust !== undefined) {
+                        return Math.round(data.weather.wind_gust) + ' mph';
+                    } else if (isCachedWindGust && data.weather.cached_fields.timestamp) {
+                        const gustValue = Math.round(data.weather.cached_fields.wind_gust) + ' mph';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.wind_gust);
+                        return `${gustValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else {
+                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                    }
+                };
+                
+                // Get display values for all metrics
+                const humidity = getHumidityDisplay();
+                const windSpeed = getWindSpeedDisplay();
+                const windGust = getWindGustDisplay();
                 const windGustStation = data.weather.data_sources.wind_gust_station;
                 
                 // Get threshold values from API response or use defaults if not available
