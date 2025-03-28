@@ -236,10 +236,6 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                         "age": age_str
                     }
                     
-                    # If the explanation doesn't already mention it, add a note about using cached data
-                    if "cached data" not in cached_fire_risk_data["explanation"].lower():
-                        cached_fire_risk_data["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
-                    
                     # Update cache with the cached data but new timestamp
                     with data_cache._lock:
                         data_cache.synoptic_data = cached_weather_data
@@ -267,19 +263,8 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             # Calculate fire risk based on the latest weather data
             risk, explanation = calculate_fire_risk(latest_weather)
             
-            # If we had data issues, add a note to the explanation
-            if latest_weather["data_status"]["issues"]:
-                explanation += " Note: Some data sources were unavailable."
-            
-            # If we're using any cached data, add a note to the explanation
-            if any_field_using_cache:
-                explanation += " Some values are from cached data."
-                
-                # Add a notice about using cached data
-                cached_time = data_cache.last_valid_data["timestamp"]
-                if cached_time:
-                    age_str = format_age_string(current_time, cached_time)
-                    explanation += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
+            # Explanation is now just the base risk explanation from calculate_fire_risk
+            # Notes about data issues or cached values are handled by the modal content in endpoints.py
             
             fire_risk_data = {"risk": risk, "explanation": explanation, "weather": latest_weather}
             

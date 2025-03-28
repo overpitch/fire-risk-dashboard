@@ -49,8 +49,13 @@
             padding: 3px 10px;
             font-size: 0.9rem;
         }
-        /* Style for cached data display */
-        .cached-data-banner {
+        #data-status-btn {
+            margin-left: 10px;
+            padding: 3px 10px;
+            font-size: 0.9rem;
+        }
+        /* Style for cached data display (REMOVED - Handled by modal now) */
+        /* .cached-data-banner {
             background-color: #fff3cd;
             border: 2px dashed #ffc107;
             border-left: 10px solid #ffc107;
@@ -58,12 +63,12 @@
             margin-bottom: 15px;
             font-weight: bold;
             color: #856404;
-        }
-        .cached-data-content {
+        } */
+        /* .cached-data-content {
             background-color: #fff8e6;
             border: 1px solid #ffeeba;
             padding: 15px;
-        }
+        } */
         /* Custom style for wind gust tooltip */
         .tooltip-wide {
             min-width: 250px;
@@ -178,27 +183,11 @@
                 const weatherDetails = document.getElementById('weather-details');
                 const timestampDiv = document.getElementById('timestamp');
                 const cacheInfoDiv = document.getElementById('cache-info');
+                const dataStatusBtn = document.getElementById('data-status-btn'); // New button
+                const dataStatusModalBody = document.getElementById('dataStatusModalBody'); // Modal body
 
-                // Update fire risk text with special styling for cached data
-                if (data.cached_data && data.cached_data.is_cached) {
-                    // Add visual styling to show cached data
-                    const originalTime = new Date(data.cached_data.original_timestamp);
-                    const formattedDate = originalTime.toLocaleDateString();
-                    const formattedTime = originalTime.toLocaleTimeString();
-                    const ageStr = data.cached_data.age;
-                    
-                    riskDiv.innerHTML = `
-                        <div class="cached-data-banner">
-                            ⚠️ NOTICE: Using cached data from ${formattedDate} at ${formattedTime} (${ageStr} old)
-                        </div>
-                        <div class="cached-data-content">
-                            Fire Risk: ${data.risk} - ${data.explanation}
-                        </div>
-                    `;
-                } else {
-                    // Regular display for current data
-                    riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
-                }
+                // Update fire risk text (simplified)
+                riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
                 
                 // Update cache information
                 if (data.cache_info) {
@@ -206,17 +195,42 @@
                     const lastUpdated = new Date(data.cache_info.last_updated);
                     const isFresh = data.cache_info.is_fresh;
                     const refreshInProgress = data.cache_info.refresh_in_progress;
-                    const usingCachedData = data.cache_info.using_cached_data;
-                    
-                    let cacheClass = isFresh ? 'cache-fresh' : 'cache-stale';
-                    let statusText = isFresh ? '✓ Data is fresh' : '⚠ Data may be stale';
-                    
-                    // If using cached data, update status text
-                    if (usingCachedData) {
-                        cacheClass = 'cache-stale';
-                        statusText = '⚠ Using cached data - current data unavailable';
+                    // const usingCachedData = data.cache_info.using_cached_data; // No longer needed here
+
+                    // Update new Data Status Button
+                    if (isFresh) {
+                        dataStatusBtn.textContent = 'Fresh Data';
+                        dataStatusBtn.classList.remove('btn-warning'); // Use warning for stale
+                        dataStatusBtn.classList.add('btn-success');
+                    } else {
+                        dataStatusBtn.textContent = 'Stale Data';
+                        dataStatusBtn.classList.remove('btn-success');
+                        dataStatusBtn.classList.add('btn-warning'); // Orange for stale
                     }
-                    
+                    dataStatusBtn.disabled = false; // Enable button once data loads
+
+                    // Update Modal Content based on backend data
+                    let modalHTML = '';
+                    if (data.modal_content) {
+                        if (data.modal_content.note) {
+                            modalHTML += `<div class="alert alert-info p-2 small"><strong>NOTE:</strong> ${data.modal_content.note}</div>`;
+                        }
+                        if (data.modal_content.warning_title && data.modal_content.warning_issues && data.modal_content.warning_issues.length > 0) {
+                            modalHTML += `<div class="alert alert-warning p-2 small">
+                                <strong>${data.modal_content.warning_title}</strong><br>
+                                <ul class="mb-0">
+                                    ${data.modal_content.warning_issues.map(issue => `<li>${issue}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                        }
+                    }
+                    if (!modalHTML) {
+                         modalHTML = '<p>Data is current and no quality issues detected.</p>'; // Default message
+                    }
+                    dataStatusModalBody.innerHTML = modalHTML;
+
+
+                    // Update Cache Info Div (Timestamp only)
                     // Extract timezone abbreviation from timestamp
                     // This will properly display the timezone from the server
                     const timeZoneAbbr = (() => {
@@ -238,14 +252,17 @@
                     })();
                     
                     if (refreshInProgress) {
-                        statusText += ' (refresh in progress...)';
+                        statusText += ' (refresh in progress...)'; // Keep refresh status
+                    } else {
+                         statusText = ''; // Clear status text if not refreshing
                     }
-                    
+
                     cacheInfoDiv.innerHTML = `
-                        <span class="${cacheClass}">
-                            ${statusText}
-                            (Last updated: ${lastUpdated.toLocaleTimeString()} ${timeZoneAbbr})
+                        <span class="cache-info">
+                           Last updated: ${lastUpdated.toLocaleTimeString()} ${timeZoneAbbr} ${statusText}
                         </span>`;
+                } else {
+                     cacheInfoDiv.innerHTML = `<span class="cache-info">Last updated: Unavailable</span>`; // Fallback
                 }
 
                 // Set appropriate background color based on risk level
@@ -260,16 +277,9 @@
                     bgClass = 'text-dark'; // Text color for Orange risk
                     customStyle = 'background-color: #FFA500;'; // Orange hex color
                 }
-                
-                // Don't change the background color if we're using cached data
-                // as we already have special styling for that
-                if (!data.cached_data || !data.cached_data.is_cached) {
-                    riskDiv.className = `alert ${bgClass} p-3`;
-                    riskDiv.style = customStyle; // Apply custom hex color
-                } else {
-                    riskDiv.className = 'alert p-0';  // Remove padding for our custom cached data display
-                    riskDiv.style = ''; // Clear any custom styles
-                }
+                // Always set background color based on risk level now
+                riskDiv.className = `alert ${bgClass} p-3`;
+                riskDiv.style = customStyle; // Apply custom hex color
 
                 // Update weather details
                 // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
@@ -292,28 +302,8 @@
                 // Check for data issues
                 const dataStatus = data.weather.data_status;
                 const hasIssues = dataStatus && dataStatus.issues && dataStatus.issues.length > 0;
-                
-                // Build the weather details HTML
+                // Build the weather details HTML (Removed NOTE and Warning - now in modal)
                 let detailsHTML = `<h5>Current Weather Conditions:</h5>`;
-                
-                // If we're using cached data, add a note about the data age
-                if (data.cached_data && data.cached_data.is_cached) {
-                    detailsHTML += `
-                    <div class="alert alert-warning p-2 small">
-                        <strong>NOTE:</strong> Displaying cached weather data. Current data is unavailable.
-                    </div>`;
-                }
-                
-                // Add warning about data issues if applicable
-                if (hasIssues) {
-                    detailsHTML += `
-                    <div class="alert alert-warning p-2 small">
-                        <strong>Data Quality Warning:</strong> Some data may be missing or unavailable.<br>
-                        <ul class="mb-0">
-                            ${dataStatus.issues.map(issue => `<li>${issue}</li>`).join('')}
-                        </ul>
-                    </div>`;
-                }
                 
                 // Handle potentially missing data with fallbacks - round all values to nearest whole number
                 // Check if we have cached values for any missing fields
@@ -357,14 +347,14 @@
                 
                 const soilValue = data.weather.soil_moisture_15cm ? Math.round(data.weather.soil_moisture_15cm) : null;
                 const soilExceeds = soilValue !== null && soilValue < THRESH_SOIL_MOIST;
-                
-                const weatherContainerClass = data.cached_data && data.cached_data.is_cached ? 'cached-data-content' : '';
+
+                // Removed weatherContainerClass - no special styling needed here now
 
                 // Create a style for the threshold display (used temporarily during revert then replaced)
                 const thresholdStyle = "display: inline-block; margin-left: 10px; font-size: 0.85rem; color: #6c757d; border-left: 1px solid #ddd; padding-left: 10px;";
 
                 detailsHTML += `
-                    <div class="${weatherContainerClass}">
+                    <div>
                         <ul>
                             <li style="color: ${tempExceeds ? 'red' : 'black'}">
                                 <span class="weather-value-label">
@@ -575,8 +565,11 @@
     <div class="container mt-5">
     
     <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
-        <div id="cache-info" class="cache-info">Data status: Loading...</div>
-        <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
+        <div id="cache-info" class="cache-info">Last updated: Loading...</div>
+        <div> <!-- Wrapper div for buttons -->
+            <button id="data-status-btn" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#dataStatusModal" disabled>Data Status</button>
+            <button id="refresh-btn" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">Refresh Data</button>
+        </div>
     </div>
     
     <div id='fire-risk' class='alert alert-info'>Loading fire risk data...</div>
@@ -619,6 +612,26 @@
             </div>
         </div>
     </div>
+
+    <!-- Data Status Modal -->
+    <div class="modal fade" id="dataStatusModal" tabindex="-1" aria-labelledby="dataStatusModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="dataStatusModalLabel">Data Status Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="dataStatusModalBody">
+            <!-- Content will be populated by JavaScript -->
+            Loading status details...
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     </div> <!-- Close container -->
 </body>
 </html>

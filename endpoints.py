@@ -34,8 +34,8 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                 detail="Weather data service unavailable. Please try again later."
             )
     
-    # Check if data is stale
-    is_stale = data_cache.is_stale(max_age_minutes=10)
+    # Check if data is stale (using 60-minute threshold)
+    is_stale = data_cache.is_stale(max_age_minutes=60)
     refresh_in_progress = data_cache.update_in_progress
     
     # Handle stale data
@@ -67,7 +67,7 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     result["cache_info"] = {
         # The isoformat() will include timezone info for timezone-aware datetimes
         "last_updated": data_cache.last_updated.isoformat() if data_cache.last_updated else None,
-        "is_fresh": not data_cache.is_stale(max_age_minutes=10),
+        "is_fresh": not data_cache.is_stale(max_age_minutes=60), # Use 60-minute threshold
         "refresh_in_progress": data_cache.update_in_progress,
         "using_cached_data": data_cache.using_cached_data
     }
@@ -123,11 +123,44 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                              logger.warning(f"Endpoint: Cannot map cache field '{cache_field_name}' or field missing in cached_weather.")
 
             # --- END NEW CODE ---
+
+            # Prepare content for the data status modal
+            modal_content = {
+                "note": None,
+                "warning_title": None,
+                "warning_issues": []
+            }
+            modal_content["note"] = "Displaying cached weather data. Current data is unavailable."
+
+            # Check for data quality issues from the original (cached) data
+            if "weather" in data_cache.last_valid_data and \
+               "data_status" in data_cache.last_valid_data["weather"] and \
+               data_cache.last_valid_data["weather"]["data_status"].get("issues"):
+                
+                issues = data_cache.last_valid_data["weather"]["data_status"]["issues"]
+                if issues:
+                    modal_content["warning_title"] = "Data Quality Warning (from cached data):"
+                    modal_content["warning_issues"] = issues
             
-            # Make sure the explanation includes the notice about cached data
-            if "explanation" in result and "NOTICE: Displaying cached data" not in result["explanation"]:
-                result["explanation"] += f" NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
-    
+            result["modal_content"] = modal_content
+            
+    # If not using cached data, check for current data quality issues
+    elif "weather" in result and "data_status" in result["weather"] and result["weather"]["data_status"].get("issues"):
+         issues = result["weather"]["data_status"]["issues"]
+         if issues:
+             result["modal_content"] = {
+                 "note": None,
+                 "warning_title": "Data Quality Warning:",
+                 "warning_issues": issues
+             }
+    else:
+        # Ensure modal_content exists even if there are no issues
+        result["modal_content"] = {
+            "note": None,
+            "warning_title": None,
+            "warning_issues": []
+        }
+
     return result
 
 @router.get("/", response_class=HTMLResponse)
