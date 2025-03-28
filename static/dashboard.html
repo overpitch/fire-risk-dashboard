@@ -362,10 +362,18 @@
                 
                 // Add age info as a second line for cached data
                 const getTempDisplay = () => {
-                    if (tempCelsius) {
+                    // Check if we're in test mode or using cached data
+                    const usingCachedData = data.cache_info && data.cache_info.using_cached_data;
+                    
+                    // If we're in test mode and have a timestamp, show age indicator even if primary data exists
+                    if (isCachedTemp && data.weather.cached_fields.timestamp && usingCachedData) {
+                        const tempValue = Math.round((tempCelsius || data.weather.cached_fields.temperature) * 9/5) + 32 + '°F';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.temperature);
+                        return `${tempValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else if (tempCelsius) {
                         return Math.round((tempCelsius * 9/5) + 32) + '°F';
                     } else if (isCachedTemp && data.weather.cached_fields.timestamp) {
-                        const tempValue = Math.round((data.weather.cached_fields.temperature * 9/5) + 32) + '°F';
+                        const tempValue = Math.round((data.weather.cached_fields.temperature) * 9/5) + 32 + '°F';
                         const ageText = formatAge(data.weather.cached_fields.timestamp.temperature);
                         return `${tempValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
@@ -374,7 +382,15 @@
                 };
                 
                 const getSoilMoistureDisplay = () => {
-                    if (data.weather.soil_moisture_15cm) {
+                    // Check if we're in test mode or using cached data
+                    const usingCachedData = data.cache_info && data.cache_info.using_cached_data;
+                    
+                    // If we're in test mode and have a timestamp, show age indicator even if primary data exists
+                    if (isCachedSoilMoisture && data.weather.cached_fields.timestamp && usingCachedData) {
+                        const moistureValue = Math.round(data.weather.soil_moisture_15cm || data.weather.cached_fields.soil_moisture) + '%';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.soil_moisture);
+                        return `${moistureValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else if (data.weather.soil_moisture_15cm) {
                         return Math.round(data.weather.soil_moisture_15cm) + '%';
                     } else if (isCachedSoilMoisture && data.weather.cached_fields.timestamp) {
                         const moistureValue = Math.round(data.weather.cached_fields.soil_moisture) + '%';
@@ -404,7 +420,15 @@
                 
                 // Create display functions for remaining weather metrics with age-based formatting
                 const getHumidityDisplay = () => {
-                    if (data.weather.relative_humidity) {
+                    // Check if we're in test mode or using cached data
+                    const usingCachedData = data.cache_info && data.cache_info.using_cached_data;
+                    
+                    // If we're in test mode and have a timestamp, show age indicator even if primary data exists
+                    if (isCachedHumidity && data.weather.cached_fields.timestamp && usingCachedData) {
+                        const humidValue = Math.round(data.weather.relative_humidity || data.weather.cached_fields.humidity) + '%';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.humidity);
+                        return `${humidValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else if (data.weather.relative_humidity) {
                         return Math.round(data.weather.relative_humidity) + '%';
                     } else if (isCachedHumidity && data.weather.cached_fields.timestamp) {
                         const humidValue = Math.round(data.weather.cached_fields.humidity) + '%';
@@ -416,7 +440,15 @@
                 };
                 
                 const getWindSpeedDisplay = () => {
-                    if (data.weather.wind_speed !== null && data.weather.wind_speed !== undefined) {
+                    // Check if we're in test mode or using cached data
+                    const usingCachedData = data.cache_info && data.cache_info.using_cached_data;
+                    
+                    // If we're in test mode and have a timestamp, show age indicator even if primary data exists
+                    if (isCachedWindSpeed && data.weather.cached_fields.timestamp && usingCachedData) {
+                        const speedValue = Math.round(data.weather.wind_speed || data.weather.cached_fields.wind_speed) + ' mph';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.wind_speed);
+                        return `${speedValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else if (data.weather.wind_speed !== null && data.weather.wind_speed !== undefined) {
                         return Math.round(data.weather.wind_speed) + ' mph';
                     } else if (isCachedWindSpeed && data.weather.cached_fields.timestamp) {
                         const speedValue = Math.round(data.weather.cached_fields.wind_speed) + ' mph';
@@ -428,7 +460,15 @@
                 };
                 
                 const getWindGustDisplay = () => {
-                    if (data.weather.wind_gust !== null && data.weather.wind_gust !== undefined) {
+                    // Check if we're in test mode or using cached data
+                    const usingCachedData = data.cache_info && data.cache_info.using_cached_data;
+                    
+                    // If we're in test mode and have a timestamp, show age indicator even if primary data exists
+                    if (isCachedWindGust && data.weather.cached_fields.timestamp && usingCachedData) {
+                        const gustValue = Math.round(data.weather.wind_gust || data.weather.cached_fields.wind_gust) + ' mph';
+                        const ageText = formatAge(data.weather.cached_fields.timestamp.wind_gust);
+                        return `${gustValue}<br><span class="data-age">(${ageText})</span>`;
+                    } else if (data.weather.wind_gust !== null && data.weather.wind_gust !== undefined) {
                         return Math.round(data.weather.wind_gust) + ' mph';
                     } else if (isCachedWindGust && data.weather.cached_fields.timestamp) {
                         const gustValue = Math.round(data.weather.cached_fields.wind_gust) + ' mph';
@@ -682,8 +722,8 @@
                         }
                     });
                     
-                    // Save the toggle state to localStorage
-                    localStorage.setItem('testModeEnabled', enable);
+                    // Don't save test mode state to localStorage anymore
+                    // We want test mode to always start disabled by default
                     
                     return true;
                 } else {
@@ -716,19 +756,12 @@
                 toggleTestMode(this.checked);
             });
             
-            // Check localStorage for saved test mode state
-            const savedTestMode = localStorage.getItem('testModeEnabled');
-            if (savedTestMode === 'true') {
-                // Set toggle to checked state without triggering the change event
-                testModeToggle.checked = true;
-                
-                // Apply test mode to the backend - this will update the toggle color
-                toggleTestMode(true);
-            } else {
-                // Make sure toggle starts with the green "normal mode" color and is unchecked
-                testModeToggle.checked = false;
-                testModeToggle.classList.add('normal-mode');
-            }
+            // Always start in normal mode
+            testModeToggle.checked = false;
+            testModeToggle.classList.add('normal-mode');
+            
+            // Clear any previously saved test mode state from localStorage
+            localStorage.removeItem('testModeEnabled');
             
             // Initial load without waiting for fresh data
             fetchFireRisk().then(success => {

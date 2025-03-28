@@ -309,7 +309,7 @@ async def force_cached_mode():
             if not 'cached_fields' in cached_fire_risk_data['weather']:
                 cached_fire_risk_data['weather']['cached_fields'] = {}
             
-            # Set all fields as cached
+            # In test mode, force all fields to be marked as cached
             cached_fire_risk_data['weather']['cached_fields'] = {
                 'temperature': True,
                 'humidity': True,
@@ -324,13 +324,13 @@ async def force_cached_mode():
                     'wind_gust': cached_time.isoformat()
                 }
             }
-            
-            # Add note to modal content
-            cached_fire_risk_data['modal_content'] = {
-                'note': 'Displaying cached weather data. Current data is unavailable.',
-                'warning_title': 'Test Mode Active',
-                'warning_issues': ['This is a test of the caching system. All data shown is from cache.']
-            }
+        
+        # Add note to modal content
+        cached_fire_risk_data['modal_content'] = {
+            'note': 'Displaying cached weather data. Current data is unavailable.',
+            'warning_title': 'Test Mode Active',
+            'warning_issues': ['This is a test of the caching system. All data shown is from cache.']
+        }
         
         cached_fire_risk_data["cached_data"] = {
             "is_cached": True,
@@ -398,7 +398,7 @@ async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = Fal
                 if not 'cached_fields' in cached_fire_risk_data['weather']:
                     cached_fire_risk_data['weather']['cached_fields'] = {}
                 
-                # Set all fields as cached
+                # In test mode, force all fields to be marked as cached
                 cached_fire_risk_data['weather']['cached_fields'] = {
                     'temperature': True,
                     'humidity': True,
