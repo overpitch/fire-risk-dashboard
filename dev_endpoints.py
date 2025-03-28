@@ -5,7 +5,7 @@ import sys
 import requests
 import json
 from fastapi import APIRouter, BackgroundTasks, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
 from config import IS_PRODUCTION, SYNOPTIC_BASE_URL, SYNOPTIC_API_KEY, WUNDERGROUND_API_KEY, SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, logger
 from cache import data_cache
@@ -302,22 +302,169 @@ async def force_cached_mode():
     # Update the cached fire risk data
     if data_cache.fire_risk_data:
         cached_fire_risk_data = data_cache.last_valid_data["fire_risk_data"].copy()
+        
+        # Add timestamps to each cached field to ensure age indicators appear
+        if 'weather' in cached_fire_risk_data:
+            # Ensure there's a cached_fields structure
+            if not 'cached_fields' in cached_fire_risk_data['weather']:
+                cached_fire_risk_data['weather']['cached_fields'] = {}
+            
+            # Set all fields as cached
+            cached_fire_risk_data['weather']['cached_fields'] = {
+                'temperature': True,
+                'humidity': True,
+                'wind_speed': True,
+                'soil_moisture': True,
+                'wind_gust': True,
+                'timestamp': {
+                    'temperature': cached_time.isoformat(),
+                    'humidity': cached_time.isoformat(),
+                    'wind_speed': cached_time.isoformat(),
+                    'soil_moisture': cached_time.isoformat(),
+                    'wind_gust': cached_time.isoformat()
+                }
+            }
+            
+            # Add note to modal content
+            cached_fire_risk_data['modal_content'] = {
+                'note': 'Displaying cached weather data. Current data is unavailable.',
+                'warning_title': 'Test Mode Active',
+                'warning_issues': ['This is a test of the caching system. All data shown is from cache.']
+            }
+        
         cached_fire_risk_data["cached_data"] = {
             "is_cached": True,
             "original_timestamp": cached_time.isoformat(),
             "age": age_str
         }
         
-        # Add or update the explanation with cache notice
-        original_explanation = cached_fire_risk_data.get("explanation", "")
-        if "cached data" not in original_explanation.lower():
-            cached_fire_risk_data["explanation"] = f"{original_explanation} NOTICE: Displaying cached data from {cached_time.strftime('%Y-%m-%d %H:%M')} ({age_str} old)."
-        
         # Update the cache
         data_cache.fire_risk_data = cached_fire_risk_data
     
     # Redirect to home page with success message
     return RedirectResponse(url="/", status_code=303)
+
+@router.get("/toggle-test-mode", response_class=JSONResponse)
+@dev_only_endpoint
+async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = False):
+    """Toggle test mode on or off via API
+    
+    This endpoint is designed to be called from JavaScript in the dashboard UI.
+    When enabled, it will force the system to use cached data (simulate API failure).
+    When disabled, it will restore normal operation.
+    
+    Args:
+        background_tasks: FastAPI BackgroundTasks for scheduling refreshes
+        enable: If True, enable test mode (use cached data); if False, disable test mode
+    
+    Returns:
+        JSON response with the status of the test mode toggle
+    """
+    if enable:
+        # First check if we have cached data
+        if data_cache.last_valid_data["timestamp"] is None:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "No cached data available yet. Please visit the dashboard first to populate the cache."}
+            )
+        
+        # Set the flag to use cached data
+        data_cache.using_cached_data = True
+        
+        # Set all cached fields to true since we're using all cached data
+        for field in data_cache.cached_fields:
+            data_cache.cached_fields[field] = True
+            
+        logger.info("🔵 TEST MODE: Enabled via UI toggle")
+        
+        # Get timestamp information for display
+        from datetime import datetime
+        from config import TIMEZONE
+        from data_processing import format_age_string
+        
+        current_time = datetime.now(TIMEZONE)
+        cached_time = data_cache.last_valid_data["timestamp"]
+        
+        # Calculate age of data
+        age_str = format_age_string(current_time, cached_time)
+        
+        # Update the cached fire risk data
+        if data_cache.fire_risk_data:
+            cached_fire_risk_data = data_cache.last_valid_data["fire_risk_data"].copy()
+            
+            # Add timestamps to each cached field to ensure age indicators appear
+            if 'weather' in cached_fire_risk_data:
+                # Ensure there's a cached_fields structure
+                if not 'cached_fields' in cached_fire_risk_data['weather']:
+                    cached_fire_risk_data['weather']['cached_fields'] = {}
+                
+                # Set all fields as cached
+                cached_fire_risk_data['weather']['cached_fields'] = {
+                    'temperature': True,
+                    'humidity': True,
+                    'wind_speed': True,
+                    'soil_moisture': True,
+                    'wind_gust': True,
+                    'timestamp': {
+                        'temperature': cached_time.isoformat(),
+                        'humidity': cached_time.isoformat(),
+                        'wind_speed': cached_time.isoformat(),
+                        'soil_moisture': cached_time.isoformat(),
+                        'wind_gust': cached_time.isoformat()
+                    }
+                }
+                
+                # Add note to modal content
+                cached_fire_risk_data['modal_content'] = {
+                    'note': 'Displaying cached weather data. Current data is unavailable.',
+                    'warning_title': 'Test Mode Active',
+                    'warning_issues': ['This is a test of the caching system. All data shown is from cache.']
+                }
+            
+            cached_fire_risk_data["cached_data"] = {
+                "is_cached": True,
+                "original_timestamp": cached_time.isoformat(),
+                "age": age_str
+            }
+            
+            # Update the cache
+            data_cache.fire_risk_data = cached_fire_risk_data
+        
+        return JSONResponse(
+            content={"status": "success", "mode": "test", "message": "Test mode enabled. Using cached data."}
+        )
+    else:
+        # Disable test mode and return to normal operation
+        data_cache.using_cached_data = False
+        
+        # Reset the fire risk data to remove any cached data indicators
+        if data_cache.fire_risk_data and "cached_data" in data_cache.fire_risk_data:
+            # Remove the cached_data field
+            fire_risk_copy = data_cache.fire_risk_data.copy()
+            del fire_risk_copy["cached_data"]
+            
+            # Remove any cached data mentions from the explanation
+            if "explanation" in fire_risk_copy:
+                explanation = fire_risk_copy["explanation"]
+                if "NOTICE: Displaying cached data" in explanation:
+                    explanation = explanation.split(" NOTICE: Displaying cached data")[0]
+                    fire_risk_copy["explanation"] = explanation
+                    
+            # Update the fire risk data
+            data_cache.fire_risk_data = fire_risk_copy
+        
+        # Force a refresh with fresh data
+        logger.info("🔵 TEST MODE: Disabled via UI toggle")
+        refresh_success = await refresh_data_cache(background_tasks, force=True)
+        
+        return JSONResponse(
+            content={
+                "status": "success", 
+                "mode": "normal", 
+                "refresh_success": refresh_success,
+                "message": "Test mode disabled. Returned to normal operation."
+            }
+        )
 
 @router.get("/reset-cached-mode", response_class=HTMLResponse)
 @dev_only_endpoint

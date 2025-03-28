@@ -45,6 +45,15 @@
         .cache-stale {
             color: #fd7e14;
         }
+        /* Custom toggle colors for Test Mode */
+        .form-check-input.normal-mode {
+            background-color: #198754;  /* Bootstrap green */
+            border-color: #198754;
+        }
+        .form-check-input.test-mode {
+            background-color: #dc3545;  /* Bootstrap red */
+            border-color: #dc3545;
+        }
         #refresh-btn {
             margin-left: 10px;
             padding: 3px 10px;
@@ -637,8 +646,90 @@
             });
         }
 
+        // Test Mode Toggle Functionality
+        async function toggleTestMode(enable) {
+            // Update the toggle color immediately
+            const testModeToggle = document.getElementById('testModeToggle');
+            if (enable) {
+                // Switch to red for test mode
+                testModeToggle.classList.remove('normal-mode');
+                testModeToggle.classList.add('test-mode');
+            } else {
+                // Switch to green for normal mode
+                testModeToggle.classList.remove('test-mode');
+                testModeToggle.classList.add('normal-mode');
+            }
+
+            try {
+                const response = await fetch(`/toggle-test-mode?enable=${enable}`, {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Log success message based on mode
+                    if (enable) {
+                        console.log('Test mode enabled. Using cached data.');
+                    } else {
+                        console.log('Test mode disabled. Returned to normal operation.');
+                    }
+                    
+                    // Refresh the data display to show the changes
+                    fetchFireRisk(true, true).then(success => {
+                        if (success !== false) {
+                            initializeTooltips();
+                        }
+                    });
+                    
+                    // Save the toggle state to localStorage
+                    localStorage.setItem('testModeEnabled', enable);
+                    
+                    return true;
+                } else {
+                    console.error(`Error toggling test mode: ${data.message}`);
+                    alert(`Error: ${data.message}`);
+                    
+                    // Reset the toggle to its previous state without triggering the change event
+                    const testModeToggle = document.getElementById('testModeToggle');
+                    testModeToggle.checked = !enable;
+                    
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error toggling test mode:', error);
+                alert('Error toggling test mode. See console for details.');
+                
+                // Reset the toggle to its previous state without triggering the change event
+                const testModeToggle = document.getElementById('testModeToggle');
+                testModeToggle.checked = !enable;
+                
+                return false;
+            }
+        }
+        
         // Auto-refresh functionality
         function setupRefresh() {
+            // Set up the test mode toggle event listener
+            const testModeToggle = document.getElementById('testModeToggle');
+            testModeToggle.addEventListener('change', function() {
+                toggleTestMode(this.checked);
+            });
+            
+            // Check localStorage for saved test mode state
+            const savedTestMode = localStorage.getItem('testModeEnabled');
+            if (savedTestMode === 'true') {
+                // Set toggle to checked state without triggering the change event
+                testModeToggle.checked = true;
+                
+                // Apply test mode to the backend - this will update the toggle color
+                toggleTestMode(true);
+            } else {
+                // Make sure toggle starts with the green "normal mode" color and is unchecked
+                testModeToggle.checked = false;
+                testModeToggle.classList.add('normal-mode');
+            }
+            
             // Initial load without waiting for fresh data
             fetchFireRisk().then(success => {
                 if (success !== false) {
@@ -667,7 +758,14 @@
             <a class="navbar-brand fw-bold" href="#">
                 Fire Weather Advisory  —  Sierra City, CA
             </a>
-            <div class="d-flex">
+            <div class="d-flex align-items-center">
+                <div class="ms-auto d-flex align-items-center me-3">
+                    <div class="form-check form-switch d-flex align-items-center">
+                        <span class="text-light me-3" style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
+                        <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle" style="cursor: pointer; margin-left: 0;">
+                        <label class="form-check-label text-light ms-2" for="testModeToggle" style="font-size: 0.9rem;">Test</label>
+                    </div>
+                </div>
                 <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#aboutUsModal">About Us</button>
             </div>
         </div>
