@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import requests
 
-from main import get_api_token, get_weather_data, get_wunderground_data
+from api_clients import get_api_token, get_weather_data, get_wunderground_data
 
 @pytest.mark.asyncio
 async def test_get_api_token():
@@ -12,8 +12,8 @@ async def test_get_api_token():
     mock_response.status_code = 200
     mock_response.json.return_value = {"TOKEN": "test_token"}
 
-    with patch('main.requests.get', return_value=mock_response) as mock_get, \
-         patch('main.os.getenv', return_value="test_api_key"):
+    with patch('api_clients.requests.get', return_value=mock_response) as mock_get, \
+         patch('api_clients.SYNOPTIC_API_KEY', "test_api_key", create=True):
         token = get_api_token()
 
         # Check that the token is returned
@@ -26,8 +26,8 @@ async def test_get_api_token():
 async def test_get_api_token_failure():
     """Test that get_api_token returns None when the API call fails."""
     # Mock the requests.get method to raise an exception
-    with patch('main.requests.get', side_effect=requests.exceptions.RequestException("Test error")), \
-         patch('main.os.getenv', return_value="test_api_key"):
+    with patch('api_clients.requests.get', side_effect=requests.exceptions.RequestException("Test error")), \
+         patch('api_clients.SYNOPTIC_API_KEY', "test_api_key", create=True):
         token = get_api_token()
         
         # Check that None is returned
@@ -42,8 +42,8 @@ async def test_get_weather_data():
     mock_response.status_code = 200
     mock_response.json.return_value = {"STATION": [{"STID": "TEST"}]}
     
-    with patch('main.get_api_token', return_value="test_token"), \
-         patch('main.requests.get', return_value=mock_response) as mock_get:
+    with patch('api_clients.get_api_token', return_value="test_token"), \
+         patch('api_clients.requests.get', return_value=mock_response) as mock_get:
         data = get_weather_data("TEST")
         
         # Check that the data is returned
@@ -57,8 +57,8 @@ async def test_get_weather_data_failure():
     """Test that get_weather_data returns None when the API call fails."""
     # Mock the get_api_token function to return a token
     # Mock the requests.get method to raise an exception
-    with patch('main.get_api_token', return_value="test_token"), \
-         patch('main.requests.get', side_effect=requests.exceptions.RequestException("Test error")):
+    with patch('api_clients.get_api_token', return_value="test_token"), \
+         patch('api_clients.requests.get', side_effect=requests.exceptions.RequestException("Test error")):
         data = get_weather_data("TEST")
         
         # Check that None is returned
@@ -77,8 +77,8 @@ async def test_get_weather_data_retry():
     mock_success_response.status_code = 200
     mock_success_response.json.return_value = {"STATION": [{"STID": "TEST"}]}
     
-    with patch('main.get_api_token', return_value="test_token"), \
-         patch('main.requests.get', side_effect=[mock_error_response, mock_success_response]) as mock_get:
+    with patch('api_clients.get_api_token', return_value="test_token"), \
+         patch('api_clients.requests.get', side_effect=[mock_error_response, mock_success_response]) as mock_get:
         data = get_weather_data("TEST")
         
         # Check that the data is returned
@@ -95,12 +95,13 @@ async def test_get_wunderground_data():
     mock_response.status_code = 200
     mock_response.json.return_value = {"observations": [{"imperial": {"windGust": 3.0}}]}
     
-    with patch('main.requests.get', return_value=mock_response) as mock_get, \
-         patch('main.os.getenv', return_value="test_api_key"):
-        data = get_wunderground_data("TEST")
+    with patch('api_clients.requests.get', return_value=mock_response) as mock_get, \
+         patch('api_clients.WUNDERGROUND_API_KEY', "test_api_key", create=True):
+        data = get_wunderground_data(["TEST"])
         
         # Check that the data is returned
-        assert data == {"observations": [{"imperial": {"windGust": 3.0}}]}
+        assert "TEST" in data
+        assert data["TEST"] == {"observations": [{"imperial": {"windGust": 3.0}}]}
         
         # Check that requests.get was called with the correct URL
         mock_get.assert_called_once_with("https://api.weather.com/v2/pws/observations/current?stationId=TEST&format=json&units=e&apiKey=test_api_key")
@@ -109,12 +110,13 @@ async def test_get_wunderground_data():
 async def test_get_wunderground_data_failure():
     """Test that get_wunderground_data returns None when the API call fails."""
     # Mock the requests.get method to raise an exception
-    with patch('main.requests.get', side_effect=requests.exceptions.RequestException("Test error")), \
-         patch('main.os.getenv', return_value="test_api_key"):
-        data = get_wunderground_data("TEST")
+    with patch('api_clients.requests.get', side_effect=requests.exceptions.RequestException("Test error")), \
+         patch('api_clients.WUNDERGROUND_API_KEY', "test_api_key", create=True):
+        data = get_wunderground_data(["TEST"])
         
-        # Check that None is returned
-        assert data is None
+        # Check that the station's data is None
+        assert "TEST" in data
+        assert data["TEST"] is None
 
 @pytest.mark.asyncio
 async def test_get_wunderground_data_empty_response():
@@ -124,9 +126,10 @@ async def test_get_wunderground_data_empty_response():
     mock_response.status_code = 200
     mock_response.json.return_value = {"observations": []}
     
-    with patch('main.requests.get', return_value=mock_response), \
-         patch('main.os.getenv', return_value="test_api_key"):
-        data = get_wunderground_data("TEST")
+    with patch('api_clients.requests.get', return_value=mock_response), \
+         patch('api_clients.WUNDERGROUND_API_KEY', "test_api_key", create=True):
+        data = get_wunderground_data(["TEST"])
         
-        # Check that None is returned
-        assert data is None
+        # Check that the station's data is None
+        assert "TEST" in data
+        assert data["TEST"] is None
