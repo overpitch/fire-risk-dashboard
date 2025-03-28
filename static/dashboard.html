@@ -325,12 +325,12 @@
                                '<span class="unavailable">&lt;unavailable&gt;</span>');
                 const windGustStation = data.weather.data_sources.wind_gust_station;
                 
-                // Get threshold values for color formatting
-                const THRESH_TEMP = 75; // Temperature threshold in Fahrenheit
-                const THRESH_HUMID = 15; // Humidity threshold in percent (below this is risky)
-                const THRESH_WIND = 15;  // Wind speed threshold in mph
-                const THRESH_GUSTS = 20; // Wind gust threshold in mph
-                const THRESH_SOIL_MOIST = 10; // Soil moisture threshold in percent (below this is risky)
+                // Get threshold values from API response or use defaults if not available
+                const THRESH_TEMP = data.thresholds ? data.thresholds.temp : 75; // Temperature threshold in Fahrenheit
+                const THRESH_HUMID = data.thresholds ? data.thresholds.humid : 15; // Humidity threshold in percent (below this is risky)
+                const THRESH_WIND = data.thresholds ? data.thresholds.wind : 15;  // Wind speed threshold in mph
+                const THRESH_GUSTS = data.thresholds ? data.thresholds.gusts : 20; // Wind gust threshold in mph
+                const THRESH_SOIL_MOIST = data.thresholds ? data.thresholds.soil_moist : 10; // Soil moisture threshold in percent (below this is risky)
                 
                 // Check if values exceed thresholds for color formatting - use rounded values
                 const tempValue = tempCelsius ? Math.round((tempCelsius * 9/5) + 32) : null;

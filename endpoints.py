@@ -72,6 +72,16 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
         "using_cached_data": data_cache.using_cached_data
     }
     
+    # Add threshold values from config to the response
+    from config import THRESH_TEMP, THRESH_HUMID, THRESH_WIND, THRESH_GUSTS, THRESH_SOIL_MOIST
+    result["thresholds"] = {
+        "temp": THRESH_TEMP,
+        "humid": THRESH_HUMID,
+        "wind": THRESH_WIND,
+        "gusts": THRESH_GUSTS,
+        "soil_moist": THRESH_SOIL_MOIST
+    }
+    
     # Add field-level caching information to the response
     # If we're using cached data from a previous successful API call (fallback mode)
     if data_cache.using_cached_data:
