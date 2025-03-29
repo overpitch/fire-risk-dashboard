@@ -2,7 +2,7 @@
 
 import pytest
 # Removed TestClient import
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from fastapi import BackgroundTasks
 from datetime import datetime, timedelta
 
