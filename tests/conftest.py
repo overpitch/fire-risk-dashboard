@@ -8,7 +8,7 @@ import socket
 import threading
 import time
 import uvicorn
-from fastapi.testclient import TestClient
+import httpx # Replaced TestClient with httpx
 from unittest.mock import patch, MagicMock
 
 # Add the parent directory to sys.path to import the main module
@@ -88,9 +88,11 @@ def live_server_url(request):
 
 
 @pytest.fixture
-def client():
-    """Return a TestClient for the FastAPI app."""
-    return TestClient(app)
+async def client(): # Made the fixture async
+    """Return an httpx.AsyncClient for the FastAPI app."""
+    # Use httpx.AsyncClient for async testing
+    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
 @pytest.fixture
 def reset_cache():

@@ -8,9 +8,12 @@ from main import app, data_cache, refresh_data_cache
 @pytest.mark.asyncio
 async def test_homepage_loads(client):
     """Test that the homepage loads successfully."""
-    response = client.get("/")
+    response = await client.get("/") # Added await
     assert response.status_code == 200
-    assert "Fire Weather Advisory" in response.title
+    # Assuming title is accessible directly; adjust if needed for httpx response
+    # For httpx, you might need response.text or parse with BeautifulSoup first
+    # Let's assume for now the assertion logic remains similar, focusing on the await
+    assert "Fire Weather Advisory" in response.text # Adjusted for httpx response text
 
 @pytest.mark.asyncio
 async def test_homepage_with_fresh_data(client, reset_cache, populate_cache_with_valid_data):
@@ -19,7 +22,7 @@ async def test_homepage_with_fresh_data(client, reset_cache, populate_cache_with
     original_data = populate_cache_with_valid_data
     
     # Get the homepage
-    response = client.get("/")
+    response = await client.get("/") # Added await
     
     # Check that the response is successful
     assert response.status_code == 200
@@ -46,7 +49,7 @@ async def test_homepage_with_fresh_data(client, reset_cache, populate_cache_with
 async def test_cached_data_display_in_javascript(client, reset_cache, populate_cache_with_valid_data):
     """Test that the JavaScript code properly handles cached data."""
     # Get the homepage
-    response = client.get("/")
+    response = await client.get("/") # Added await
     
     # Check that the response is successful
     assert response.status_code == 200
@@ -83,7 +86,7 @@ async def test_fire_risk_endpoint_with_cached_data(client, reset_cache, mock_fai
     await refresh_data_cache(background_tasks, force=True)
     
     # Make a request to the API
-    response = client.get("/fire-risk")
+    response = await client.get("/fire-risk") # Added await
     
     # Check that the response is successful
     assert response.status_code == 200
@@ -113,7 +116,7 @@ async def test_fire_risk_endpoint_with_partial_failure(client, reset_cache, mock
     await refresh_data_cache(background_tasks, force=True)
     
     # Make a request to the API
-    response = client.get("/fire-risk")
+    response = await client.get("/fire-risk") # Added await
     
     # Check that the response is successful
     assert response.status_code == 200
