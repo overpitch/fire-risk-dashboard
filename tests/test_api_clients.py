@@ -76,6 +76,13 @@ def test_get_wunderground_data_success(mock_get):
     assert data["mock_station"] == mock_wunderground_response
 
 
+def test_get_wunderground_data_missing_key(mock_get):
+    """Test wunderground data retrieval with missing key in response."""
+    mock_get.return_value.json.return_value = {"observations": [{}]} # Missing 'imperial'
+    mock_get.return_value.status_code = 200
+    data = get_wunderground_data(["mock_station"])
+    assert data["mock_station"] is None
+
 @patch('api_clients.requests.get')
 def test_get_wunderground_data_failure(mock_get):
     """Test failed wunderground data retrieval."""
@@ -86,6 +93,7 @@ def test_get_wunderground_data_failure(mock_get):
 
 @patch('api_clients.get_weather_data')
 def test_get_synoptic_data(mock_get_weather_data):
+
     """Test get_synoptic_data function."""
     mock_get_weather_data.return_value = mock_weather_response
     data = get_synoptic_data()

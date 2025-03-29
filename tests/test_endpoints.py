@@ -54,9 +54,18 @@ async def test_fire_risk_critically_stale_data(mock_refresh_data_cache):
                 mock_refresh_data_cache.assert_awaited_once()
 
 
+async def test_fire_risk_refresh_exception(mock_refresh_data_cache):
+    mock_refresh_data_cache.side_effect = Exception("Refresh error")
+    with patch.object(data_cache, "fire_risk_data", None):  # Simulate no cached data
+        response = client.get("/fire-risk")
+        assert response.status_code == 500
+        assert response.json()["detail"] == "Error refreshing data: Refresh error"
+
+
 @pytest.mark.asyncio
 async def test_fire_risk_refresh_timeout():
     with patch.object(data_cache, "fire_risk_data", {"risk": "low", "explanation": "test"}):
+
         with patch.object(data_cache, "is_stale", return_value=True):
             with patch.object(data_cache, "is_critically_stale", return_value=True):
                 with patch.object(data_cache, "wait_for_update", return_value=False):

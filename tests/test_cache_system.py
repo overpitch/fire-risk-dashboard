@@ -54,8 +54,26 @@ def test_update_cache(cache):
     assert cache.last_valid_data["timestamp"] is not None
 
 
+def test_update_cache_with_none_data(cache):
+    synoptic_data = {"test": "synoptic"}
+    wunderground_data = None  # Simulate missing data
+    fire_risk_data = {"risk": "low"}
+
+    cache.update_cache(synoptic_data, wunderground_data, fire_risk_data)
+
+    assert cache.synoptic_data == synoptic_data
+    assert cache.wunderground_data is None  # Check that the None value is stored
+    assert cache.fire_risk_data == fire_risk_data
+    assert cache.last_updated is not None
+    assert cache.last_update_success is True
+    assert cache.last_valid_data["synoptic_data"] == synoptic_data
+    assert "wunderground_data" not in cache.last_valid_data # Check that the None value is NOT stored in last_valid_data
+    assert cache.last_valid_data["fire_risk_data"] == fire_risk_data
+    assert cache.last_valid_data["timestamp"] is not None
+
 @pytest.mark.asyncio
 async def test_wait_for_update(cache):
+
     # Simulate an update in a separate thread
     async def update_cache_async():
         await asyncio.sleep(0.1)  # Simulate some delay

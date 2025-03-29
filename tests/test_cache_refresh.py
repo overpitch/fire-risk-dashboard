@@ -122,10 +122,21 @@ async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_g
     assert cache.cached_fields["wind_gust"] is True
 
 
+async def test_schedule_next_refresh_exception(mock_refresh_data_cache, event_loop, caplog):
+    mock_refresh_data_cache.side_effect = Exception("Test Exception")
+    cache = DataCache()
+
+    await schedule_next_refresh(0.01)
+
+    assert "Error during background refresh: Test Exception" in caplog.text
+    assert cache.refresh_task_active is False
+
+
 @pytest.mark.asyncio
 @patch('cache_refresh.refresh_data_cache')
 async def test_schedule_next_refresh(mock_refresh_data_cache, event_loop):
     mock_refresh_data_cache.return_value = True
+
     cache = DataCache()
     with patch('cache.logger') as mock_logger:
         await schedule_next_refresh(0.01)  # Schedule refresh after a short delay
