@@ -10,7 +10,7 @@ async def test_homepage_loads(client):
     """Test that the homepage loads successfully."""
     response = client.get("/")
     assert response.status_code == 200
-    assert "Sierra City Fire Risk Dashboard" in response.text
+    assert "Fire Weather Advisory" in response.title
 
 @pytest.mark.asyncio
 async def test_homepage_with_fresh_data(client, reset_cache, populate_cache_with_valid_data):

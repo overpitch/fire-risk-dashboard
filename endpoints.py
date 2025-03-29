@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Dict, Any
 import os
@@ -10,8 +10,12 @@ from cache import data_cache
 from cache_refresh import refresh_data_cache
 from data_processing import format_age_string
 
+# Create the FastAPI app
+app = FastAPI()
+
 # Create a router for the main endpoints
 router = APIRouter()
+
 
 @router.get("/fire-risk")
 async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = False):
@@ -193,10 +197,15 @@ def home():
     <p>The dashboard HTML file could not be loaded.</p>
 </body>
 </html>"""
+# Include the router in the app
+app.include_router(router)
+
 
 @router.get("/toggle-test-mode", response_class=JSONResponse)
 async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = False):
     """Toggle test mode on or off via API
+
+
     
     This endpoint is designed to be called from JavaScript in the dashboard UI.
     When enabled, it will force the system to use cached data (simulate API failure).

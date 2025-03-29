@@ -10,8 +10,11 @@ from unittest.mock import patch, MagicMock
 # Add the parent directory to sys.path to import the main module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import main
-from main import app, data_cache
+from fire_risk_logic import calculate_fire_risk
+from api_clients import get_weather_data, get_wunderground_data
+from endpoints import app
+from cache import data_cache
+
 
 @pytest.fixture
 def client():
@@ -90,20 +93,20 @@ def mock_wunderground_response():
 @pytest.fixture
 def mock_api_responses(mock_synoptic_response, mock_wunderground_response):
     """Mock both API responses."""
-    with patch('main.get_weather_data', return_value=mock_synoptic_response), \
-         patch('main.get_wunderground_data', return_value=mock_wunderground_response):
+    with patch('api_clients.get_weather_data', return_value=mock_synoptic_response), \
+         patch('api_clients.get_wunderground_data', return_value=mock_wunderground_response):
         yield
 
 @pytest.fixture
 def mock_failed_synoptic_api():
     """Mock a failed Synoptic API response."""
-    with patch('main.get_weather_data', return_value=None):
+    with patch('api_clients.get_weather_data', return_value=None):
         yield
 
 @pytest.fixture
 def mock_failed_wunderground_api():
     """Mock a failed Weather Underground API response."""
-    with patch('main.get_wunderground_data', return_value=None):
+    with patch('api_clients.get_wunderground_data', return_value=None):
         yield
 
 @pytest.fixture
@@ -114,8 +117,8 @@ def mock_partial_api_failure(mock_synoptic_response):
     partial_response["STATION"][0]["OBSERVATIONS"]["air_temp_value_1"]["value"] = None
     partial_response["STATION"][1]["OBSERVATIONS"]["soil_moisture_value_1"]["value"] = None
     
-    with patch('main.get_weather_data', return_value=partial_response), \
-         patch('main.get_wunderground_data', return_value=None):
+    with patch('api_clients.get_weather_data', return_value=partial_response), \
+         patch('api_clients.get_wunderground_data', return_value=None):
         yield
 
 @pytest.fixture
@@ -142,7 +145,7 @@ def populate_cache_with_valid_data(mock_synoptic_response, mock_wunderground_res
         }
     }
     
-    risk, explanation = main.calculate_fire_risk(weather_data)
+    risk, explanation = calculate_fire_risk(weather_data)
     fire_risk_data = {"risk": risk, "explanation": explanation, "weather": weather_data}
     
     # Update the cache

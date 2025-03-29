@@ -183,22 +183,14 @@ pytest --cov=. --cov-report=term-missing
 
 ## Current Test Coverage Gaps
 
-The current test suite has several gaps that should be addressed:
+The current test suite has the following gaps:
 
-1. **Incomplete Module Coverage**:
-   - `fire_risk_logic.py` lacks dedicated tests
-   - `data_processing.py` is insufficiently tested
-   - `dev_endpoints.py` has no tests
+1. **fire_risk_logic.py**:  `calculate_fire_risk` lacks tests for various threshold combinations, missing data, and error handling.
 
-2. **Limited Code Path Coverage**:
-   - Many conditional branches remain untested
-   - Error handling paths are often missing tests
+2. **data_processing.py**: Needs more tests for `process_synoptic_data`, `process_wunderground_data`, `combine_weather_data`, and `format_age_string`, covering various scenarios like missing data, invalid responses, and edge cases.
 
-3. **Missing Test Types**:
-   - Limited integration testing between components
-   - Insufficient edge case testing
+3. **dev_endpoints.py**:  Lacks tests for all endpoints.
 
-> **Note**: These coverage gaps are referenced in the project roadmap (see roadmap.md Phase 3: Testing Strategy Implementation) and will be addressed as part of the planned testing improvements.
 
 ## Setting Up Automated Testing
 
@@ -215,13 +207,36 @@ For more comprehensive CI/CD, you could use GitHub Actions or similar to run the
 
 To improve test coverage and quality, consider:
 
-1. Creating dedicated test files for untested modules:
-   - `test_fire_risk_logic.py`
-   - `test_data_processing.py`
-   - `test_dev_endpoints.py`
+1. **fire_risk_logic.py**: Create `tests/test_fire_risk_logic.py` and add tests for `calculate_fire_risk` covering:
+    - Some, but not all, thresholds exceeded (various combinations).
+    - No thresholds exceeded.
+    - Invalid or missing data (e.g., missing keys, wrong types).
+    - Exception handling during calculation.
 
-2. Adding more tests for error conditions and exception handling
+2. **data_processing.py**: Create `tests/test_data_processing.py` and add tests for:
+    - `process_synoptic_data`:
+        - Valid responses with all expected stations.
+        - Responses with missing stations.
+        - Responses with missing/invalid data fields.
+        - Empty or malformed responses.
+        - Various soil moisture data formats.
+    - `process_wunderground_data`:
+        - Valid responses with data from all stations.
+        - Responses with missing stations.
+        - Responses with missing/invalid wind gust data.
+        - Cases where cached data is used (valid and expired).
+        - Error handling during processing.
+    - `combine_weather_data`:
+        - Successful combination of valid data.
+        - Handling missing/invalid data from either/both APIs.
+        - Correct usage of cached data.
+        - Correct formatting of combined data.
+    - `format_age_string`:
+        - Formatting of various time differences (minutes, hours, days).
+        - Edge cases like zero time difference.
 
-3. Implementing end-to-end tests that verify the full data flow
+3. **dev_endpoints.py**: Create `tests/test_dev_endpoints.py` and add tests for all endpoints.
 
-4. Setting coverage thresholds and enforcing them in CI/CD
+4. Adding more end-to-end tests that verify the full data flow.
+
+5. Setting coverage thresholds and enforcing them in CI/CD
