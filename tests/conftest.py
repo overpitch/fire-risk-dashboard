@@ -7,6 +7,7 @@ import pytz
 import socket
 import threading
 import time
+import asyncio
 import uvicorn
 import httpx # Replaced TestClient with httpx
 from unittest.mock import patch, MagicMock
@@ -39,14 +40,20 @@ from cache import data_cache
 # --- Existing Fixtures ---
 
 
-@pytest.fixture(scope="session") # Changed scope to session
-async def client(): # Made the fixture async
+@pytest.fixture(scope="function")
+async def client():
     """Return an httpx.AsyncClient for the FastAPI app."""
-    # Use httpx.AsyncClient for async testing
+    # Use httpx.AsyncClient for async testing with function scope to match event_loop fixture
     async with httpx.AsyncClient(app=app, base_url="http://test") as client:
         yield client
-        # Explicitly close the client during teardown
-        await client.aclose()
+    
+@pytest.fixture(scope="function", autouse=True)
+async def event_loop_per_test():
+    """Create an event loop for each test."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    loop.close()
 
 @pytest.fixture
 def reset_cache(): # Reverted fixture to sync

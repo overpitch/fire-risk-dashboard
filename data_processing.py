@@ -103,8 +103,11 @@ def process_wunderground_data(wunderground_data: Dict[str, Optional[Dict[str, An
     # Current time for checking cache age
     current_time = datetime.now(TIMEZONE)
     
+    # Get a combined list of stations - both from config and from input data
+    all_station_ids = set(WUNDERGROUND_STATION_IDS) | set(wunderground_data.keys())
+    
     # Process each station's data
-    for station_id in WUNDERGROUND_STATION_IDS:
+    for station_id in all_station_ids:
         station_data[station_id] = {
             "value": None,
             "is_cached": False,

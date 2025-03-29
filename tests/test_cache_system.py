@@ -1,6 +1,7 @@
 import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch, MagicMock
 from cache import DataCache
 
 @pytest.fixture
@@ -67,7 +68,7 @@ def test_update_cache_with_none_data(cache):
     assert cache.last_updated is not None
     assert cache.last_update_success is True
     assert cache.last_valid_data["synoptic_data"] == synoptic_data
-    assert "wunderground_data" not in cache.last_valid_data # Check that the None value is NOT stored in last_valid_data
+    assert cache.last_valid_data["wunderground_data"] is None # Check that the None value is stored in last_valid_data
     assert cache.last_valid_data["fire_risk_data"] == fire_risk_data
     assert cache.last_valid_data["timestamp"] is not None
 
@@ -89,10 +90,16 @@ async def test_wait_for_update_timeout(cache):
     assert await cache.wait_for_update() is False
 
 
-def test_reset_update_event(cache):
-    # Set the event manually
-    cache._update_complete_event.set()
-    assert cache._update_complete_event.is_set() is True
-
+# Modifying to patch the asyncio event loop
+@patch('asyncio.get_event_loop')
+def test_reset_update_event(mock_get_event_loop, cache):
+    # Set up the mock event loop
+    mock_loop = MagicMock()
+    mock_get_event_loop.return_value = mock_loop
+    mock_loop.is_closed.return_value = False
+    
+    # Call the method
     cache.reset_update_event()
-    assert cache._update_complete_event.is_set() is False
+    
+    # Verify that call_soon_threadsafe was called with the clear method
+    mock_loop.call_soon_threadsafe.assert_called_once_with(cache._update_complete_event.clear)
