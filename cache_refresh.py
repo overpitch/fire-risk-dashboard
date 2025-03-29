@@ -104,161 +104,45 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             # Process the API responses to get the latest weather data
             latest_weather = combine_weather_data(weather_data, wunderground_data, data_cache.cached_fields)
             
-            # Check for missing fields and use cached values if available
-            current_time = datetime.now(TIMEZONE)
+            # Ensure all weather data fields have values using the new method
+            # This will fill in any missing values with cached data or defaults
+            latest_weather = data_cache.ensure_complete_weather_data(latest_weather)
             
-            # Check for individual fields that are missing and use cached values where available
-            if latest_weather["air_temp"] is None and data_cache.last_valid_data["fields"]["temperature"]["value"] is not None:
-                latest_weather["air_temp"] = data_cache.last_valid_data["fields"]["temperature"]["value"]
-                data_cache.cached_fields["temperature"] = True
-                any_field_using_cache = True
-                
-                cached_time = data_cache.last_valid_data["fields"]["temperature"]["timestamp"]
-                age_str = format_age_string(current_time, cached_time)
-                
-                logger.info(f"Using cached temperature data: {latest_weather['air_temp']}°C from {cached_time.isoformat()} ({age_str} old)")
-                
-                # Store info about this cached field
-                cached_fields_info.append({
-                    "field": "temperature",
-                    "value": latest_weather["air_temp"],
-                    "timestamp": cached_time,
-                    "age": age_str
-                })
-            
-            if latest_weather["relative_humidity"] is None and data_cache.last_valid_data["fields"]["humidity"]["value"] is not None:
-                latest_weather["relative_humidity"] = data_cache.last_valid_data["fields"]["humidity"]["value"]
-                data_cache.cached_fields["humidity"] = True
-                any_field_using_cache = True
-                
-                cached_time = data_cache.last_valid_data["fields"]["humidity"]["timestamp"]
-                age_str = format_age_string(current_time, cached_time)
-                
-                logger.info(f"Using cached humidity data: {latest_weather['relative_humidity']}% from {cached_time.isoformat()} ({age_str} old)")
-                
-                # Store info about this cached field
-                cached_fields_info.append({
-                    "field": "humidity",
-                    "value": latest_weather["relative_humidity"],
-                    "timestamp": cached_time,
-                    "age": age_str
-                })
-            
-            if latest_weather["wind_speed"] is None and data_cache.last_valid_data["fields"]["wind_speed"]["value"] is not None:
-                latest_weather["wind_speed"] = data_cache.last_valid_data["fields"]["wind_speed"]["value"]
-                data_cache.cached_fields["wind_speed"] = True
-                any_field_using_cache = True
-                
-                cached_time = data_cache.last_valid_data["fields"]["wind_speed"]["timestamp"]
-                age_str = format_age_string(current_time, cached_time)
-                
-                logger.info(f"Using cached wind speed data: {latest_weather['wind_speed']} mph from {cached_time.isoformat()} ({age_str} old)")
-                
-                # Store info about this cached field
-                cached_fields_info.append({
-                    "field": "wind_speed",
-                    "value": latest_weather["wind_speed"],
-                    "timestamp": cached_time,
-                    "age": age_str
-                })
-            
-            if latest_weather["soil_moisture_15cm"] is None and data_cache.last_valid_data["fields"]["soil_moisture"]["value"] is not None:
-                latest_weather["soil_moisture_15cm"] = data_cache.last_valid_data["fields"]["soil_moisture"]["value"]
-                data_cache.cached_fields["soil_moisture"] = True
-                any_field_using_cache = True
-                
-                cached_time = data_cache.last_valid_data["fields"]["soil_moisture"]["timestamp"]
-                age_str = format_age_string(current_time, cached_time)
-                
-                logger.info(f"Using cached soil moisture data: {latest_weather['soil_moisture_15cm']}% from {cached_time.isoformat()} ({age_str} old)")
-                
-                # Store info about this cached field
-                cached_fields_info.append({
-                    "field": "soil_moisture",
-                    "value": latest_weather["soil_moisture_15cm"],
-                    "timestamp": cached_time,
-                    "age": age_str
-                })
-            
-            if latest_weather["wind_gust"] is None and data_cache.last_valid_data["fields"]["wind_gust"]["value"] is not None:
-                latest_weather["wind_gust"] = data_cache.last_valid_data["fields"]["wind_gust"]["value"]
-                data_cache.cached_fields["wind_gust"] = True
-                any_field_using_cache = True
-                
-                cached_time = data_cache.last_valid_data["fields"]["wind_gust"]["timestamp"]
-                age_str = format_age_string(current_time, cached_time)
-                
-                logger.info(f"Using cached wind gust data: {latest_weather['wind_gust']} mph from {cached_time.isoformat()} ({age_str} old)")
-                
-                # Store info about this cached field
-                cached_fields_info.append({
-                    "field": "wind_gust",
-                    "value": latest_weather["wind_gust"],
-                    "timestamp": cached_time,
-                    "age": age_str
-                })
-            
-            # Update the global cache flag if any fields are using cached data
+            # Track if we're using any cached values
+            any_field_using_cache = any(data_cache.cached_fields.values())
             data_cache.using_cached_data = any_field_using_cache
             
-            # If all individual fields are missing and we have no cache for them, that's a problem
-            if (latest_weather["air_temp"] is None and 
-                latest_weather["relative_humidity"] is None and 
-                latest_weather["wind_speed"] is None and 
-                latest_weather["soil_moisture_15cm"] is None and 
-                latest_weather["wind_gust"] is None):
+            # Log which fields are using cached data for debugging
+            if any_field_using_cache:
+                current_time = datetime.now(TIMEZONE)
+                cached_fields_info = []
                 
-                logger.warning("All critical data fields are missing")
+                # Map between internal field names and API response field names
+                field_mapping = {
+                    "temperature": "air_temp",
+                    "humidity": "relative_humidity",
+                    "wind_speed": "wind_speed",
+                    "soil_moisture": "soil_moisture_15cm",
+                    "wind_gust": "wind_gust"
+                }
                 
-                # If we have valid cached data, use it as a fallback
-                if data_cache.last_valid_data["timestamp"] is not None:
-                    logger.info(f"Falling back to cached data from {data_cache.last_valid_data['timestamp']}")
-                    
-                    # Mark that we're using cached data
-                    data_cache.using_cached_data = True
-                    
-                    # Use the cached data but update the timestamps to reflect this is old data
-                    cached_weather_data = data_cache.last_valid_data["synoptic_data"]
-                    cached_wunderground_data = data_cache.last_valid_data["wunderground_data"]
-                    cached_fire_risk_data = data_cache.last_valid_data["fire_risk_data"].copy()
-                    
-                    # Update the cache with the cached data (this will update timestamps)
-                    current_time = datetime.now(TIMEZONE)
-                    
-                    # Calculate how old the data is for display
-                    cached_time = data_cache.last_valid_data["timestamp"]
-                    age_str = format_age_string(current_time, cached_time)
-                    
-                    # Update the cached data to indicate it's not current
-                    cached_fire_risk_data["cached_data"] = {
-                        "is_cached": True,
-                        "original_timestamp": cached_time.isoformat(),
-                        "age": age_str
-                    }
-                    
-                    # Update cache with the cached data but new timestamp
-                    with data_cache._lock:
-                        data_cache.synoptic_data = cached_weather_data
-                        data_cache.wunderground_data = cached_wunderground_data
-                        data_cache.fire_risk_data = cached_fire_risk_data
-                        data_cache.last_updated = current_time
-                        data_cache.last_update_success = False
+                # Log information about each cached field
+                for internal_field, is_cached in data_cache.cached_fields.items():
+                    if is_cached:
+                        api_field = field_mapping.get(internal_field)
+                        value = latest_weather.get(api_field)
+                        cached_time = data_cache.last_valid_data["fields"][internal_field]["timestamp"]
+                        age_str = format_age_string(current_time, cached_time)
                         
-                        # Signal update completion even though we're using cached data
-                        try:
-                            loop = asyncio.get_event_loop()
-                            if not loop.is_closed():
-                                loop.call_soon_threadsafe(data_cache._update_complete_event.set)
-                        except Exception as e:
-                            logger.error(f"Error signaling update completion: {e}")
-                    
-                    # Log the fallback
-                    logger.info(f"Using cached data from {cached_time.isoformat()} as fallback")
-                    success = True
-                    return True
-                else:
-                    # No cached data available either
-                    raise ValueError("All critical data sources failed and no cached data available")
+                        logger.info(f"Using cached {internal_field} data: {value} from {cached_time.isoformat()} ({age_str} old)")
+                        
+                        # Store info about this cached field
+                        cached_fields_info.append({
+                            "field": internal_field,
+                            "value": value,
+                            "timestamp": cached_time,
+                            "age": age_str
+                        })
             
             # Calculate fire risk based on the latest weather data
             risk, explanation = calculate_fire_risk(latest_weather)

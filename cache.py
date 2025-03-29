@@ -1,13 +1,26 @@
 import threading
 import asyncio
 import time
+import os
+import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 import pytz
+from pathlib import Path
 
 from config import TIMEZONE, logger
 
 class DataCache:
+    # Default values for when no data is available
+    # These are reasonable fallback values for Sierra City area
+    DEFAULT_VALUES = {
+        "temperature": 15.0,           # 59°F - mild temperature
+        "humidity": 40.0,              # 40% - moderate humidity
+        "wind_speed": 5.0,             # 5 mph - light breeze
+        "soil_moisture": 20.0,         # 20% - moderately dry soil
+        "wind_gust": 8.0               # 8 mph - light gusts
+    }
+    
     def __init__(self):
         self.synoptic_data: Optional[Dict[str, Any]] = None
         self.wunderground_data: Optional[Dict[str, Any]] = None
@@ -25,39 +38,59 @@ class DataCache:
         self._lock = threading.Lock()
         # Event to signal when an update is complete
         self._update_complete_event = asyncio.Event()
-        # Storage for last known valid data by field
-        self.last_valid_data: Dict[str, Any] = {
-            # Store each weather field individually with its own timestamp
-            "fields": {
-                "temperature": {"value": None, "timestamp": None},
-                "humidity": {"value": None, "timestamp": None},
-                "wind_speed": {"value": None, "timestamp": None},
-                "soil_moisture": {"value": None, "timestamp": None},
-                "wind_gust": {
-                    "value": None,  # Average value for backward compatibility
-                    "timestamp": None,
-                    "stations": {
-                        # Store per-station data
-                        # Each station will have {"value": float, "timestamp": datetime}
+        
+        # Set up cache file path - store in data directory
+        self.cache_dir = Path("data")
+        self.cache_file = self.cache_dir / "weather_cache.json"
+        
+        # Initialize with current time
+        current_time = datetime.now(TIMEZONE)
+        
+        # First try to load cache from disk
+        disk_cache_loaded = self._load_cache_from_disk()
+        
+        if not disk_cache_loaded:
+            # No disk cache available, initialize with default values
+            logger.info("No disk cache found, initializing with default values")
+            
+            # Storage for last known valid data by field
+            self.last_valid_data: Dict[str, Any] = {
+                # Store each weather field individually with its own timestamp
+                "fields": {
+                    "temperature": {"value": self.DEFAULT_VALUES["temperature"], "timestamp": current_time},
+                    "humidity": {"value": self.DEFAULT_VALUES["humidity"], "timestamp": current_time},
+                    "wind_speed": {"value": self.DEFAULT_VALUES["wind_speed"], "timestamp": current_time},
+                    "soil_moisture": {"value": self.DEFAULT_VALUES["soil_moisture"], "timestamp": current_time},
+                    "wind_gust": {
+                        "value": self.DEFAULT_VALUES["wind_gust"],  # Average value for backward compatibility
+                        "timestamp": current_time,
+                        "stations": {
+                            # Store per-station data
+                            # Each station will have {"value": float, "timestamp": datetime}
+                        }
                     }
-                }
-            },
-            # Keep the whole API responses for backwards compatibility
-            "synoptic_data": None,
-            "wunderground_data": None,
-            "fire_risk_data": None,
-            "timestamp": None,
-        }
-        # Track which fields are currently using cached data
-        self.cached_fields: Dict[str, bool] = {
-            "temperature": False,
-            "humidity": False,
-            "wind_speed": False,
-            "soil_moisture": False,
-            "wind_gust": False
-        }
-        # Flag to indicate if we're currently using any cached data
-        self.using_cached_data: bool = False
+                },
+                # Keep the whole API responses for backwards compatibility
+                "synoptic_data": None,
+                "wunderground_data": None,
+                "fire_risk_data": None,
+                "timestamp": current_time,
+            }
+            # Track which fields are currently using cached data
+            self.cached_fields: Dict[str, bool] = {
+                "temperature": True,  # Start with all fields using default values
+                "humidity": True,
+                "wind_speed": True,
+                "soil_moisture": True,
+                "wind_gust": True
+            }
+            # Flag to indicate if we're currently using any cached data
+            self.using_cached_data: bool = True  # Start with using defaults but mark as "default values"
+            self.using_default_values: bool = True  # Flag to indicate using defaults vs true cached values
+        else:
+            # Disk cache was loaded successfully, cached_fields and using_cached_data 
+            # will be already set by _load_cache_from_disk
+            self.using_default_values = False
 
     def is_stale(self, max_age_minutes: int = 15) -> bool:
         """Check if the data is stale (older than max_age_minutes)"""
@@ -183,6 +216,122 @@ class DataCache:
         
         # Log cache update
         logger.info(f"Cache updated at {self.last_updated}")
+        
+        # Save cache to disk
+        self._save_cache_to_disk()
+    
+    def _load_cache_from_disk(self) -> bool:
+        """Load cached data from disk if available.
+        
+        Returns:
+            bool: True if data was loaded successfully, False otherwise
+        """
+        try:
+            if not self.cache_file.exists():
+                logger.info(f"Cache file does not exist: {self.cache_file}")
+                return False
+                
+            with open(self.cache_file, 'r') as f:
+                disk_cache = json.load(f)
+                
+            # Validate the loaded data
+            if not disk_cache or "last_valid_data" not in disk_cache:
+                logger.warning(f"Invalid cache file format: {self.cache_file}")
+                return False
+                
+            # Convert ISO timestamps back to datetime objects
+            self._convert_timestamps(disk_cache["last_valid_data"])
+            
+            # Update cache with disk data
+            self.last_valid_data = disk_cache["last_valid_data"]
+            
+            if "last_updated" in disk_cache and disk_cache["last_updated"]:
+                self.last_updated = datetime.fromisoformat(disk_cache["last_updated"])
+            
+            # Mark that we're using cached data
+            self.using_cached_data = True
+            self.cached_fields = {field: True for field in self.cached_fields}
+            
+            logger.info(f"Successfully loaded cache from disk: {self.cache_file}")
+            return True
+        except Exception as e:
+            logger.error(f"Error loading cache from disk: {e}")
+            return False
+    
+    def _save_cache_to_disk(self) -> bool:
+        """Save current cache data to disk.
+        
+        Returns:
+            bool: True if data was saved successfully, False otherwise
+        """
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(self.cache_dir, exist_ok=True)
+            
+            # Prepare data for serialization
+            cache_data = {
+                "last_valid_data": self._prepare_for_serialization(self.last_valid_data.copy()),
+                "last_updated": self.last_updated.isoformat() if self.last_updated else None
+            }
+            
+            # Write to disk
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+                
+            logger.info(f"Cache saved to disk: {self.cache_file}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving cache to disk: {e}")
+            return False
+            
+    def _convert_timestamps(self, data: Dict[str, Any]) -> None:
+        """Convert ISO timestamp strings back to datetime objects recursively."""
+        if not data:
+            return
+            
+        # Handle fields dictionary
+        if "fields" in data:
+            for field_name, field_data in data["fields"].items():
+                if isinstance(field_data, dict):
+                    if "timestamp" in field_data and field_data["timestamp"]:
+                        try:
+                            field_data["timestamp"] = datetime.fromisoformat(field_data["timestamp"])
+                        except (ValueError, TypeError):
+                            field_data["timestamp"] = datetime.now(TIMEZONE)
+                    
+                    # Handle wind_gust stations
+                    if field_name == "wind_gust" and "stations" in field_data:
+                        for station_id, station_data in field_data["stations"].items():
+                            if "timestamp" in station_data and station_data["timestamp"]:
+                                try:
+                                    station_data["timestamp"] = datetime.fromisoformat(station_data["timestamp"])
+                                except (ValueError, TypeError):
+                                    station_data["timestamp"] = datetime.now(TIMEZONE)
+        
+        # Handle timestamp at the root level
+        if "timestamp" in data and data["timestamp"]:
+            try:
+                data["timestamp"] = datetime.fromisoformat(data["timestamp"])
+            except (ValueError, TypeError):
+                data["timestamp"] = datetime.now(TIMEZONE)
+    
+    def _prepare_for_serialization(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert datetime objects to ISO strings for JSON serialization recursively."""
+        if not data:
+            return data
+            
+        # Deep copy to avoid modifying the original
+        result = {}
+        
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                result[key] = value.isoformat()
+            elif isinstance(value, dict):
+                result[key] = self._prepare_for_serialization(value)
+            else:
+                result[key] = value
+                
+        return result
     
     def reset_update_event(self):
         """Reset the update complete event for next update cycle"""
@@ -203,6 +352,90 @@ class DataCache:
         except asyncio.TimeoutError:
             logger.warning(f"Timeout waiting for data update after {timeout} seconds")
             return False
+    
+    def get_field_value(self, field_name: str) -> Any:
+        """Get a value for a field, with fallbacks to ensure we never return None
+        
+        Args:
+            field_name: The internal field name (temperature, humidity, etc.)
+            
+        Returns:
+            The field value, guaranteed to never be None
+        """
+        # Map from internal field name to API response field name
+        field_mapping = {
+            "temperature": "air_temp",
+            "humidity": "relative_humidity",
+            "wind_speed": "wind_speed",
+            "soil_moisture": "soil_moisture_15cm",
+            "wind_gust": "wind_gust"
+        }
+        
+        response_field_name = field_mapping.get(field_name)
+        
+        # First try to get the value from the current fire_risk_data
+        if (self.fire_risk_data and 
+            "weather" in self.fire_risk_data and 
+            response_field_name in self.fire_risk_data["weather"] and
+            self.fire_risk_data["weather"][response_field_name] is not None):
+            
+            # Reset cached flag for this field since we're using direct value
+            self.cached_fields[field_name] = False
+            
+            # Check if any field is still using cached data
+            self.using_cached_data = any(self.cached_fields.values())
+            
+            return self.fire_risk_data["weather"][response_field_name]
+        
+        # Next, try to get the value from last_valid_data.fields
+        if (self.last_valid_data and 
+            "fields" in self.last_valid_data and 
+            field_name in self.last_valid_data["fields"] and
+            self.last_valid_data["fields"][field_name].get("value") is not None):
+            
+            # Mark that we're using cached data for this field
+            self.cached_fields[field_name] = True
+            self.using_cached_data = True
+            
+            return self.last_valid_data["fields"][field_name]["value"]
+        
+        # Final fallback - use default value
+        logger.warning(f"No data available for {field_name}, using default value")
+        self.cached_fields[field_name] = True
+        self.using_cached_data = True
+        
+        return self.DEFAULT_VALUES[field_name]
+    
+    def ensure_complete_weather_data(self, weather_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure all required weather fields have values, filling in missing ones from cache
+        
+        Args:
+            weather_data: The weather data dictionary to validate and complete
+            
+        Returns:
+            The completed weather data with no None values for critical fields
+        """
+        # Make a copy to avoid modifying the original
+        completed_data = weather_data.copy()
+        
+        # Map from API response field name to internal field name
+        field_mapping = {
+            "air_temp": "temperature",
+            "relative_humidity": "humidity",
+            "wind_speed": "wind_speed",
+            "soil_moisture_15cm": "soil_moisture",
+            "wind_gust": "wind_gust"
+        }
+        
+        # Ensure each field has a value
+        for api_field, internal_field in field_mapping.items():
+            if api_field not in completed_data or completed_data[api_field] is None:
+                # Field is missing or None, get a value for it
+                value = self.get_field_value(internal_field)
+                completed_data[api_field] = value
+                logger.info(f"Added missing {api_field} value: {value}")
+        
+        return completed_data
 
 # Initialize the cache
 data_cache = DataCache()

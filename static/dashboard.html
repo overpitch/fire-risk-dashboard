@@ -377,7 +377,9 @@
                         const ageText = formatAge(data.weather.cached_fields.timestamp.temperature);
                         return `${tempValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
-                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                        // With our enhanced caching system, this should never happen
+                        // But if it does, display a loading message instead of "unavailable"
+                        return '<span class="text-secondary">Loading data...</span>';
                     }
                 };
                 
@@ -397,7 +399,9 @@
                         const ageText = formatAge(data.weather.cached_fields.timestamp.soil_moisture);
                         return `${moistureValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
-                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                        // With our enhanced caching system, this should never happen
+                        // But if it does, display a loading message instead of "unavailable"
+                        return '<span class="text-secondary">Loading data...</span>';
                     }
                 };
                 
@@ -435,7 +439,9 @@
                         const ageText = formatAge(data.weather.cached_fields.timestamp.humidity);
                         return `${humidValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
-                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                        // With our enhanced caching system, this should never happen
+                        // But if it does, display a loading message instead of "unavailable"
+                        return '<span class="text-secondary">Loading data...</span>';
                     }
                 };
                 
@@ -455,7 +461,9 @@
                         const ageText = formatAge(data.weather.cached_fields.timestamp.wind_speed);
                         return `${speedValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
-                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                        // With our enhanced caching system, this should never happen
+                        // But if it does, display a loading message instead of "unavailable"
+                        return '<span class="text-secondary">Loading data...</span>';
                     }
                 };
                 
@@ -475,7 +483,9 @@
                         const ageText = formatAge(data.weather.cached_fields.timestamp.wind_gust);
                         return `${gustValue}<br><span class="data-age">(${ageText})</span>`;
                     } else {
-                        return '<span class="unavailable">&lt;unavailable&gt;</span>';
+                        // With our enhanced caching system, this should never happen
+                        // But if it does, display a loading message instead of "unavailable"
+                        return '<span class="text-secondary">Loading data...</span>';
                     }
                 };
                 

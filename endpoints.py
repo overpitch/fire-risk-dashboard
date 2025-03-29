@@ -86,6 +86,18 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
         "soil_moist": THRESH_SOIL_MOIST
     }
     
+    # Ensure all weather metrics have values (never return None)
+    if result and "weather" in result:
+        result["weather"] = data_cache.ensure_complete_weather_data(result["weather"])
+        
+        # Add cache info to the response
+        if "cached_data" not in result:
+            result["cache_info"] = {
+                "using_cached_data": data_cache.using_cached_data,
+                "using_default_values": getattr(data_cache, 'using_default_values', False),
+                "cached_fields": data_cache.cached_fields.copy() if hasattr(data_cache, 'cached_fields') else {}
+            }
+    
     # Add field-level caching information to the response
     # If we're using cached data from a previous successful API call (fallback mode)
     if data_cache.using_cached_data:
