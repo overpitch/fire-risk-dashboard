@@ -1,0 +1,1672 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-7.4.0, pluggy-1.5.0
+rootdir: /Users/david/Documents/Coding/dev/fire-risk-dashboard
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-4.1.0, asyncio-0.21.1, anyio-4.8.0, playwright-0.7.0, base-url-2.1.0
+asyncio: mode=Mode.AUTO
+collected 71 items
+
+tests/test_api_clients.py .F.F...E..                                     [ 14%]
+tests/test_cache_refresh.py FFFFFEF                                      [ 23%]
+tests/test_cache_system.py .......F..F                                   [ 39%]
+tests/test_data_processing.py ......FFFFFFFFF.                           [ 61%]
+tests/test_e2e.py .                                                      [ 63%]
+tests/test_endpoints.py FFFEF.FFF                                        [ 76%]
+tests/test_fire_risk_logic.py ......                                     [ 84%]
+tests/test_integration.py EEEEEE                                         [ 92%]
+tests/test_ui_rendering.py FFFFF                                         [100%]
+
+==================================== ERRORS ====================================
+___________ ERROR at setup of test_get_wunderground_data_missing_key ___________
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_api_clients.py, line 79
+  def test_get_wunderground_data_missing_key(mock_get):
+E       fixture 'mock_get' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, is_chromium, is_firefox, is_webkit, launch_browser, live_server_url, mock_api_responses, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_api_clients.py:79
+____________ ERROR at setup of test_schedule_next_refresh_exception ____________
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_cache_refresh.py, line 125
+  async def test_schedule_next_refresh_exception(mock_refresh_data_cache, event_loop, caplog):
+      mock_refresh_data_cache.side_effect = Exception("Test Exception")
+      cache = DataCache()
+
+      await schedule_next_refresh(0.01)
+
+      assert "Error during background refresh: Test Exception" in caplog.text
+      assert cache.refresh_task_active is False
+E       fixture 'mock_refresh_data_cache' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, is_chromium, is_firefox, is_webkit, launch_browser, live_server_url, mock_api_responses, mock_data, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_cache_refresh.py:125
+______________ ERROR at setup of test_fire_risk_refresh_exception ______________
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_endpoints.py, line 57
+  async def test_fire_risk_refresh_exception(mock_refresh_data_cache):
+      mock_refresh_data_cache.side_effect = Exception("Refresh error")
+      with patch.object(data_cache, "fire_risk_data", None):  # Simulate no cached data
+          response = client.get("/fire-risk")
+          assert response.status_code == 500
+          assert response.json()["detail"] == "Error refreshing data: Refresh error"
+E       fixture 'mock_refresh_data_cache' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, is_chromium, is_firefox, is_webkit, launch_browser, live_server_url, mock_api_responses, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_endpoints.py:57
+__________________ ERROR at setup of test_initial_cache_empty __________________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_initial_cache_empty>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bcbd80>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+____________ ERROR at setup of test_cache_stale_refresh_background _____________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_cache_stale_refresh_background>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bb05e0>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+____________________ ERROR at setup of test_wait_for_fresh _____________________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_wait_for_fresh>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bb0860>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+___________________ ERROR at setup of test_test_mode_toggle ____________________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_test_mode_toggle>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bb1260>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+________________ ERROR at setup of test_api_client_integration _________________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_api_client_integration>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bb1e40>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+______________ ERROR at setup of test_data_processing_integration ______________
+
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+request = <SubRequest 'reset_cache' for <Function test_data_processing_integration>>
+kwargs = {}
+setup = <function _wrap_async_fixture.<locals>._async_fixture_wrapper.<locals>.setup at 0x106bb2a20>
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(
+        event_loop: asyncio.AbstractEventLoop, request: SubRequest, **kwargs: Any
+    ):
+        func = _perhaps_rebind_fixture_func(
+            fixture, request.instance, fixturedef.unittest
+        )
+    
+        async def setup():
+            res = await func(**_add_kwargs(func, kwargs, event_loop, request))
+            return res
+    
+>       return event_loop.run_until_complete(setup())
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+=================================== FAILURES ===================================
+__________________________ test_get_api_token_failure __________________________
+
+mock_get = <MagicMock name='get' id='4397496848'>
+
+    @patch('api_clients.requests.get')
+    def test_get_api_token_failure(mock_get):
+        """Test failed API token retrieval."""
+        mock_get.return_value.status_code = 400  # Simulate a bad request
+>       token = get_api_token()
+
+tests/test_api_clients.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+api_clients.py:28: in get_api_token
+    logger.info(f"🔎 DEBUG: Token response: {json.dumps(token_data)}")
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:261: in iterencode
+    return _iterencode(o, 0)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x100cd7b60>
+o = <MagicMock name='get().json()' id='4400094512'>
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type MagicMock is not JSON serializable
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:180: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:34,479 - config - INFO - 🔎 DEBUG: Fetching API token from https://api.synopticdata.com/v2/auth?apikey=Ku8mIxG7ePUmWwC6RuWuxVnLWg1b9X86knPlJ5tlZw
+------------------------------ Captured log call -------------------------------
+INFO     config:api_clients.py:21 🔎 DEBUG: Fetching API token from https://api.synopticdata.com/v2/auth?apikey=Ku8mIxG7ePUmWwC6RuWuxVnLWg1b9X86knPlJ5tlZw
+________________________ test_get_weather_data_failure _________________________
+
+mock_get = <MagicMock name='get' id='4400101568'>
+mock_token = <MagicMock name='get_api_token' id='4400101904'>
+
+    @patch('api_clients.get_api_token')
+    @patch('api_clients.requests.get')
+    def test_get_weather_data_failure(mock_get, mock_token):
+        """Test failed weather data retrieval."""
+        mock_token.return_value = "mock_token"
+        mock_get.return_value.status_code = 400
+        data = get_weather_data("mock_location")
+>       assert data is None
+E       AssertionError: assert <MagicMock name='get().json()' id='4401594784'> is None
+
+tests/test_api_clients.py:45: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:34,500 - config - INFO - 🔎 DEBUG: Making API request to https://api.synopticdata.com/v2/stations/latest?stid=mock_location&token=mock_...
+2025-03-28 18:44:34,500 - config - INFO - 🔎 DEBUG: API response status code: 400
+2025-03-28 18:44:34,500 - config - INFO - ✅ Successfully received data from Synoptic API
+------------------------------ Captured log call -------------------------------
+INFO     config:api_clients.py:72 🔎 DEBUG: Making API request to https://api.synopticdata.com/v2/stations/latest?stid=mock_location&token=mock_...
+INFO     config:api_clients.py:77 🔎 DEBUG: API response status code: 400
+INFO     config:api_clients.py:103 ✅ Successfully received data from Synoptic API
+_______________________ test_refresh_data_cache_success ________________________
+
+mock_calculate_fire_risk = <MagicMock name='calculate_fire_risk' id='4400096864'>
+mock_combine_weather_data = <MagicMock name='combine_weather_data' id='4401598816'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4401596800'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4401595120'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.combine_weather_data')
+    @patch('cache_refresh.calculate_fire_risk')
+    async def test_refresh_data_cache_success(mock_calculate_fire_risk, mock_combine_weather_data, mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.return_value = mock_weather_data
+        mock_get_wunderground_data.return_value = mock_wunderground_data
+        mock_combine_weather_data.return_value = mock_combined_data
+        mock_calculate_fire_risk.return_value = mock_fire_risk
+    
+        cache = DataCache()
+        assert await refresh_data_cache() is True
+>       assert cache.fire_risk_data["risk"] == "low"
+E       TypeError: 'NoneType' object is not subscriptable
+
+tests/test_cache_refresh.py:36: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:34,505 - config - INFO - Starting data cache refresh...
+2025-03-28 18:44:34,505 - config - INFO - Successfully fetched data from 1 Weather Underground stations: observations
+2025-03-28 18:44:34,505 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:44:34.505648-07:00
+2025-03-28 18:44:34,505 - config - INFO - Cache updated at 2025-03-28 18:44:34.505648-07:00
+2025-03-28 18:44:34,505 - config - INFO - Data cache refresh successful
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+INFO     config:cache_refresh.py:80 Successfully fetched data from 1 Weather Underground stations: observations
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:44:34.505648-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:44:34.505648-07:00
+INFO     config:cache_refresh.py:292 Data cache refresh successful
+_____________________ test_refresh_data_cache_api_failure ______________________
+
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4400094848'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4400097200'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    async def test_refresh_data_cache_api_failure(mock_get_wunderground_data, mock_get_synoptic_data, event_loop):
+        mock_get_synoptic_data.return_value = None  # Simulate API failure
+        mock_get_wunderground_data.return_value = None
+    
+        cache = DataCache()
+        with patch('cache.logger') as mock_logger:  # Mock the logger to check for warnings
+            assert await refresh_data_cache() is False
+>           mock_logger.warning.assert_called_with("All critical data fields are missing")
+
+tests/test_cache_refresh.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='logger.warning' id='4400101568'>
+args = ('All critical data fields are missing',), kwargs = {}
+expected = "warning('All critical data fields are missing')"
+actual = 'not called.'
+error_message = "expected call not found.\nExpected: warning('All critical data fields are missing')\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: warning('All critical data fields are missing')
+E             Actual: not called.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:968: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:34,507 - config - INFO - Starting data cache refresh...
+2025-03-28 18:44:34,507 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:34,507 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:34,507 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:39,510 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:39,510 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:39,510 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:44,513 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:44,514 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:44,514 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:49,515 - config - WARNING - Data refresh taking too long (over 15s), aborting
+2025-03-28 18:44:49,516 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+WARNING  config:cache_refresh.py:94 Data refresh taking too long (over 15s), aborting
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+________________________ test_refresh_data_cache_retry _________________________
+
+mock_sleep = <AsyncMock name='sleep' id='4400096192'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4400102576'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4400101232'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)  # Mock asyncio.sleep
+    async def test_refresh_data_cache_retry(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.side_effect = [None, mock_weather_data]  # Simulate API failure then success
+        mock_get_wunderground_data.side_effect = [None, mock_wunderground_data]
+        with patch('cache_refresh.combine_weather_data') as mock_combine:
+            with patch('cache_refresh.calculate_fire_risk') as mock_calc:
+                mock_combine.return_value = mock_combined_data
+                mock_calc.return_value = mock_fire_risk
+                cache = DataCache()
+                assert await refresh_data_cache() is True
+>               assert cache.fire_risk_data["risk"] == "low"
+E               TypeError: 'NoneType' object is not subscriptable
+
+tests/test_cache_refresh.py:70: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:49,545 - config - INFO - Starting data cache refresh...
+2025-03-28 18:44:49,545 - config - INFO - Cache updated at 2025-03-28 18:44:49.545734-07:00
+2025-03-28 18:44:49,545 - config - INFO - Data cache refresh successful
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:44:49.545734-07:00
+INFO     config:cache_refresh.py:292 Data cache refresh successful
+_______________________ test_refresh_data_cache_timeout ________________________
+
+mock_sleep = <AsyncMock name='sleep' id='4400100560'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4397491808'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4397496848'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
+    async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data, event_loop):
+        mock_get_synoptic_data.side_effect = asyncio.sleep(0.1)  # Simulate a long API call
+        mock_get_wunderground_data.side_effect = asyncio.sleep(0.1)
+    
+        cache = DataCache()
+        cache.update_timeout = 0.01  # Set a very short timeout
+        assert await refresh_data_cache() is False
+>       mock_sleep.assert_not_awaited()  # asyncio.sleep in refresh_data_cache should not be called
+
+tests/test_cache_refresh.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <AsyncMock name='sleep' id='4400100560'>
+
+    def assert_not_awaited(self):
+        """
+        Assert that the mock was never awaited.
+        """
+        if self.await_count != 0:
+            msg = (f"Expected {self._mock_name or 'mock'} to not have been awaited."
+                   f" Awaited {self.await_count} times.")
+>           raise AssertionError(msg)
+E           AssertionError: Expected sleep to not have been awaited. Awaited 4 times.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:2457: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:49,548 - config - INFO - Starting data cache refresh...
+2025-03-28 18:44:49,548 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,548 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,548 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,548 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,548 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,549 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,549 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,549 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,549 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,549 - config - ERROR - Error refreshing data cache (attempt 4/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,549 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 18:44:49,549 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,549 - config - ERROR - Error refreshing data cache (attempt 5/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,549 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 4/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 5/5): 'NoneType' object has no attribute 'get'
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+_____________________ test_refresh_data_cache_cached_data ______________________
+
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4401595792'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4401595456'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.return_value = None
+        mock_get_wunderground_data.return_value = None
+    
+        cache = DataCache()
+        # Populate cache with initial data
+        now = datetime.now(timezone.utc)
+        past = now - timedelta(minutes=20)
+        cache.last_valid_data = {
+            "fields": {
+                "temperature": {"value": 26, "timestamp": past},
+                "humidity": {"value": 11, "timestamp": past},
+                "wind_speed": {"value": 21, "timestamp": past},
+                "soil_moisture": {"value": 1, "timestamp": past},
+                "wind_gust": {"value": 16, "timestamp": past, "stations": {}}
+            },
+            "synoptic_data": mock_weather_data,
+            "wunderground_data": mock_wunderground_data,
+            "fire_risk_data": {"risk": "moderate"},
+            "timestamp": past
+        }
+    
+>       assert await refresh_data_cache() is True
+E       assert False is True
+
+tests/test_cache_refresh.py:115: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:44:49,566 - config - INFO - Starting data cache refresh...
+2025-03-28 18:44:49,566 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:49,566 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:49,566 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:54,569 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:54,569 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:54,569 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:44:59,572 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 18:44:59,573 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 18:44:59,573 - config - INFO - Retrying in 5 seconds...
+2025-03-28 18:45:04,574 - config - WARNING - Data refresh taking too long (over 15s), aborting
+2025-03-28 18:45:04,575 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+WARNING  config:cache_refresh.py:94 Data refresh taking too long (over 15s), aborting
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+__________________________ test_schedule_next_refresh __________________________
+
+mock_refresh_data_cache = <AsyncMock name='refresh_data_cache' id='4401594448'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.refresh_data_cache')
+    async def test_schedule_next_refresh(mock_refresh_data_cache, event_loop):
+        mock_refresh_data_cache.return_value = True
+    
+        cache = DataCache()
+        with patch('cache.logger') as mock_logger:
+            await schedule_next_refresh(0.01)  # Schedule refresh after a short delay
+>           mock_logger.info.assert_called_with("Scheduling next background refresh in 0.01 minutes")
+
+tests/test_cache_refresh.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='logger.info' id='4401600832'>
+args = ('Scheduling next background refresh in 0.01 minutes',), kwargs = {}
+expected = "info('Scheduling next background refresh in 0.01 minutes')"
+actual = 'not called.'
+error_message = "expected call not found.\nExpected: info('Scheduling next background refresh in 0.01 minutes')\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: info('Scheduling next background refresh in 0.01 minutes')
+E             Actual: not called.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:968: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:04,582 - config - INFO - Scheduling next background refresh in 0.01 minutes
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:318 Scheduling next background refresh in 0.01 minutes
+_______________________ test_update_cache_with_none_data _______________________
+
+cache = <cache.DataCache object at 0x1065cac10>
+
+    def test_update_cache_with_none_data(cache):
+        synoptic_data = {"test": "synoptic"}
+        wunderground_data = None  # Simulate missing data
+        fire_risk_data = {"risk": "low"}
+    
+        cache.update_cache(synoptic_data, wunderground_data, fire_risk_data)
+    
+        assert cache.synoptic_data == synoptic_data
+        assert cache.wunderground_data is None  # Check that the None value is stored
+        assert cache.fire_risk_data == fire_risk_data
+        assert cache.last_updated is not None
+        assert cache.last_update_success is True
+        assert cache.last_valid_data["synoptic_data"] == synoptic_data
+>       assert "wunderground_data" not in cache.last_valid_data # Check that the None value is NOT stored in last_valid_data
+E       AssertionError: assert 'wunderground_data' not in {'fields': {'humidity': {'timestamp': None, 'value': None}, 'soil_moisture': {'timestamp': None, 'value': None}, 'temp...tetime.datetime(2025, 3, 28, 18, 45, 5, 219026, tzinfo=<DstTzInfo 'America/Los_Angeles' PDT-1 day, 17:00:00 DST>), ...}
+E        +  where {'fields': {'humidity': {'timestamp': None, 'value': None}, 'soil_moisture': {'timestamp': None, 'value': None}, 'temp...tetime.datetime(2025, 3, 28, 18, 45, 5, 219026, tzinfo=<DstTzInfo 'America/Los_Angeles' PDT-1 day, 17:00:00 DST>), ...} = <cache.DataCache object at 0x1065cac10>.last_valid_data
+
+tests/test_cache_system.py:70: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,219 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:45:05.219026-07:00
+2025-03-28 18:45:05,219 - config - INFO - Cache updated at 2025-03-28 18:45:05.219026-07:00
+------------------------------ Captured log call -------------------------------
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:45:05.219026-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:45:05.219026-07:00
+___________________________ test_reset_update_event ____________________________
+
+cache = <cache.DataCache object at 0x1065c9b70>
+
+    def test_reset_update_event(cache):
+        # Set the event manually
+        cache._update_complete_event.set()
+        assert cache._update_complete_event.is_set() is True
+    
+        cache.reset_update_event()
+>       assert cache._update_complete_event.is_set() is False
+E       assert True is False
+E        +  where True = <bound method Event.is_set of <asyncio.locks.Event object at 0x106c1dde0 [set]>>()
+E        +    where <bound method Event.is_set of <asyncio.locks.Event object at 0x106c1dde0 [set]>> = <asyncio.locks.Event object at 0x106c1dde0 [set]>.is_set
+E        +      where <asyncio.locks.Event object at 0x106c1dde0 [set]> = <cache.DataCache object at 0x1065c9b70>._update_complete_event
+
+tests/test_cache_system.py:98: AssertionError
+_____________________ test_process_wunderground_data_valid _____________________
+
+    def test_process_wunderground_data_valid():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+    
+>       assert avg_wind_gust == 4.0
+E       assert 3.0 == 4.0
+
+tests/test_data_processing.py:139: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,347 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,347 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,347 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,347 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+_______________ test_process_wunderground_data_missing_stations ________________
+
+    def test_process_wunderground_data_missing_stations():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]}
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None  # Missing station
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:153: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,352 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,352 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,352 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,352 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+________________ test_process_wunderground_data_missing_fields _________________
+
+    def test_process_wunderground_data_missing_fields():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {}}]},  # Missing windGust
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+>       assert avg_wind_gust == 5.0
+E       assert None == 5.0
+
+tests/test_data_processing.py:164: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,356 - config - WARNING - Wind gust data is null for station KCASIERR68
+2025-03-28 18:45:05,356 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,356 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,356 - config - WARNING - No valid wind gust data available from any station
+------------------------------ Captured log call -------------------------------
+WARNING  config:data_processing.py:134 Wind gust data is null for station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+WARNING  config:data_processing.py:182 No valid wind gust data available from any station
+__________________ test_process_wunderground_data_cached_data __________________
+
+    def test_process_wunderground_data_cached_data():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": None  # Simulate missing data for this station
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(minutes=30)  # Cached data is 30 minutes old
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCACEDAR2": {"value": 6.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data, cached_data)
+    
+>       assert avg_wind_gust == 4.5
+E       assert 3.0 == 4.5
+
+tests/test_data_processing.py:190: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,360 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,360 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,360 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,360 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+______________ test_process_wunderground_data_expired_cached_data ______________
+
+    def test_process_wunderground_data_expired_cached_data():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": None  # Simulate missing data for this station
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(hours=2)  # Cached data is 2 hours old (expired)
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCACEDAR2": {"value": 6.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data, cached_data)
+    
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:219: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,363 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,363 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,363 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,363 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+________________ test_process_wunderground_data_error_handling _________________
+
+    def test_process_wunderground_data_error_handling():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": []}  # Empty observations list, should be handled
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:232: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,367 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,367 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,368 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,368 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+_______________________ test_combine_weather_data_valid ________________________
+
+    def test_combine_weather_data_valid():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "relative_humidity_value_1": {"value": 98.0},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                },
+                {
+                    "STID": "C3DLA",
+                    "OBSERVATIONS": {
+                        "soil_moisture_value_1": {"value": 22.0}
+                    }
+                }
+            ]
+        }
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+    
+        combined_data = combine_weather_data(synoptic_data, wunderground_data)
+    
+        assert combined_data["air_temp"] == 0.5
+        assert combined_data["relative_humidity"] == 98.0
+        assert combined_data["wind_speed"] == 0.0
+        assert combined_data["soil_moisture_15cm"] == 22.0
+>       assert combined_data["wind_gust"] == 4.0
+E       assert 3.0 == 4.0
+
+tests/test_data_processing.py:267: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,371 - config - INFO - Received data for stations: ['SEYC1', 'C3DLA']
+2025-03-28 18:45:05,371 - config - INFO - Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+2025-03-28 18:45:05,371 - config - INFO - Using default soil_moisture_value_1: 22.0
+2025-03-28 18:45:05,371 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 18:45:05,371 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,371 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,371 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1', 'C3DLA']
+INFO     config:data_processing.py:62 Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+INFO     config:data_processing.py:74 Using default soil_moisture_value_1: 22.0
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+____________________ test_combine_weather_data_missing_data ____________________
+
+    def test_combine_weather_data_missing_data():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                }
+            ]
+        }
+    
+        wunderground_data = {
+            "KCASIERR68": {"observations": []}
+        }
+    
+        combined_data = combine_weather_data(synoptic_data, wunderground_data)
+        assert combined_data["relative_humidity"] is None
+        assert combined_data["soil_moisture_15cm"] is None
+        assert combined_data["wind_gust"] is None
+>       assert combined_data["data_status"]["missing_stations"] == ["C3DLA", "KCACEDAR2"]
+E       AssertionError: assert ['C3DLA', 'KC... 'KCASIERR72'] == ['C3DLA', 'KCACEDAR2']
+E         At index 1 diff: 'KCASIERR68' != 'KCACEDAR2'
+E         Left contains 2 more items, first extra item: 'KCASIERR63'
+E         Use -v to get more diff
+
+tests/test_data_processing.py:304: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,374 - config - INFO - Received data for stations: ['SEYC1']
+2025-03-28 18:45:05,374 - config - WARNING - No observations found for station KCASIERR68
+2025-03-28 18:45:05,374 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,374 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,374 - config - WARNING - No valid wind gust data available from any station
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1']
+WARNING  config:data_processing.py:137 No observations found for station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+WARNING  config:data_processing.py:182 No valid wind gust data available from any station
+____________________ test_combine_weather_data_cached_data _____________________
+
+    def test_combine_weather_data_cached_data():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "relative_humidity_value_1": {"value": 98.0},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                },
+                {
+                    "STID": "C3DLA",
+                    "OBSERVATIONS": {
+                        "soil_moisture_value_1": {"value": 22.0}
+                    }
+                }
+            ]
+        }
+        wunderground_data = {
+            "KCASIERR68": None,
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(minutes=30)
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCASIERR68": {"value": 7.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+        combined_data = combine_weather_data(synoptic_data, wunderground_data, cached_data)
+>       assert combined_data["wind_gust"] == 6.0
+E       assert 7.0 == 6.0
+
+tests/test_data_processing.py:345: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 18:45:05,377 - config - INFO - Received data for stations: ['SEYC1', 'C3DLA']
+2025-03-28 18:45:05,377 - config - INFO - Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+2025-03-28 18:45:05,377 - config - INFO - Using default soil_moisture_value_1: 22.0
+2025-03-28 18:45:05,377 - config - WARNING - No data received for station KCASIERR68
+2025-03-28 18:45:05,377 - config - INFO - Using cached wind gust data: 7.0 mph from station KCASIERR68 (30 minutes old)
+2025-03-28 18:45:05,377 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 18:45:05,377 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 18:45:05,377 - config - INFO - Calculated average wind gust: 7.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1', 'C3DLA']
+INFO     config:data_processing.py:62 Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+INFO     config:data_processing.py:74 Using default soil_moisture_value_1: 22.0
+WARNING  config:data_processing.py:143 No data received for station KCASIERR68
+INFO     config:data_processing.py:168 Using cached wind gust data: 7.0 mph from station KCASIERR68 (30 minutes old)
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 7.0 mph from 1 stations
+_________________________ test_fire_risk_initial_fetch _________________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_fire_risk_initial_fetch at 0x10658e240>
+task = <Task pending name='Task-37' coro=<test_fire_risk_initial_fetch() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+__________________________ test_fire_risk_stale_data ___________________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_fire_risk_stale_data at 0x10658dcf0>
+task = <Task pending name='Task-38' coro=<test_fire_risk_stale_data() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+--------------------------- Captured stderr teardown ---------------------------
+2025-03-28 18:45:06,747 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-37' coro=<test_fire_risk_initial_fetch() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+_____________________ test_fire_risk_critically_stale_data _____________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_fire_risk_critically_stale_data at 0x1064c3ef0>
+task = <Task pending name='Task-39' coro=<test_fire_risk_critically_stale_data() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+________________________ test_fire_risk_refresh_timeout ________________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_fire_risk_refresh_timeout at 0x106477600>
+task = <Task pending name='Task-40' coro=<test_fire_risk_refresh_timeout() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_endpoints.py:65>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+_________________________ test_toggle_test_mode_enable _________________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_toggle_test_mode_enable at 0x10658c7b0>
+task = <Task pending name='Task-44' coro=<test_toggle_test_mode_enable() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+________________________ test_toggle_test_mode_disable _________________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_toggle_test_mode_disable at 0x10658d030>
+task = <Task pending name='Task-45' coro=<test_toggle_test_mode_disable() running at /opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1436>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+_____________________ test_toggle_test_mode_no_cached_data _____________________
+
+args = (), kwargs = {}
+coro = <coroutine object test_toggle_test_mode_no_cached_data at 0x106cc1930>
+task = <Task pending name='Task-46' coro=<test_toggle_test_mode_no_cached_data() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_endpoints.py:106>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+_____________________________ test_homepage_loads ______________________________
+
+args = ()
+kwargs = {'client': <starlette.testclient.TestClient object at 0x106c30190>}
+coro = <coroutine object test_homepage_loads at 0x1064c7880>
+task = <Task pending name='Task-47' coro=<test_homepage_loads() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:8>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+________________________ test_homepage_with_fresh_data _________________________
+
+args = ()
+kwargs = {'client': <starlette.testclient.TestClient object at 0x106cc3ce0>, 'populate_cache_with_valid_data': {'explanation': ... 'weather_station': 'SEYC1', 'wind_gust_station': 'KCASIERR68'}, 'relative_humidity': 98.0, ...}}, 'reset_cache': None}
+coro = <coroutine object test_homepage_with_fresh_data at 0x10631a6c0>
+task = <Task pending name='Task-48' coro=<test_homepage_with_fresh_data() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:15>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+---------------------------- Captured stderr setup -----------------------------
+2025-03-28 18:45:06,934 - config - INFO - Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+2025-03-28 18:45:06,934 - config - INFO - Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+2025-03-28 18:45:06,934 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:45:06.934541-07:00
+2025-03-28 18:45:06,934 - config - INFO - Cache updated at 2025-03-28 18:45:06.934541-07:00
+------------------------------ Captured log setup ------------------------------
+INFO     config:fire_risk_logic.py:26 Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+INFO     config:fire_risk_logic.py:44 Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:45:06.934541-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:45:06.934541-07:00
+--------------------------- Captured stderr teardown ---------------------------
+2025-03-28 18:45:06,936 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-47' coro=<test_homepage_loads() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:8>>
+____________________ test_cached_data_display_in_javascript ____________________
+
+args = ()
+kwargs = {'client': <starlette.testclient.TestClient object at 0x106cc3820>, 'populate_cache_with_valid_data': {'explanation': ... 'weather_station': 'SEYC1', 'wind_gust_station': 'KCASIERR68'}, 'relative_humidity': 98.0, ...}}, 'reset_cache': None}
+coro = <coroutine object test_cached_data_display_in_javascript at 0x106389990>
+task = <Task pending name='Task-49' coro=<test_cached_data_display_in_javascript() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:45>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+---------------------------- Captured stderr setup -----------------------------
+2025-03-28 18:45:06,948 - config - INFO - Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+2025-03-28 18:45:06,948 - config - INFO - Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+2025-03-28 18:45:06,948 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:45:06.948421-07:00
+2025-03-28 18:45:06,948 - config - INFO - Cache updated at 2025-03-28 18:45:06.948421-07:00
+------------------------------ Captured log setup ------------------------------
+INFO     config:fire_risk_logic.py:26 Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+INFO     config:fire_risk_logic.py:44 Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:45:06.948421-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:45:06.948421-07:00
+___________________ test_fire_risk_endpoint_with_cached_data ___________________
+
+args = ()
+kwargs = {'client': <starlette.testclient.TestClient object at 0x1064c72f0>, 'mock_failed_synoptic_api': None, 'mock_failed_wun...ation': 'C3DLA', 'weather_station': 'SEYC1', 'wind_gust_station': 'KCASIERR68'}, 'relative_humidity': 98.0, ...}}, ...}
+coro = <coroutine object test_fire_risk_endpoint_with_cached_data at 0x1063b3400>
+task = <Task pending name='Task-50' coro=<test_fire_risk_endpoint_with_cached_data() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:75>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+---------------------------- Captured stderr setup -----------------------------
+2025-03-28 18:45:06,962 - config - INFO - Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+2025-03-28 18:45:06,962 - config - INFO - Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+2025-03-28 18:45:06,962 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:45:06.962207-07:00
+2025-03-28 18:45:06,962 - config - INFO - Cache updated at 2025-03-28 18:45:06.962207-07:00
+------------------------------ Captured log setup ------------------------------
+INFO     config:fire_risk_logic.py:26 Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+INFO     config:fire_risk_logic.py:44 Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:45:06.962207-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:45:06.962207-07:00
+_________________ test_fire_risk_endpoint_with_partial_failure _________________
+
+args = ()
+kwargs = {'client': <starlette.testclient.TestClient object at 0x10658d040>, 'mock_partial_api_failure': None, 'populate_cache_... 'weather_station': 'SEYC1', 'wind_gust_station': 'KCASIERR68'}, 'relative_humidity': 98.0, ...}}, 'reset_cache': None}
+coro = <coroutine object test_fire_risk_endpoint_with_partial_failure at 0x1065b55d0>
+task = <Task pending name='Task-51' coro=<test_fire_risk_endpoint_with_partial_failure() running at /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_ui_rendering.py:105>>
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        coro = func(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            pyfuncitem.warn(
+                pytest.PytestWarning(
+                    f"The test {pyfuncitem} is marked with '@pytest.mark.asyncio' "
+                    "but it is not an async function. "
+                    "Please remove asyncio marker. "
+                    "If the test is not marked explicitly, "
+                    "check for global markers applied via 'pytestmark'."
+                )
+            )
+            return
+        task = asyncio.ensure_future(coro, loop=_loop)
+        try:
+>           _loop.run_until_complete(task)
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:701: in run_until_complete
+    self._check_running()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    def _check_running(self):
+        if self.is_running():
+            raise RuntimeError('This event loop is already running')
+        if events._get_running_loop() is not None:
+>           raise RuntimeError(
+                'Cannot run the event loop while another loop is running')
+E           RuntimeError: Cannot run the event loop while another loop is running
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:639: RuntimeError
+---------------------------- Captured stderr setup -----------------------------
+2025-03-28 18:45:06,975 - config - INFO - Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+2025-03-28 18:45:06,975 - config - INFO - Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+2025-03-28 18:45:06,975 - config - INFO - Stored valid data for future fallback use at 2025-03-28 18:45:06.975962-07:00
+2025-03-28 18:45:06,975 - config - INFO - Cache updated at 2025-03-28 18:45:06.975962-07:00
+------------------------------ Captured log setup ------------------------------
+INFO     config:fire_risk_logic.py:26 Received weather data: temp=0.5°C, humidity=98.0%, wind=0.0mph, gusts=3.0mph, soil=22.0%
+INFO     config:fire_risk_logic.py:44 Threshold checks: temp=False, humidity=False, wind=False, gusts=False, soil=False
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 18:45:06.975962-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 18:45:06.975962-07:00
+--------------------------- Captured stdout teardown ---------------------------
+Warning: Server thread did not shut down gracefully.
+=============================== warnings summary ===============================
+tests/test_integration.py::test_initial_cache_empty
+  /Users/david/Documents/Coding/dev/fire-risk-dashboard/venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:446: DeprecationWarning: There is no current event loop
+    loop = policy.get_event_loop()
+
+tests/test_integration.py::test_initial_cache_empty
+  /Users/david/Documents/Coding/dev/fire-risk-dashboard/venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:451: DeprecationWarning: pytest-asyncio detected an unclosed event loop when tearing down the event_loop
+  fixture: <_UnixSelectorEventLoop running=False closed=False debug=False>
+  pytest-asyncio will close the event loop for you, but future versions of the
+  library will no longer do so. In order to ensure compatibility with future
+  versions, please make sure that:
+      1. Any custom "event_loop" fixture properly closes the loop after yielding it
+      2. The scopes of your custom "event_loop" fixtures do not overlap
+      3. Your code does not modify the event loop in async fixtures or tests
+  
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_api_clients.py::test_get_api_token_failure - TypeError: Obj...
+FAILED tests/test_api_clients.py::test_get_weather_data_failure - AssertionEr...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_success - TypeErr...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_api_failure - Ass...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_retry - TypeError...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_timeout - Asserti...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_cached_data - ass...
+FAILED tests/test_cache_refresh.py::test_schedule_next_refresh - AssertionErr...
+FAILED tests/test_cache_system.py::test_update_cache_with_none_data - Asserti...
+FAILED tests/test_cache_system.py::test_reset_update_event - assert True is F...
+FAILED tests/test_data_processing.py::test_process_wunderground_data_valid - ...
+FAILED tests/test_data_processing.py::test_process_wunderground_data_missing_stations
+FAILED tests/test_data_processing.py::test_process_wunderground_data_missing_fields
+FAILED tests/test_data_processing.py::test_process_wunderground_data_cached_data
+FAILED tests/test_data_processing.py::test_process_wunderground_data_expired_cached_data
+FAILED tests/test_data_processing.py::test_process_wunderground_data_error_handling
+FAILED tests/test_data_processing.py::test_combine_weather_data_valid - asser...
+FAILED tests/test_data_processing.py::test_combine_weather_data_missing_data
+FAILED tests/test_data_processing.py::test_combine_weather_data_cached_data
+FAILED tests/test_endpoints.py::test_fire_risk_initial_fetch - RuntimeError: ...
+FAILED tests/test_endpoints.py::test_fire_risk_stale_data - RuntimeError: Can...
+FAILED tests/test_endpoints.py::test_fire_risk_critically_stale_data - Runtim...
+FAILED tests/test_endpoints.py::test_fire_risk_refresh_timeout - RuntimeError...
+FAILED tests/test_endpoints.py::test_toggle_test_mode_enable - RuntimeError: ...
+FAILED tests/test_endpoints.py::test_toggle_test_mode_disable - RuntimeError:...
+FAILED tests/test_endpoints.py::test_toggle_test_mode_no_cached_data - Runtim...
+FAILED tests/test_ui_rendering.py::test_homepage_loads - RuntimeError: Cannot...
+FAILED tests/test_ui_rendering.py::test_homepage_with_fresh_data - RuntimeErr...
+FAILED tests/test_ui_rendering.py::test_cached_data_display_in_javascript - R...
+FAILED tests/test_ui_rendering.py::test_fire_risk_endpoint_with_cached_data
+FAILED tests/test_ui_rendering.py::test_fire_risk_endpoint_with_partial_failure
+ERROR tests/test_api_clients.py::test_get_wunderground_data_missing_key
+ERROR tests/test_cache_refresh.py::test_schedule_next_refresh_exception
+ERROR tests/test_endpoints.py::test_fire_risk_refresh_exception
+ERROR tests/test_integration.py::test_initial_cache_empty - RuntimeError: Can...
+ERROR tests/test_integration.py::test_cache_stale_refresh_background - Runtim...
+ERROR tests/test_integration.py::test_wait_for_fresh - RuntimeError: Cannot r...
+ERROR tests/test_integration.py::test_test_mode_toggle - RuntimeError: Cannot...
+ERROR tests/test_integration.py::test_api_client_integration - RuntimeError: ...
+ERROR tests/test_integration.py::test_data_processing_integration - RuntimeEr...
+============= 31 failed, 31 passed, 2 warnings, 9 errors in 37.61s =============

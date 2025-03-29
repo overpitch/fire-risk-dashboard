@@ -4,6 +4,10 @@ import sys
 import json
 from datetime import datetime, timedelta
 import pytz
+import socket
+import threading
+import time
+import uvicorn
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
@@ -12,8 +16,75 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from fire_risk_logic import calculate_fire_risk
 from api_clients import get_weather_data, get_wunderground_data
-from endpoints import app
+# Add the parent directory to sys.path to import the main module
+# Ensure this runs only once or handle potential multiple additions if conftest is loaded multiple times
+if os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) not in sys.path:
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from fire_risk_logic import calculate_fire_risk
+from api_clients import get_weather_data, get_wunderground_data
+# Import app from main, assuming main.py initializes the FastAPI app instance
+# If app is defined directly in endpoints.py, keep the original import
+try:
+    from main import app
+except ImportError:
+    from endpoints import app # Fallback if app is directly in endpoints
+
 from cache import data_cache
+
+
+# --- Helper function to find a free port ---
+def find_free_port():
+    """Finds an available port on localhost."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
+
+# --- Uvicorn server fixture ---
+@pytest.fixture(scope="session")
+def live_server_url(request):
+    """Starts the FastAPI app using Uvicorn in a separate thread."""
+    port = find_free_port()
+    server_url = f"http://localhost:{port}"
+
+    config = uvicorn.Config(app, host="localhost", port=port, log_level="warning")
+    server = uvicorn.Server(config)
+    
+    # Use a flag to signal server readiness and shutdown
+    startup_complete = threading.Event()
+    shutdown_event = threading.Event()
+
+    def run_server():
+        # Set startup_complete *after* server.startup() finishes
+        original_startup = server.startup
+        async def new_startup(*args, **kwargs):
+            await original_startup(*args, **kwargs)
+            startup_complete.set() # Signal that startup is done
+        server.startup = new_startup
+        
+        # Run the server until shutdown_event is set
+        server.run() 
+
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+
+    # Wait for the server to start (with a timeout)
+    if not startup_complete.wait(timeout=10): # Wait up to 10 seconds
+         pytest.fail("Server did not start within the timeout period.")
+
+    # Yield the URL to the tests
+    yield server_url
+
+    # Teardown: Signal the server to shut down
+    server.should_exit = True
+    # Give server time to shut down gracefully
+    server_thread.join(timeout=5) 
+    if server_thread.is_alive():
+         print("Warning: Server thread did not shut down gracefully.")
+         # Consider more forceful shutdown if needed, though daemon=True helps
+
+
+# --- Existing Fixtures ---
 
 
 @pytest.fixture
@@ -55,7 +126,7 @@ def reset_cache():
     data_cache.cached_fields = original_cache["cached_fields"]
     data_cache.using_cached_data = original_cache["using_cached_data"]
 
-@pytest.fixture
+@pytest.fixture # Reverted scope to function
 def mock_synoptic_response():
     """Return a mock Synoptic API response."""
     return {
@@ -77,7 +148,7 @@ def mock_synoptic_response():
         ]
     }
 
-@pytest.fixture
+@pytest.fixture # Reverted scope to function
 def mock_wunderground_response():
     """Return a mock Weather Underground API response."""
     return {
@@ -90,12 +161,27 @@ def mock_wunderground_response():
         ]
     }
 
+# Import WUNDERGROUND_STATION_IDS from config to use in the mock
+from config import WUNDERGROUND_STATION_IDS
+
+
+# --- Fixture using patch to mock API calls within cache_refresh ---
+
 @pytest.fixture
 def mock_api_responses(mock_synoptic_response, mock_wunderground_response):
-    """Mock both API responses."""
-    with patch('api_clients.get_weather_data', return_value=mock_synoptic_response), \
-         patch('api_clients.get_wunderground_data', return_value=mock_wunderground_response):
+    """Mock API responses by patching the functions called by cache_refresh."""
+    # Create the dictionary structure expected by data_processing.py
+    mock_wunderground_dict = {
+        station_id: mock_wunderground_response 
+        for station_id in WUNDERGROUND_STATION_IDS
+    }
+    # Patch the functions *where they are looked up* (in cache_refresh module)
+    with patch('cache_refresh.get_synoptic_data', return_value=mock_synoptic_response), \
+         patch('cache_refresh.get_wunderground_data', return_value=mock_wunderground_dict):
         yield
+
+
+# --- Fixtures for specific failure scenarios ---
 
 @pytest.fixture
 def mock_failed_synoptic_api():
