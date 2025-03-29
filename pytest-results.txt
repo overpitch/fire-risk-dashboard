@@ -1670,3 +1670,1553 @@ ERROR tests/test_integration.py::test_test_mode_toggle - RuntimeError: Cannot...
 ERROR tests/test_integration.py::test_api_client_integration - RuntimeError: ...
 ERROR tests/test_integration.py::test_data_processing_integration - RuntimeEr...
 ============= 31 failed, 31 passed, 2 warnings, 9 errors in 37.61s =============
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-8.3.5, pluggy-1.5.0
+rootdir: /Users/david/Documents/Coding/dev/fire-risk-dashboard
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-4.1.0, anyio-4.8.0, playwright-0.7.0, asyncio-0.26.0, base-url-2.1.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=function # Added to address deprecation warning, asyncio_default_test_loop_scope=function
+collected 71 items
+
+tests/test_api_clients.py .F.F...E..                                     [ 14%]
+tests/test_cache_refresh.py FFFFFEF                                      [ 23%]
+tests/test_cache_system.py .......F..F                                   [ 39%]
+tests/test_data_processing.py ......FFFFFFFFF.                           [ 61%]
+tests/test_e2e.py E                                                      [ 63%]
+tests/test_endpoints.py EEEEEEEEE                                        [ 76%]
+tests/test_fire_risk_logic.py ......                                     [ 84%]
+tests/test_integration.py EEEEEE                                         [ 92%]
+tests/test_ui_rendering.py EEEEE                                         [100%]
+
+==================================== ERRORS ====================================
+___________ ERROR at setup of test_get_wunderground_data_missing_key ___________
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_api_clients.py, line 79
+  def test_get_wunderground_data_missing_key(mock_get):
+E       fixture 'mock_get' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _session_event_loop, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, event_loop_policy, is_chromium, is_firefox, is_webkit, launch_browser, mock_api_responses, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tests/test_api_clients.py::<event_loop>, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_api_clients.py:79
+____________ ERROR at setup of test_schedule_next_refresh_exception ____________
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_cache_refresh.py, line 125
+  async def test_schedule_next_refresh_exception(mock_refresh_data_cache, event_loop, caplog):
+      mock_refresh_data_cache.side_effect = Exception("Test Exception")
+      cache = DataCache()
+
+      await schedule_next_refresh(0.01)
+
+      assert "Error during background refresh: Test Exception" in caplog.text
+      assert cache.refresh_task_active is False
+E       fixture 'mock_refresh_data_cache' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _session_event_loop, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, event_loop_policy, is_chromium, is_firefox, is_webkit, launch_browser, mock_api_responses, mock_data, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tests/test_cache_refresh.py::<event_loop>, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_cache_refresh.py:125
+______ ERROR at setup of test_dashboard_displays_data_correctly[chromium] ______
+file /Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_e2e.py, line 21
+  @pytest.mark.usefixtures("mock_api_responses", "reset_cache")
+  def test_dashboard_displays_data_correctly(page: Page, live_server_url: str):
+E       fixture 'live_server_url' not found
+>       available fixtures: _artifacts_recorder, _pw_artifacts_folder, _session_event_loop, _verify_url, anyio_backend, anyio_backend_name, anyio_backend_options, base_url, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, client, connect_options, context, cov, delete_output_dir, device, doctest_namespace, event_loop, event_loop_policy, is_chromium, is_firefox, is_webkit, launch_browser, mock_api_responses, mock_failed_synoptic_api, mock_failed_wunderground_api, mock_partial_api_failure, mock_synoptic_response, mock_wunderground_response, monkeypatch, new_context, no_cover, output_path, page, playwright, populate_cache_with_valid_data, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, reset_cache, tests/test_e2e.py::<event_loop>, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/david/Documents/Coding/dev/fire-risk-dashboard/tests/test_e2e.py:21
+________________ ERROR at setup of test_fire_risk_initial_fetch ________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+_________________ ERROR at setup of test_fire_risk_stale_data __________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+____________ ERROR at setup of test_fire_risk_critically_stale_data ____________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+______________ ERROR at setup of test_fire_risk_refresh_exception ______________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+_______________ ERROR at setup of test_fire_risk_refresh_timeout _______________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+_________________________ ERROR at setup of test_home __________________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+________________ ERROR at setup of test_toggle_test_mode_enable ________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+_______________ ERROR at setup of test_toggle_test_mode_disable ________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+____________ ERROR at setup of test_toggle_test_mode_no_cached_data ____________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+__________________ ERROR at setup of test_initial_cache_empty __________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+____________ ERROR at setup of test_cache_stale_refresh_background _____________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+____________________ ERROR at setup of test_wait_for_fresh _____________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+___________________ ERROR at setup of test_test_mode_toggle ____________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+________________ ERROR at setup of test_api_client_integration _________________
+
+request = <SubRequest 'reset_cache' for <Coroutine test_api_client_integration>>
+kwargs = {}
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:379: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_api_client_integration>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+______________ ERROR at setup of test_data_processing_integration ______________
+
+request = <SubRequest 'reset_cache' for <Coroutine test_data_processing_integration>>
+kwargs = {}
+
+    @functools.wraps(fixture)
+    def _async_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:379: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_data_processing_integration>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+____________________ ERROR at setup of test_homepage_loads _____________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+_______________ ERROR at setup of test_homepage_with_fresh_data ________________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+___________ ERROR at setup of test_cached_data_display_in_javascript ___________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+__________ ERROR at setup of test_fire_risk_endpoint_with_cached_data __________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+________ ERROR at setup of test_fire_risk_endpoint_with_partial_failure ________
+
+request = <SubRequest 'client' for <Coroutine test_fire_risk_initial_fetch>>
+kwargs = {}, func = <function client at 0x10408bb00>
+
+    @functools.wraps(fixture)
+    def _asyncgen_fixture_wrapper(request: FixtureRequest, **kwargs: Any):
+        func = _perhaps_rebind_fixture_func(fixture, request.instance)
+>       event_loop_fixture_id = _get_event_loop_fixture_id_for_async_fixture(
+            request, func
+        )
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:420: in _get_event_loop_fixture_id_for_async_fixture
+    event_loop_node = _retrieve_scope_root(request._pyfuncitem, loop_scope)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+item = <Coroutine test_fire_risk_initial_fetch>
+scope = 'function # Added to address deprecation warning'
+
+    def _retrieve_scope_root(item: Collector | Item, scope: str) -> Collector:
+        node_type_by_scope = {
+            "class": Class,
+            "module": Module,
+            "package": Package,
+            "session": Session,
+        }
+>       scope_root_type = node_type_by_scope[scope]
+E       KeyError: 'function # Added to address deprecation warning'
+
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:1161: KeyError
+=================================== FAILURES ===================================
+__________________________ test_get_api_token_failure __________________________
+
+mock_get = <MagicMock name='get' id='4390221680'>
+
+    @patch('api_clients.requests.get')
+    def test_get_api_token_failure(mock_get):
+        """Test failed API token retrieval."""
+        mock_get.return_value.status_code = 400  # Simulate a bad request
+>       token = get_api_token()
+
+tests/test_api_clients.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+api_clients.py:28: in get_api_token
+    logger.info(f"🔎 DEBUG: Token response: {json.dumps(token_data)}")
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py:231: in dumps
+    return _default_encoder.encode(obj)
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:261: in iterencode
+    return _iterencode(o, 0)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x101d902f0>
+o = <MagicMock name='get().json()' id='4406190704'>
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type MagicMock is not JSON serializable
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py:180: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:21:59,430 - config - INFO - 🔎 DEBUG: Fetching API token from https://api.synopticdata.com/v2/auth?apikey=Ku8mIxG7ePUmWwC6RuWuxVnLWg1b9X86knPlJ5tlZw
+------------------------------ Captured log call -------------------------------
+INFO     config:api_clients.py:21 🔎 DEBUG: Fetching API token from https://api.synopticdata.com/v2/auth?apikey=Ku8mIxG7ePUmWwC6RuWuxVnLWg1b9X86knPlJ5tlZw
+________________________ test_get_weather_data_failure _________________________
+
+mock_get = <MagicMock name='get' id='4406196080'>
+mock_token = <MagicMock name='get_api_token' id='4406196416'>
+
+    @patch('api_clients.get_api_token')
+    @patch('api_clients.requests.get')
+    def test_get_weather_data_failure(mock_get, mock_token):
+        """Test failed weather data retrieval."""
+        mock_token.return_value = "mock_token"
+        mock_get.return_value.status_code = 400
+        data = get_weather_data("mock_location")
+>       assert data is None
+E       AssertionError: assert <MagicMock name='get().json()' id='4407902288'> is None
+
+tests/test_api_clients.py:45: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:21:59,451 - config - INFO - 🔎 DEBUG: Making API request to https://api.synopticdata.com/v2/stations/latest?stid=mock_location&token=mock_...
+2025-03-28 19:21:59,451 - config - INFO - 🔎 DEBUG: API response status code: 400
+2025-03-28 19:21:59,451 - config - INFO - ✅ Successfully received data from Synoptic API
+------------------------------ Captured log call -------------------------------
+INFO     config:api_clients.py:72 🔎 DEBUG: Making API request to https://api.synopticdata.com/v2/stations/latest?stid=mock_location&token=mock_...
+INFO     config:api_clients.py:77 🔎 DEBUG: API response status code: 400
+INFO     config:api_clients.py:103 ✅ Successfully received data from Synoptic API
+_______________________ test_refresh_data_cache_success ________________________
+
+mock_calculate_fire_risk = <MagicMock name='calculate_fire_risk' id='4407908672'>
+mock_combine_weather_data = <MagicMock name='combine_weather_data' id='4407909008'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4407909344'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4407909680'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.combine_weather_data')
+    @patch('cache_refresh.calculate_fire_risk')
+    async def test_refresh_data_cache_success(mock_calculate_fire_risk, mock_combine_weather_data, mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.return_value = mock_weather_data
+        mock_get_wunderground_data.return_value = mock_wunderground_data
+        mock_combine_weather_data.return_value = mock_combined_data
+        mock_calculate_fire_risk.return_value = mock_fire_risk
+    
+        cache = DataCache()
+        assert await refresh_data_cache() is True
+>       assert cache.fire_risk_data["risk"] == "low"
+E       TypeError: 'NoneType' object is not subscriptable
+
+tests/test_cache_refresh.py:36: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:21:59,455 - config - INFO - Starting data cache refresh...
+2025-03-28 19:21:59,456 - config - INFO - Successfully fetched data from 1 Weather Underground stations: observations
+2025-03-28 19:21:59,456 - config - INFO - Stored valid data for future fallback use at 2025-03-28 19:21:59.456559-07:00
+2025-03-28 19:21:59,456 - config - INFO - Cache updated at 2025-03-28 19:21:59.456559-07:00
+2025-03-28 19:21:59,456 - config - INFO - Data cache refresh successful
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+INFO     config:cache_refresh.py:80 Successfully fetched data from 1 Weather Underground stations: observations
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 19:21:59.456559-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 19:21:59.456559-07:00
+INFO     config:cache_refresh.py:292 Data cache refresh successful
+_____________________ test_refresh_data_cache_api_failure ______________________
+
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4406195408'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4406188688'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    async def test_refresh_data_cache_api_failure(mock_get_wunderground_data, mock_get_synoptic_data, event_loop):
+        mock_get_synoptic_data.return_value = None  # Simulate API failure
+        mock_get_wunderground_data.return_value = None
+    
+        cache = DataCache()
+        with patch('cache.logger') as mock_logger:  # Mock the logger to check for warnings
+            assert await refresh_data_cache() is False
+>           mock_logger.warning.assert_called_with("All critical data fields are missing")
+
+tests/test_cache_refresh.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='logger.warning' id='4406195072'>
+args = ('All critical data fields are missing',), kwargs = {}
+expected = "warning('All critical data fields are missing')"
+actual = 'not called.'
+error_message = "expected call not found.\nExpected: warning('All critical data fields are missing')\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: warning('All critical data fields are missing')
+E             Actual: not called.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:968: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:21:59,458 - config - INFO - Starting data cache refresh...
+2025-03-28 19:21:59,458 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:21:59,458 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:21:59,458 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:04,461 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:04,462 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:04,462 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:09,464 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:09,465 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:09,466 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:14,467 - config - WARNING - Data refresh taking too long (over 15s), aborting
+2025-03-28 19:22:14,468 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+WARNING  config:cache_refresh.py:94 Data refresh taking too long (over 15s), aborting
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+________________________ test_refresh_data_cache_retry _________________________
+
+mock_sleep = <AsyncMock name='sleep' id='4406194736'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4407910016'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4407910352'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)  # Mock asyncio.sleep
+    async def test_refresh_data_cache_retry(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.side_effect = [None, mock_weather_data]  # Simulate API failure then success
+        mock_get_wunderground_data.side_effect = [None, mock_wunderground_data]
+        with patch('cache_refresh.combine_weather_data') as mock_combine:
+            with patch('cache_refresh.calculate_fire_risk') as mock_calc:
+                mock_combine.return_value = mock_combined_data
+                mock_calc.return_value = mock_fire_risk
+                cache = DataCache()
+                assert await refresh_data_cache() is True
+>               assert cache.fire_risk_data["risk"] == "low"
+E               TypeError: 'NoneType' object is not subscriptable
+
+tests/test_cache_refresh.py:70: TypeError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:14,502 - config - INFO - Starting data cache refresh...
+2025-03-28 19:22:14,502 - config - INFO - Cache updated at 2025-03-28 19:22:14.502719-07:00
+2025-03-28 19:22:14,502 - config - INFO - Data cache refresh successful
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+INFO     config:cache.py:185 Cache updated at 2025-03-28 19:22:14.502719-07:00
+INFO     config:cache_refresh.py:292 Data cache refresh successful
+_______________________ test_refresh_data_cache_timeout ________________________
+
+mock_sleep = <AsyncMock name='sleep' id='4407902960'>
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4407903632'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4407904304'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
+    async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data, event_loop):
+        mock_get_synoptic_data.side_effect = asyncio.sleep(0.1)  # Simulate a long API call
+        mock_get_wunderground_data.side_effect = asyncio.sleep(0.1)
+    
+        cache = DataCache()
+        cache.update_timeout = 0.01  # Set a very short timeout
+        assert await refresh_data_cache() is False
+>       mock_sleep.assert_not_awaited()  # asyncio.sleep in refresh_data_cache should not be called
+
+tests/test_cache_refresh.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <AsyncMock name='sleep' id='4407902960'>
+
+    def assert_not_awaited(self):
+        """
+        Assert that the mock was never awaited.
+        """
+        if self.await_count != 0:
+            msg = (f"Expected {self._mock_name or 'mock'} to not have been awaited."
+                   f" Awaited {self.await_count} times.")
+>           raise AssertionError(msg)
+E           AssertionError: Expected sleep to not have been awaited. Awaited 4 times.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:2457: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:14,505 - config - INFO - Starting data cache refresh...
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,506 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,506 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,506 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,506 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,506 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,506 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,506 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,507 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,507 - config - ERROR - Error refreshing data cache (attempt 4/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,507 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:14,507 - config - ERROR - Error fetching Synoptic data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,507 - config - ERROR - Error fetching Weather Underground data: 'coroutine' object is not an iterator
+2025-03-28 19:22:14,507 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,507 - config - ERROR - Error refreshing data cache (attempt 5/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,507 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 4/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:cache_refresh.py:67 Error fetching Synoptic data: 'coroutine' object is not an iterator
+ERROR    config:cache_refresh.py:71 Error fetching Weather Underground data: 'coroutine' object is not an iterator
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 5/5): 'NoneType' object has no attribute 'get'
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+_____________________ test_refresh_data_cache_cached_data ______________________
+
+mock_get_wunderground_data = <MagicMock name='get_wunderground_data' id='4407906320'>
+mock_get_synoptic_data = <MagicMock name='get_synoptic_data' id='4407911024'>
+mock_data = ({'STATION': []}, {'observations': []}, {'air_temp': 25, 'relative_humidity': 50, 'soil_moisture_15cm': 20, 'wind_gust': 15, ...}, ('low', 'explanation'))
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.get_synoptic_data')
+    @patch('cache_refresh.get_wunderground_data')
+    async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_get_synoptic_data, mock_data, event_loop):
+        mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    
+        mock_get_synoptic_data.return_value = None
+        mock_get_wunderground_data.return_value = None
+    
+        cache = DataCache()
+        # Populate cache with initial data
+        now = datetime.now(timezone.utc)
+        past = now - timedelta(minutes=20)
+        cache.last_valid_data = {
+            "fields": {
+                "temperature": {"value": 26, "timestamp": past},
+                "humidity": {"value": 11, "timestamp": past},
+                "wind_speed": {"value": 21, "timestamp": past},
+                "soil_moisture": {"value": 1, "timestamp": past},
+                "wind_gust": {"value": 16, "timestamp": past, "stations": {}}
+            },
+            "synoptic_data": mock_weather_data,
+            "wunderground_data": mock_wunderground_data,
+            "fire_risk_data": {"risk": "moderate"},
+            "timestamp": past
+        }
+    
+>       assert await refresh_data_cache() is True
+E       assert False is True
+
+tests/test_cache_refresh.py:115: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:14,524 - config - INFO - Starting data cache refresh...
+2025-03-28 19:22:14,525 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:14,525 - config - ERROR - Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:14,525 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:19,527 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:19,528 - config - ERROR - Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:19,528 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:24,530 - config - ERROR - Failed to get any weather data from Synoptic API
+2025-03-28 19:22:24,531 - config - ERROR - Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+2025-03-28 19:22:24,531 - config - INFO - Retrying in 5 seconds...
+2025-03-28 19:22:29,533 - config - WARNING - Data refresh taking too long (over 15s), aborting
+2025-03-28 19:22:29,533 - config - ERROR - All data refresh attempts failed
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:34 Starting data cache refresh...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 1/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 2/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+ERROR    config:data_processing.py:32 Failed to get any weather data from Synoptic API
+ERROR    config:cache_refresh.py:296 Error refreshing data cache (attempt 3/5): 'NoneType' object has no attribute 'get'
+INFO     config:cache_refresh.py:298 Retrying in 5 seconds...
+WARNING  config:cache_refresh.py:94 Data refresh taking too long (over 15s), aborting
+ERROR    config:cache_refresh.py:305 All data refresh attempts failed
+__________________________ test_schedule_next_refresh __________________________
+
+mock_refresh_data_cache = <AsyncMock name='refresh_data_cache' id='4407911696'>
+event_loop = <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+    @pytest.mark.asyncio
+    @patch('cache_refresh.refresh_data_cache')
+    async def test_schedule_next_refresh(mock_refresh_data_cache, event_loop):
+        mock_refresh_data_cache.return_value = True
+    
+        cache = DataCache()
+        with patch('cache.logger') as mock_logger:
+            await schedule_next_refresh(0.01)  # Schedule refresh after a short delay
+>           mock_logger.info.assert_called_with("Scheduling next background refresh in 0.01 minutes")
+
+tests/test_cache_refresh.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='logger.info' id='4407912704'>
+args = ('Scheduling next background refresh in 0.01 minutes',), kwargs = {}
+expected = "info('Scheduling next background refresh in 0.01 minutes')"
+actual = 'not called.'
+error_message = "expected call not found.\nExpected: info('Scheduling next background refresh in 0.01 minutes')\n  Actual: not called."
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\n  Actual: %s'
+                    % (expected, actual))
+>           raise AssertionError(error_message)
+E           AssertionError: expected call not found.
+E           Expected: info('Scheduling next background refresh in 0.01 minutes')
+E             Actual: not called.
+
+/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:968: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:29,544 - config - INFO - Scheduling next background refresh in 0.01 minutes
+------------------------------ Captured log call -------------------------------
+INFO     config:cache_refresh.py:318 Scheduling next background refresh in 0.01 minutes
+_______________________ test_update_cache_with_none_data _______________________
+
+cache = <cache.DataCache object at 0x106cec670>
+
+    def test_update_cache_with_none_data(cache):
+        synoptic_data = {"test": "synoptic"}
+        wunderground_data = None  # Simulate missing data
+        fire_risk_data = {"risk": "low"}
+    
+        cache.update_cache(synoptic_data, wunderground_data, fire_risk_data)
+    
+        assert cache.synoptic_data == synoptic_data
+        assert cache.wunderground_data is None  # Check that the None value is stored
+        assert cache.fire_risk_data == fire_risk_data
+        assert cache.last_updated is not None
+        assert cache.last_update_success is True
+        assert cache.last_valid_data["synoptic_data"] == synoptic_data
+>       assert "wunderground_data" not in cache.last_valid_data # Check that the None value is NOT stored in last_valid_data
+E       AssertionError: assert 'wunderground_data' not in {'fields': {'humidity': {'timestamp': None, 'value': None}, 'soil_moisture': {'timestamp': None, 'value': None}, 'temp...etime.datetime(2025, 3, 28, 19, 22, 30, 181385, tzinfo=<DstTzInfo 'America/Los_Angeles' PDT-1 day, 17:00:00 DST>), ...}
+E        +  where {'fields': {'humidity': {'timestamp': None, 'value': None}, 'soil_moisture': {'timestamp': None, 'value': None}, 'temp...etime.datetime(2025, 3, 28, 19, 22, 30, 181385, tzinfo=<DstTzInfo 'America/Los_Angeles' PDT-1 day, 17:00:00 DST>), ...} = <cache.DataCache object at 0x106cec670>.last_valid_data
+
+tests/test_cache_system.py:70: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,181 - config - INFO - Stored valid data for future fallback use at 2025-03-28 19:22:30.181385-07:00
+2025-03-28 19:22:30,181 - config - INFO - Cache updated at 2025-03-28 19:22:30.181385-07:00
+------------------------------ Captured log call -------------------------------
+INFO     config:cache.py:174 Stored valid data for future fallback use at 2025-03-28 19:22:30.181385-07:00
+INFO     config:cache.py:185 Cache updated at 2025-03-28 19:22:30.181385-07:00
+___________________________ test_reset_update_event ____________________________
+
+cache = <cache.DataCache object at 0x106cedd30>
+
+    def test_reset_update_event(cache):
+        # Set the event manually
+        cache._update_complete_event.set()
+        assert cache._update_complete_event.is_set() is True
+    
+        cache.reset_update_event()
+>       assert cache._update_complete_event.is_set() is False
+E       assert True is False
+E        +  where True = is_set()
+E        +    where is_set = <asyncio.locks.Event object at 0x106c8ce10 [set]>.is_set
+E        +      where <asyncio.locks.Event object at 0x106c8ce10 [set]> = <cache.DataCache object at 0x106cedd30>._update_complete_event
+
+tests/test_cache_system.py:98: AssertionError
+_____________________ test_process_wunderground_data_valid _____________________
+
+    def test_process_wunderground_data_valid():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+    
+>       assert avg_wind_gust == 4.0
+E       assert 3.0 == 4.0
+
+tests/test_data_processing.py:139: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,308 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,308 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,308 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,308 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+_______________ test_process_wunderground_data_missing_stations ________________
+
+    def test_process_wunderground_data_missing_stations():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]}
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None  # Missing station
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:153: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,313 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,313 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,313 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,313 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+________________ test_process_wunderground_data_missing_fields _________________
+
+    def test_process_wunderground_data_missing_fields():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {}}]},  # Missing windGust
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+>       assert avg_wind_gust == 5.0
+E       assert None == 5.0
+
+tests/test_data_processing.py:164: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,317 - config - WARNING - Wind gust data is null for station KCASIERR68
+2025-03-28 19:22:30,317 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,317 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,317 - config - WARNING - No valid wind gust data available from any station
+------------------------------ Captured log call -------------------------------
+WARNING  config:data_processing.py:134 Wind gust data is null for station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+WARNING  config:data_processing.py:182 No valid wind gust data available from any station
+__________________ test_process_wunderground_data_cached_data __________________
+
+    def test_process_wunderground_data_cached_data():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": None  # Simulate missing data for this station
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(minutes=30)  # Cached data is 30 minutes old
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCACEDAR2": {"value": 6.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data, cached_data)
+    
+>       assert avg_wind_gust == 4.5
+E       assert 3.0 == 4.5
+
+tests/test_data_processing.py:190: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,322 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,322 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,322 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,322 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+______________ test_process_wunderground_data_expired_cached_data ______________
+
+    def test_process_wunderground_data_expired_cached_data():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": None  # Simulate missing data for this station
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(hours=2)  # Cached data is 2 hours old (expired)
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCACEDAR2": {"value": 6.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+    
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data, cached_data)
+    
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:219: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,325 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,325 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,325 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,325 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+________________ test_process_wunderground_data_error_handling _________________
+
+    def test_process_wunderground_data_error_handling():
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": []}  # Empty observations list, should be handled
+        }
+        avg_wind_gust, station_data, found_stations, missing_stations = process_wunderground_data(wunderground_data)
+        assert avg_wind_gust == 3.0
+        assert station_data["KCASIERR68"]["value"] == 3.0
+>       assert station_data["KCACEDAR2"]["value"] is None
+E       KeyError: 'KCACEDAR2'
+
+tests/test_data_processing.py:232: KeyError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,328 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,329 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,329 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,329 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+_______________________ test_combine_weather_data_valid ________________________
+
+    def test_combine_weather_data_valid():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "relative_humidity_value_1": {"value": 98.0},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                },
+                {
+                    "STID": "C3DLA",
+                    "OBSERVATIONS": {
+                        "soil_moisture_value_1": {"value": 22.0}
+                    }
+                }
+            ]
+        }
+        wunderground_data = {
+            "KCASIERR68": {"observations": [{"imperial": {"windGust": 3.0}}]},
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+    
+        combined_data = combine_weather_data(synoptic_data, wunderground_data)
+    
+        assert combined_data["air_temp"] == 0.5
+        assert combined_data["relative_humidity"] == 98.0
+        assert combined_data["wind_speed"] == 0.0
+        assert combined_data["soil_moisture_15cm"] == 22.0
+>       assert combined_data["wind_gust"] == 4.0
+E       assert 3.0 == 4.0
+
+tests/test_data_processing.py:267: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,332 - config - INFO - Received data for stations: ['SEYC1', 'C3DLA']
+2025-03-28 19:22:30,332 - config - INFO - Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+2025-03-28 19:22:30,332 - config - INFO - Using default soil_moisture_value_1: 22.0
+2025-03-28 19:22:30,332 - config - INFO - Found wind gust data: 3.0 mph from station KCASIERR68
+2025-03-28 19:22:30,332 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,332 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,332 - config - INFO - Calculated average wind gust: 3.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1', 'C3DLA']
+INFO     config:data_processing.py:62 Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+INFO     config:data_processing.py:74 Using default soil_moisture_value_1: 22.0
+INFO     config:data_processing.py:131 Found wind gust data: 3.0 mph from station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 3.0 mph from 1 stations
+____________________ test_combine_weather_data_missing_data ____________________
+
+    def test_combine_weather_data_missing_data():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                }
+            ]
+        }
+    
+        wunderground_data = {
+            "KCASIERR68": {"observations": []}
+        }
+    
+        combined_data = combine_weather_data(synoptic_data, wunderground_data)
+        assert combined_data["relative_humidity"] is None
+        assert combined_data["soil_moisture_15cm"] is None
+        assert combined_data["wind_gust"] is None
+>       assert combined_data["data_status"]["missing_stations"] == ["C3DLA", "KCACEDAR2"]
+E       AssertionError: assert ['C3DLA', 'KC... 'KCASIERR72'] == ['C3DLA', 'KCACEDAR2']
+E         
+E         At index 1 diff: 'KCASIERR68' != 'KCACEDAR2'
+E         Left contains 2 more items, first extra item: 'KCASIERR63'
+E         Use -v to get more diff
+
+tests/test_data_processing.py:304: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,335 - config - INFO - Received data for stations: ['SEYC1']
+2025-03-28 19:22:30,335 - config - WARNING - No observations found for station KCASIERR68
+2025-03-28 19:22:30,335 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,335 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,335 - config - WARNING - No valid wind gust data available from any station
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1']
+WARNING  config:data_processing.py:137 No observations found for station KCASIERR68
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+WARNING  config:data_processing.py:182 No valid wind gust data available from any station
+____________________ test_combine_weather_data_cached_data _____________________
+
+    def test_combine_weather_data_cached_data():
+        synoptic_data = {
+            "STATION": [
+                {
+                    "STID": "SEYC1",
+                    "OBSERVATIONS": {
+                        "air_temp_value_1": {"value": 0.5},
+                        "relative_humidity_value_1": {"value": 98.0},
+                        "wind_speed_value_1": {"value": 0.0}
+                    }
+                },
+                {
+                    "STID": "C3DLA",
+                    "OBSERVATIONS": {
+                        "soil_moisture_value_1": {"value": 22.0}
+                    }
+                }
+            ]
+        }
+        wunderground_data = {
+            "KCASIERR68": None,
+            "KCACEDAR2": {"observations": [{"imperial": {"windGust": 5.0}}]}
+        }
+        current_time = datetime.now(timezone.utc)
+        cached_time = current_time - timedelta(minutes=30)
+        cached_data = {
+            "fields": {
+                "wind_gust": {
+                    "stations": {
+                        "KCASIERR68": {"value": 7.0, "timestamp": cached_time}
+                    }
+                }
+            }
+        }
+        combined_data = combine_weather_data(synoptic_data, wunderground_data, cached_data)
+>       assert combined_data["wind_gust"] == 6.0
+E       assert 7.0 == 6.0
+
+tests/test_data_processing.py:345: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-03-28 19:22:30,338 - config - INFO - Received data for stations: ['SEYC1', 'C3DLA']
+2025-03-28 19:22:30,338 - config - INFO - Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+2025-03-28 19:22:30,338 - config - INFO - Using default soil_moisture_value_1: 22.0
+2025-03-28 19:22:30,338 - config - WARNING - No data received for station KCASIERR68
+2025-03-28 19:22:30,338 - config - INFO - Using cached wind gust data: 7.0 mph from station KCASIERR68 (30 minutes old)
+2025-03-28 19:22:30,338 - config - WARNING - No data received for station KCASIERR63
+2025-03-28 19:22:30,338 - config - WARNING - No data received for station KCASIERR72
+2025-03-28 19:22:30,338 - config - INFO - Calculated average wind gust: 7.0 mph from 1 stations
+------------------------------ Captured log call -------------------------------
+INFO     config:data_processing.py:45 Received data for stations: ['SEYC1', 'C3DLA']
+INFO     config:data_processing.py:62 Available soil moisture keys from C3DLA: ['soil_moisture_value_1']
+INFO     config:data_processing.py:74 Using default soil_moisture_value_1: 22.0
+WARNING  config:data_processing.py:143 No data received for station KCASIERR68
+INFO     config:data_processing.py:168 Using cached wind gust data: 7.0 mph from station KCASIERR68 (30 minutes old)
+WARNING  config:data_processing.py:143 No data received for station KCASIERR63
+WARNING  config:data_processing.py:143 No data received for station KCASIERR72
+INFO     config:data_processing.py:180 Calculated average wind gust: 7.0 mph from 1 stations
+=============================== warnings summary ===============================
+tests/test_cache_refresh.py:21
+  tests/test_cache_refresh.py:21: PytestDeprecationWarning: test_refresh_data_cache_success is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+tests/test_cache_refresh.py:40
+  tests/test_cache_refresh.py:40: PytestDeprecationWarning: test_refresh_data_cache_api_failure is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+tests/test_cache_refresh.py:55
+  tests/test_cache_refresh.py:55: PytestDeprecationWarning: test_refresh_data_cache_retry is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+tests/test_cache_refresh.py:74
+  tests/test_cache_refresh.py:74: PytestDeprecationWarning: test_refresh_data_cache_timeout is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+tests/test_cache_refresh.py:88
+  tests/test_cache_refresh.py:88: PytestDeprecationWarning: test_refresh_data_cache_cached_data is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+tests/test_cache_refresh.py:125
+  tests/test_cache_refresh.py:125: PytestDeprecationWarning: test_schedule_next_refresh_exception is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    async def test_schedule_next_refresh_exception(mock_refresh_data_cache, event_loop, caplog):
+
+tests/test_cache_refresh.py:135
+  tests/test_cache_refresh.py:135: PytestDeprecationWarning: test_schedule_next_refresh is asynchronous and explicitly requests the "event_loop" fixture. Asynchronous fixtures and test functions should use "asyncio.get_running_loop()" instead.
+    @pytest.mark.asyncio
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_api_clients.py::test_get_api_token_failure - TypeError: Obj...
+FAILED tests/test_api_clients.py::test_get_weather_data_failure - AssertionEr...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_success - TypeErr...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_api_failure - Ass...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_retry - TypeError...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_timeout - Asserti...
+FAILED tests/test_cache_refresh.py::test_refresh_data_cache_cached_data - ass...
+FAILED tests/test_cache_refresh.py::test_schedule_next_refresh - AssertionErr...
+FAILED tests/test_cache_system.py::test_update_cache_with_none_data - Asserti...
+FAILED tests/test_cache_system.py::test_reset_update_event - assert True is F...
+FAILED tests/test_data_processing.py::test_process_wunderground_data_valid - ...
+FAILED tests/test_data_processing.py::test_process_wunderground_data_missing_stations
+FAILED tests/test_data_processing.py::test_process_wunderground_data_missing_fields
+FAILED tests/test_data_processing.py::test_process_wunderground_data_cached_data
+FAILED tests/test_data_processing.py::test_process_wunderground_data_expired_cached_data
+FAILED tests/test_data_processing.py::test_process_wunderground_data_error_handling
+FAILED tests/test_data_processing.py::test_combine_weather_data_valid - asser...
+FAILED tests/test_data_processing.py::test_combine_weather_data_missing_data
+FAILED tests/test_data_processing.py::test_combine_weather_data_cached_data
+ERROR tests/test_api_clients.py::test_get_wunderground_data_missing_key
+ERROR tests/test_cache_refresh.py::test_schedule_next_refresh_exception
+ERROR tests/test_e2e.py::test_dashboard_displays_data_correctly[chromium]
+ERROR tests/test_endpoints.py::test_fire_risk_initial_fetch - KeyError: 'func...
+ERROR tests/test_endpoints.py::test_fire_risk_stale_data - KeyError: 'functio...
+ERROR tests/test_endpoints.py::test_fire_risk_critically_stale_data - KeyErro...
+ERROR tests/test_endpoints.py::test_fire_risk_refresh_exception - KeyError: '...
+ERROR tests/test_endpoints.py::test_fire_risk_refresh_timeout - KeyError: 'fu...
+ERROR tests/test_endpoints.py::test_home - KeyError: 'function # Added to add...
+ERROR tests/test_endpoints.py::test_toggle_test_mode_enable - KeyError: 'func...
+ERROR tests/test_endpoints.py::test_toggle_test_mode_disable - KeyError: 'fun...
+ERROR tests/test_endpoints.py::test_toggle_test_mode_no_cached_data - KeyErro...
+ERROR tests/test_integration.py::test_initial_cache_empty - KeyError: 'functi...
+ERROR tests/test_integration.py::test_cache_stale_refresh_background - KeyErr...
+ERROR tests/test_integration.py::test_wait_for_fresh - KeyError: 'function # ...
+ERROR tests/test_integration.py::test_test_mode_toggle - KeyError: 'function ...
+ERROR tests/test_integration.py::test_api_client_integration - KeyError: 'fun...
+ERROR tests/test_integration.py::test_data_processing_integration - KeyError:...
+ERROR tests/test_ui_rendering.py::test_homepage_loads - KeyError: 'function #...
+ERROR tests/test_ui_rendering.py::test_homepage_with_fresh_data - KeyError: '...
+ERROR tests/test_ui_rendering.py::test_cached_data_display_in_javascript - Ke...
+ERROR tests/test_ui_rendering.py::test_fire_risk_endpoint_with_cached_data - ...
+ERROR tests/test_ui_rendering.py::test_fire_risk_endpoint_with_partial_failure
+============ 19 failed, 29 passed, 7 warnings, 23 errors in 31.37s =============

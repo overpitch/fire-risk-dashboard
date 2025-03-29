@@ -1,17 +1,16 @@
 """Integration tests for fire risk dashboard endpoints."""
 
 import pytest
-from fastapi.testclient import TestClient
+# Removed TestClient import
 from unittest.mock import AsyncMock, Mock, patch
 from fastapi import BackgroundTasks
 from datetime import datetime, timedelta
 
-from endpoints import app
+# Removed app import, assuming it's available via client fixture context
 from cache import data_cache
 from config import WUNDERGROUND_STATION_IDS, TIMEZONE
 
-# Create a test client for the FastAPI app
-client = TestClient(app)
+# Removed local client = TestClient(app)
 
 
 import asyncio
@@ -38,14 +37,7 @@ SAMPLE_FIRE_RISK_DATA = {
     "modal_content": {}
 }
 
-@pytest.fixture(scope="session", autouse=True)
-def event_loop_policy():
-    """Set default event loop policy for tests."""
-    original_policy = get_event_loop_policy()
-    policy = asyncio.DefaultEventLoopPolicy()
-    asyncio.set_event_loop_policy(policy)
-    yield
-    asyncio.set_event_loop_policy(original_policy)
+# Removed session-scoped event_loop_policy fixture to let pytest-asyncio manage the loop
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +73,7 @@ async def reset_cache():
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_initial_cache_empty(mock_refresh):
+async def test_initial_cache_empty(mock_refresh, client): # Added client fixture
     """Test the /fire-risk endpoint when the cache is initially empty."""
     # Configure mock to simulate a successful refresh
     async def side_effect(*args, **kwargs):
@@ -92,7 +84,7 @@ async def test_initial_cache_empty(mock_refresh):
         return True
     mock_refresh.side_effect = side_effect
 
-    response = client.get("/fire-risk")
+    response = await client.get("/fire-risk") # Use await and fixture client
 
     assert response.status_code == 200
     mock_refresh.assert_called_once() # Ensure refresh was called because cache was empty
@@ -106,7 +98,7 @@ async def test_initial_cache_empty(mock_refresh):
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_cache_stale_refresh_background(mock_refresh):
+async def test_cache_stale_refresh_background(mock_refresh, client): # Added client fixture
     """Test /fire-risk triggers background refresh when cache is stale."""
     # Setup: Populate cache and make it stale
     data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
@@ -116,7 +108,7 @@ async def test_cache_stale_refresh_background(mock_refresh):
     # Configure mock refresh (won't be awaited by endpoint in this case)
     mock_refresh.return_value = True
 
-    response = client.get("/fire-risk") # wait_for_fresh=False (default)
+    response = await client.get("/fire-risk") # Use await and fixture client
 
     assert response.status_code == 200
     # Refresh should be called in the background
@@ -129,7 +121,7 @@ async def test_cache_stale_refresh_background(mock_refresh):
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_wait_for_fresh(mock_refresh):
+async def test_wait_for_fresh(mock_refresh, client): # Added client fixture
     """Test the wait_for_fresh=true parameter."""
     # Setup: Populate cache and make it stale
     data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
@@ -151,7 +143,7 @@ async def test_wait_for_fresh(mock_refresh):
     mock_refresh.side_effect = side_effect
 
     # Request fresh data - this should now wait for the mocked refresh
-    response = client.get("/fire-risk?wait_for_fresh=true")
+    response = await client.get("/fire-risk?wait_for_fresh=true") # Use await and fixture client
 
     assert response.status_code == 200
     mock_refresh.assert_called_once() # Refresh was called
@@ -163,20 +155,20 @@ async def test_wait_for_fresh(mock_refresh):
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_test_mode_toggle(mock_refresh):
+async def test_test_mode_toggle(mock_refresh, client): # Added client fixture
     """Test the test mode toggle endpoint and its effect."""
     # Setup: Ensure some valid data exists for caching fallback
     data_cache.last_valid_data["fire_risk_data"] = SAMPLE_FIRE_RISK_DATA.copy()
     data_cache.last_valid_data["timestamp"] = datetime.now(TIMEZONE) - timedelta(hours=1)
 
     # Enable test mode
-    response_enable = client.get("/toggle-test-mode?enable=true")
+    response_enable = await client.get("/toggle-test-mode?enable=true") # Use await and fixture client
     assert response_enable.status_code == 200
     assert response_enable.json()["mode"] == "test"
     assert data_cache.using_cached_data is True
 
     # Check /fire-risk returns cached data (refresh shouldn't be called by endpoint)
-    response_fire_risk_cached = client.get("/fire-risk")
+    response_fire_risk_cached = await client.get("/fire-risk") # Use await and fixture client
     assert response_fire_risk_cached.status_code == 200
     assert "cached_data" in response_fire_risk_cached.json()
     mock_refresh.assert_not_called() # Refresh shouldn't be called when forced cache is used
@@ -191,14 +183,14 @@ async def test_test_mode_toggle(mock_refresh):
         return True
     mock_refresh.side_effect = side_effect_disable
 
-    response_disable = client.get("/toggle-test-mode?enable=false")
+    response_disable = await client.get("/toggle-test-mode?enable=false") # Use await and fixture client
     assert response_disable.status_code == 200
     assert response_disable.json()["mode"] == "normal"
     assert data_cache.using_cached_data is False
     mock_refresh.assert_called_once() # Refresh called by disable toggle
 
     # Check /fire-risk returns fresh data
-    response_fire_risk_fresh = client.get("/fire-risk")
+    response_fire_risk_fresh = await client.get("/fire-risk") # Use await and fixture client
     assert response_fire_risk_fresh.status_code == 200
     assert "cached_data" not in response_fire_risk_fresh.json()
 

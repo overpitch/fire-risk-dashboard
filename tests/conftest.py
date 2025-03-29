@@ -33,69 +33,23 @@ except ImportError:
 from cache import data_cache
 
 
-# --- Helper function to find a free port ---
-def find_free_port():
-    """Finds an available port on localhost."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('localhost', 0))
-        return s.getsockname()[1]
-
-# --- Uvicorn server fixture ---
-@pytest.fixture(scope="session")
-def live_server_url(request):
-    """Starts the FastAPI app using Uvicorn in a separate thread."""
-    port = find_free_port()
-    server_url = f"http://localhost:{port}"
-
-    config = uvicorn.Config(app, host="localhost", port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    
-    # Use a flag to signal server readiness and shutdown
-    startup_complete = threading.Event()
-    shutdown_event = threading.Event()
-
-    def run_server():
-        # Set startup_complete *after* server.startup() finishes
-        original_startup = server.startup
-        async def new_startup(*args, **kwargs):
-            await original_startup(*args, **kwargs)
-            startup_complete.set() # Signal that startup is done
-        server.startup = new_startup
-        
-        # Run the server until shutdown_event is set
-        server.run() 
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # Wait for the server to start (with a timeout)
-    if not startup_complete.wait(timeout=10): # Wait up to 10 seconds
-         pytest.fail("Server did not start within the timeout period.")
-
-    # Yield the URL to the tests
-    yield server_url
-
-    # Teardown: Signal the server to shut down
-    server.should_exit = True
-    # Give server time to shut down gracefully
-    server_thread.join(timeout=5) 
-    if server_thread.is_alive():
-         print("Warning: Server thread did not shut down gracefully.")
-         # Consider more forceful shutdown if needed, though daemon=True helps
+# --- Removed live_server_url fixture as it seems unused and may cause async conflicts ---
 
 
 # --- Existing Fixtures ---
 
 
-@pytest.fixture
+@pytest.fixture(scope="session") # Changed scope to session
 async def client(): # Made the fixture async
     """Return an httpx.AsyncClient for the FastAPI app."""
     # Use httpx.AsyncClient for async testing
     async with httpx.AsyncClient(app=app, base_url="http://test") as client:
         yield client
+        # Explicitly close the client during teardown
+        await client.aclose()
 
 @pytest.fixture
-def reset_cache():
+def reset_cache(): # Reverted fixture to sync
     """Reset the data cache before and after each test."""
     # Store original cache state
     original_cache = {
