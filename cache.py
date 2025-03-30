@@ -116,15 +116,16 @@ class DataCache:
         current_time = datetime.now(TIMEZONE)
         
         # Store the current cached_fields and using_cached_data state
-        cached_fields_state = self.cached_fields.copy()
-        using_cached_data_state = self.using_cached_data
+        # cached_fields_state = self.cached_fields.copy() # REMOVED
+        # using_cached_data_state = self.using_cached_data # REMOVED
         
         with self._lock:
             self.synoptic_data = synoptic_data
             self.wunderground_data = wunderground_data
             
             # If we're using cached data, make sure the fire_risk_data has a cached_data field
-            if using_cached_data_state and "cached_data" not in fire_risk_data:
+            # Use self.using_cached_data directly now
+            if self.using_cached_data and "cached_data" not in fire_risk_data: # Use self.using_cached_data
                 # Get timestamp information for display
                 cached_time = self.last_valid_data["timestamp"]
                 if cached_time:
@@ -144,16 +145,16 @@ class DataCache:
                         "is_cached": True,
                         "original_timestamp": cached_time.isoformat(),
                         "age": age_str,
-                        "cached_fields": cached_fields_state.copy()
+                        "cached_fields": self.cached_fields.copy() # Use self.cached_fields directly
                     }
             
             self.fire_risk_data = fire_risk_data
             self.last_updated = current_time
             self.last_update_success = True
             
-            # Restore the cached_fields and using_cached_data state
-            self.cached_fields = cached_fields_state
-            self.using_cached_data = using_cached_data_state
+            # Restore the cached_fields and using_cached_data state # REMOVED
+            # self.cached_fields = cached_fields_state # REMOVED
+            # self.using_cached_data = using_cached_data_state # REMOVED
             
             # Store the full response data for backwards compatibility
             if synoptic_data is not None or wunderground_data is not None:

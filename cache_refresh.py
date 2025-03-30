@@ -187,6 +187,16 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
     
     if not success:
         logger.error("All data refresh attempts failed")
+        
+        # When refresh fails completely, ensure we're explicitly set to use cached data
+        # This is the key fix for the data age display bug
+        data_cache.using_cached_data = True
+        
+        # Make sure all fields are marked as using cached data
+        for field in data_cache.cached_fields:
+            data_cache.cached_fields[field] = True
+            
+        logger.info("Fallback to cached data after refresh failure")
     
     # Schedule next refresh if running as a background task
     if background_tasks and not data_cache.refresh_task_active:
