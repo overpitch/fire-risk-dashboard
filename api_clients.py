@@ -18,18 +18,15 @@ def get_api_token() -> Optional[str]:
 
     try:
         token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={SYNOPTIC_API_KEY}"
-        logger.info(f"🔎 DEBUG: Fetching API token from {token_url}")
+        logger.info(f"🔑 Attempting to fetch API token from Synoptic API")
 
         response = requests.get(token_url)
         response.raise_for_status()
         token_data = response.json()
 
-        # Log the full token response for debugging
-        logger.info(f"🔎 DEBUG: Token response: {json.dumps(token_data)}")
-
-        token = token_data.get("TOKEN")  # ✅ Extract token correctly
+        token = token_data.get("TOKEN")
         if token:
-            logger.info(f"✅ Received API token: {token[:5]}... (truncated)")
+            logger.info(f"✅ Successfully received API token from Synoptic API")
         else:
             logger.error("🚨 Token was empty or missing in response.")
             # Check if there's an error message in the response
@@ -65,16 +62,11 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
         return None
 
     try:
-        # Construct the full URL for logging purposes
+        # Construct the URL
         request_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token}"
-        # Log the URL with the token partially masked for security
-        masked_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token[:5]}..."
-        logger.info(f"🔎 DEBUG: Making API request to {masked_url}")
+        logger.info(f"🔍 Requesting weather data for stations: {location_ids}")
 
         response = requests.get(request_url)
-        
-        # Log the response status code
-        logger.info(f"🔎 DEBUG: API response status code: {response.status_code}")
         
         # Check for specific error codes
         if response.status_code == 401:

@@ -249,9 +249,10 @@ class DataCache:
             if "last_updated" in disk_cache and disk_cache["last_updated"]:
                 self.last_updated = datetime.fromisoformat(disk_cache["last_updated"])
             
-            # Mark that we're using cached data
-            self.using_cached_data = True
-            self.cached_fields = {field: True for field in self.cached_fields}
+            # Initialize the cached fields but don't mark as using cached data yet
+            # This allows the refresh process to attempt API calls even with disk cache available
+            self.cached_fields = {field: False for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
+            self.using_cached_data = False  # Start with not using cached data
             
             logger.info(f"Successfully loaded cache from disk: {self.cache_file}")
             return True

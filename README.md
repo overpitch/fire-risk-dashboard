@@ -10,6 +10,10 @@ This project is a public-facing dashboard that calculates and displays fire risk
 - Displays the risk level on a **Bootstrap-based web dashboard**.
 - Hosted on **Render** for automatic updates.
 
+## 📚 Documentation
+- [System Overview](system-overview.md) - Technical documentation describing the system architecture, data flow, and key components
+- [Roadmap](roadmap.md) - Planned future features and improvements
+
 ## 🛠 Setup Instructions
 1. Clone the repository:
    ```zsh
