@@ -56,19 +56,54 @@ async def test_refresh_data_cache_success(mock_calculate_fire_risk, mock_combine
 @pytest.mark.asyncio
 @patch('cache_refresh.get_synoptic_data')
 @patch('cache_refresh.get_wunderground_data')
-async def test_refresh_data_cache_api_failure(mock_get_wunderground_data, mock_get_synoptic_data):
+@patch('cache_refresh.format_age_string')
+async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wunderground_data, mock_get_synoptic_data):
     mock_get_synoptic_data.return_value = None  # Simulate API failure
     mock_get_wunderground_data.return_value = None
+    mock_format_age.return_value = "20 minutes old"  # Mock age string formatting
 
     # Use a mock instance of DataCache
     mock_cache = MagicMock(spec=DataCache)
-    mock_cache.last_valid_data = {"timestamp": None}  # No cached data
+    
+    # Setup mock cached data with timestamps
+    now = datetime.now(timezone.utc)
+    past = now - timedelta(minutes=20)
+    mock_cache.last_valid_data = {
+        "timestamp": past,
+        "fields": {
+            "temperature": {"value": 25, "timestamp": past},
+            "humidity": {"value": 50, "timestamp": past},
+            "wind_speed": {"value": 10, "timestamp": past},
+            "soil_moisture": {"value": 20, "timestamp": past},
+            "wind_gust": {"value": 15, "timestamp": past, "stations": {}}
+        }
+    }
+    
+    # Setup existing fire_risk_data to be updated
+    mock_cache.fire_risk_data = {
+        "risk": "low",
+        "explanation": "explanation",
+        "weather": {
+            "air_temp": 25,
+            "relative_humidity": 50,
+            "wind_speed": 10,
+            "soil_moisture_15cm": 20,
+            "wind_gust": 15
+        }
+    }
+    
     mock_cache.update_in_progress = False
     mock_cache.reset_update_event = MagicMock()
     mock_cache.max_retries = 3
     mock_cache.update_timeout = 10
     mock_cache.retry_delay = 5
-    mock_cache.cached_fields = {}
+    mock_cache.cached_fields = {
+        "temperature": False,
+        "humidity": False,
+        "wind_speed": False,
+        "soil_moisture": False,
+        "wind_gust": False
+    }
     
     # Patch the config logger to check warnings
     with patch('cache_refresh.logger') as mock_logger:
@@ -86,18 +121,37 @@ async def test_refresh_data_cache_api_failure(mock_get_wunderground_data, mock_g
                     "wind_gust": None
                 }
                 
-                # Now the code actually returns True regardless - success means
-                # the refresh process completed, not that APIs succeeded
+                # Run the function under test
                 result = await refresh_data_cache()
-                assert result is True
+                assert result is False
                 
-                # Instead verify that cached_fields was marked and logged
+                # Verify error logging
                 mock_logger.error.assert_any_call("All data refresh attempts failed")
                 
                 # Check that the warning was logged
                 mock_logger.warning.assert_any_call("Data refresh taking too long (over 10s), aborting")
             
+    # Verify cache markers were properly set
     assert mock_cache.last_update_success is False
+    assert mock_cache.using_cached_data is True
+    
+    # Verify all fields are marked as cached
+    for field in mock_cache.cached_fields:
+        assert mock_cache.cached_fields[field] is True
+        
+    # Verify fire_risk_data was updated with proper cache markers
+    assert "cached_data" in mock_cache.fire_risk_data
+    assert mock_cache.fire_risk_data["cached_data"]["is_cached"] is True
+    assert mock_cache.fire_risk_data["cached_data"]["age"] == "20 minutes old"
+    
+    # Verify weather data has proper cache structure
+    assert "cached_fields" in mock_cache.fire_risk_data["weather"]
+    assert "timestamp" in mock_cache.fire_risk_data["weather"]["cached_fields"]
+    
+    # Verify modal content was added
+    assert "modal_content" in mock_cache.fire_risk_data
+    assert "note" in mock_cache.fire_risk_data["modal_content"]
+    assert "Displaying cached weather data" in mock_cache.fire_risk_data["modal_content"]["note"]
 
 
 @pytest.mark.asyncio
@@ -166,6 +220,21 @@ async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data
     mock_cache.max_retries = 3
     mock_cache.retry_delay = 5
     mock_cache.cached_fields = {}
+    # Add fire_risk_data attribute to fix AttributeError
+    mock_cache.fire_risk_data = {"risk": "low", "explanation": "test", "weather": {}}
+    
+    # Add last_valid_data attribute to fix AttributeError
+    now = datetime.now(timezone.utc)
+    mock_cache.last_valid_data = {
+        "timestamp": now,
+        "fields": {
+            "temperature": {"value": 25, "timestamp": now},
+            "humidity": {"value": 50, "timestamp": now},
+            "wind_speed": {"value": 10, "timestamp": now},
+            "soil_moisture": {"value": 20, "timestamp": now},
+            "wind_gust": {"value": 15, "timestamp": now, "stations": {}}
+        }
+    }
     
     # Patch the global data_cache instance
     with patch('cache_refresh.data_cache', mock_cache):
@@ -180,8 +249,10 @@ async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data
 @pytest.mark.asyncio
 @patch('cache_refresh.get_synoptic_data')
 @patch('cache_refresh.get_wunderground_data')
-async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_get_synoptic_data, mock_data):
+@patch('cache_refresh.format_age_string')
+async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_wunderground_data, mock_get_synoptic_data, mock_data):
     mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+    mock_format_age.return_value = "20 minutes old"  # Mock age string formatting
 
     mock_get_synoptic_data.return_value = None
     mock_get_wunderground_data.return_value = None
@@ -193,7 +264,13 @@ async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_g
     mock_cache.max_retries = 3
     mock_cache.update_timeout = 10
     mock_cache.retry_delay = 5
-    mock_cache.cached_fields = {}
+    mock_cache.cached_fields = {
+        "temperature": False,
+        "humidity": False,
+        "wind_speed": False,
+        "soil_moisture": False,
+        "wind_gust": False
+    }
     
     # Populate mock cache with initial data
     now = datetime.now(timezone.utc)
@@ -211,11 +288,27 @@ async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_g
         "synoptic_data": mock_weather_data,
         "wunderground_data": mock_wunderground_data,
         "fire_risk_data": {"risk": "moderate"},
-        "timestamp": past
+        "timestamp": past,
+        "weather": {
+            "air_temp": 26,
+            "relative_humidity": 11,
+            "wind_speed": 21,
+            "soil_moisture_15cm": 1,
+            "wind_gust": 16
+        }
     }
     
     # Setup expected cached risk data
-    mock_cache.fire_risk_data = {"risk": "moderate"}
+    mock_cache.fire_risk_data = {
+        "risk": "moderate",
+        "weather": {
+            "air_temp": 26,
+            "relative_humidity": 11,
+            "wind_speed": 21,
+            "soil_moisture_15cm": 1,
+            "wind_gust": 16
+        }
+    }
     
     # Patch the global data_cache instance
     with patch('cache_refresh.data_cache', mock_cache):
@@ -230,22 +323,30 @@ async def test_refresh_data_cache_cached_data(mock_get_wunderground_data, mock_g
                 "wind_gust": None
             }
             
-            assert await refresh_data_cache() is True
+            # Our new implementation returns False when all API calls fail
+            assert await refresh_data_cache() is False
 
-        # Verify cache was updated correctly
-        assert mock_cache.fire_risk_data["risk"] == "moderate"
-        
-        # Mock the using_cached_data flag directly to make the test pass
-        # This mimics how mock_cache.ensure_complete_weather_data would 
-        # actually update the cached_fields and using_cached_data flag
-        mock_cache.using_cached_data = True
+        # Verify cache state after refresh
+        assert mock_cache.last_update_success is False
         assert mock_cache.using_cached_data is True
-    
-    assert mock_cache.cached_fields["temperature"] is True
-    assert mock_cache.cached_fields["humidity"] is True
-    assert mock_cache.cached_fields["wind_speed"] is True
-    assert mock_cache.cached_fields["soil_moisture"] is True
-    assert mock_cache.cached_fields["wind_gust"] is True
+        
+        # Verify all fields are marked as cached
+        for field in mock_cache.cached_fields:
+            assert mock_cache.cached_fields[field] is True
+            
+        # Verify the fire_risk_data was updated with proper cache indicators
+        assert "cached_data" in mock_cache.fire_risk_data
+        assert mock_cache.fire_risk_data["cached_data"]["is_cached"] is True
+        assert mock_cache.fire_risk_data["cached_data"]["age"] == "20 minutes old"
+        
+        # Verify weather data has cached_fields structure
+        assert "cached_fields" in mock_cache.fire_risk_data["weather"]
+        assert "timestamp" in mock_cache.fire_risk_data["weather"]["cached_fields"]
+        
+        # Verify modal content was added
+        assert "modal_content" in mock_cache.fire_risk_data
+        assert "note" in mock_cache.fire_risk_data["modal_content"]
+        assert "Displaying cached weather data" in mock_cache.fire_risk_data["modal_content"]["note"]
 
 
 @pytest.mark.asyncio

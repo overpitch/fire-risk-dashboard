@@ -44,14 +44,23 @@ async def test_fire_risk_initial_fetch(client): # Added client fixture
 @pytest.mark.asyncio
 async def test_fire_risk_stale_data(client):
     # Create our test data
-    mock_fire_risk_data = {"risk": "low", "explanation": "test"}
+    mock_fire_risk_data = {
+        "risk": "low", 
+        "explanation": "test",
+        "weather": {
+            "air_temp": 25,
+            "relative_humidity": 50,
+            "wind_speed": 10,
+            "soil_moisture_15cm": 20,
+            "wind_gust": 15
+        }
+    }
     
     # Mock for refresh_data_cache
     mock_refresh = AsyncMock()
     mock_refresh.return_value = True
     
     # Directly spy on the add_task method
-    original_add_task = BackgroundTasks.add_task
     add_task_called = False
     
     # Create a replacement for add_task that tracks if it was called
@@ -83,6 +92,92 @@ async def test_fire_risk_stale_data(client):
                             
                             # Verify our add_task was called
                             assert add_task_called, "BackgroundTasks.add_task was not called"
+
+
+@pytest.mark.asyncio
+async def test_fire_risk_cache_data_age_indicators(client):
+    """Test that cached data properly includes age indicators"""
+    # Use the current time
+    now = datetime.now(timezone.utc)
+    
+    # Create mock data with cache fields structure
+    mock_fire_risk_data = {
+        "risk": "low",
+        "explanation": "test",
+        "weather": {
+            "air_temp": 25,
+            "relative_humidity": 50,
+            "wind_speed": 10,
+            "soil_moisture_15cm": 20,
+            "wind_gust": 15,
+            "cached_fields": {
+                "temperature": True,
+                "humidity": True,
+                "wind_speed": True,
+                "soil_moisture": True,
+                "wind_gust": True
+            }
+        }
+    }
+    
+    # Create mock cache data
+    mock_last_valid_data = {
+        "fields": {
+            "temperature": {"value": 25, "timestamp": now},
+            "humidity": {"value": 50, "timestamp": now},
+            "wind_speed": {"value": 10, "timestamp": now},
+            "soil_moisture": {"value": 20, "timestamp": now},
+            "wind_gust": {"value": 15, "timestamp": now}
+        },
+        "timestamp": now
+    }
+    
+    # Create mock cached_fields map
+    mock_cached_fields = {
+        "temperature": True,
+        "humidity": True,
+        "wind_speed": True,
+        "soil_moisture": True,
+        "wind_gust": True
+    }
+    
+    # Set up all mocks
+    with patch.object(data_cache, "fire_risk_data", mock_fire_risk_data):
+        with patch.object(data_cache, "last_valid_data", mock_last_valid_data):
+            with patch.object(data_cache, "cached_fields", mock_cached_fields):
+                with patch.object(data_cache, "using_cached_data", True):
+                    with patch.object(data_cache, "is_stale", return_value=False):
+                        with patch.object(data_cache, "ensure_complete_weather_data", return_value=mock_fire_risk_data["weather"]):
+                            
+                            # Make the request
+                            response = await client.get("/fire-risk")
+                            
+                            # Verify response
+                            assert response.status_code == 200
+                            result = response.json()
+                            
+                            # Check cache info
+                            assert result["cache_info"]["using_cached_data"] is True
+                            
+                            # Check cached_data field
+                            assert "cached_data" in result
+                            assert result["cached_data"]["is_cached"] is True
+                            assert "age" in result["cached_data"]
+                            
+                            # Check weather data has cached_fields with timestamps
+                            assert "cached_fields" in result["weather"]
+                            assert "timestamp" in result["weather"]["cached_fields"]
+                            
+                            # Check each field has a timestamp
+                            for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]:
+                                assert field in result["weather"]["cached_fields"]
+                                assert result["weather"]["cached_fields"][field] is True
+                                assert field in result["weather"]["cached_fields"]["timestamp"]
+                            
+                            # Verify modal content
+                            assert "modal_content" in result
+                            assert "note" in result["modal_content"]
+                            assert "Displaying cached weather data" in result["modal_content"]["note"]
 
 
 @pytest.mark.asyncio

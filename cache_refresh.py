@@ -168,13 +168,19 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                     "cached_fields": data_cache.cached_fields.copy()
                 }
             
-            # Update cache with new data
-            data_cache.update_cache(weather_data, wunderground_data, fire_risk_data)
-            
-            # If we got here, the refresh was successful
-            success = True
-            logger.info("Data cache refresh successful")
-            
+            # Check if we actually got *any* fresh data from APIs
+            # If both are None, the refresh essentially failed to get new data
+            if weather_data is None and wunderground_data is None:
+                 logger.warning("Both API calls failed, refresh did not obtain new data.")
+                 # Keep success as False if it wasn't already True from a previous retry
+                 # success = False # This line is implicitly handled by loop condition
+            else:
+                 # Update cache with new data only if at least one API succeeded
+                 data_cache.update_cache(weather_data, wunderground_data, fire_risk_data)
+                 # If we got here with some data, the refresh was successful in processing
+                 success = True
+                 logger.info("Data cache refresh successful (processed available data)")
+
         except Exception as e:
             retries += 1
             logger.error(f"Error refreshing data cache (attempt {retries}/{data_cache.max_retries}): {str(e)}")
@@ -189,14 +195,61 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
         logger.error("All data refresh attempts failed")
         
         # When refresh fails completely, ensure we're explicitly set to use cached data
-        # This is the key fix for the data age display bug
         data_cache.using_cached_data = True
         
         # Make sure all fields are marked as using cached data
         for field in data_cache.cached_fields:
             data_cache.cached_fields[field] = True
+        
+        # Get the cached data to update with correct cache markers
+        if data_cache.fire_risk_data:
+            # Make a copy of the existing fire risk data
+            fire_risk_data = data_cache.fire_risk_data.copy()
             
-        logger.info("Fallback to cached data after refresh failure")
+            # Ensure cached_data object is present and properly formatted
+            current_time = datetime.now(TIMEZONE)
+            cached_time = data_cache.last_valid_data["timestamp"]
+            
+            # Calculate age of data
+            age_str = format_age_string(current_time, cached_time)
+            
+            # Add or update cached_data field in fire_risk_data
+            fire_risk_data["cached_data"] = {
+                "is_cached": True,
+                "original_timestamp": cached_time.isoformat(),
+                "age": age_str,
+                "cached_fields": data_cache.cached_fields.copy()
+            }
+            
+            # Make sure weather data has the cached_fields structure
+            if "weather" in fire_risk_data:
+                if "cached_fields" not in fire_risk_data["weather"]:
+                    fire_risk_data["weather"]["cached_fields"] = {}
+                
+                # Copy the cached_fields structure with all fields marked as cached
+                fire_risk_data["weather"]["cached_fields"] = data_cache.cached_fields.copy()
+                
+                # Add timestamp information for each field
+                if "timestamp" not in fire_risk_data["weather"]["cached_fields"]:
+                    fire_risk_data["weather"]["cached_fields"]["timestamp"] = {}
+                
+                for field_name in data_cache.cached_fields:
+                    if field_name in data_cache.last_valid_data["fields"]:
+                        field_timestamp = data_cache.last_valid_data["fields"][field_name].get("timestamp")
+                        if field_timestamp:
+                            fire_risk_data["weather"]["cached_fields"]["timestamp"][field_name] = field_timestamp.isoformat()
+                
+                # Add modal content to indicate cached data
+                fire_risk_data["modal_content"] = {
+                    "note": "Displaying cached weather data. Current data is unavailable.",
+                    "warning_title": "Using Cached Data",
+                    "warning_issues": ["Unable to fetch fresh data from weather APIs."]
+                }
+            
+            # Update the cache with the properly marked data
+            data_cache.fire_risk_data = fire_risk_data
+        
+        logger.info("Fallback to cached data after refresh failure with proper cache indicators")
     
     # Schedule next refresh if running as a background task
     if background_tasks and not data_cache.refresh_task_active:

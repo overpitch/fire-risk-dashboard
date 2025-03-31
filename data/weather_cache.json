@@ -3,35 +3,35 @@
     "fields": {
       "temperature": {
         "value": 0.5,
-        "timestamp": "2025-03-31T10:12:44.717692-07:00"
+        "timestamp": "2025-03-31T12:44:30.366973-07:00"
       },
       "humidity": {
         "value": 98.0,
-        "timestamp": "2025-03-31T10:12:44.717692-07:00"
+        "timestamp": "2025-03-31T12:44:30.366973-07:00"
       },
       "wind_speed": {
         "value": 0.0,
-        "timestamp": "2025-03-31T10:12:44.717692-07:00"
+        "timestamp": "2025-03-31T12:44:30.366973-07:00"
       },
       "soil_moisture": {
         "value": 22.0,
-        "timestamp": "2025-03-31T10:12:44.717692-07:00"
+        "timestamp": "2025-03-31T12:44:30.366973-07:00"
       },
       "wind_gust": {
-        "value": 2.6666666666666665,
-        "timestamp": "2025-03-31T10:12:44.717692-07:00",
+        "value": 5.666666666666667,
+        "timestamp": "2025-03-31T12:44:30.366973-07:00",
         "stations": {
           "KCASIERR63": {
             "value": 3,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
-          },
-          "KCASIERR68": {
-            "value": 3,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
           },
           "KCASIERR72": {
-            "value": 2,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
+            "value": 10,
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
+          },
+          "KCASIERR68": {
+            "value": 4,
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
           }
         }
       }
@@ -67,30 +67,30 @@
         "observations": [
           {
             "stationID": "KCASIERR68",
-            "obsTimeUtc": "2025-03-31T17:11:51Z",
-            "obsTimeLocal": "2025-03-31 10:11:51",
+            "obsTimeUtc": "2025-03-31T19:44:15Z",
+            "obsTimeLocal": "2025-03-31 12:44:15",
             "neighborhood": "Sierra City",
             "softwareType": null,
             "country": "US",
-            "solarRadiation": 50.2,
+            "solarRadiation": 151.2,
             "lon": -120.624,
             "realtimeFrequency": null,
-            "epoch": 1743441111,
+            "epoch": 1743450255,
             "lat": 39.57,
-            "uv": 0.0,
-            "winddir": 168,
-            "humidity": 92,
+            "uv": 3.0,
+            "winddir": 78,
+            "humidity": 94,
             "qcStatus": -1,
             "imperial": {
               "temp": 34,
               "heatIndex": 34,
-              "dewpt": 32,
-              "windChill": 34,
-              "windSpeed": 3,
-              "windGust": 3,
-              "pressure": 29.9,
-              "precipRate": 0.0,
-              "precipTotal": 1.14,
+              "dewpt": 33,
+              "windChill": 31,
+              "windSpeed": 4,
+              "windGust": 4,
+              "pressure": 29.87,
+              "precipRate": 0.05,
+              "precipTotal": 1.19,
               "elev": 1321
             }
           }
@@ -100,28 +100,28 @@
         "observations": [
           {
             "stationID": "KCASIERR63",
-            "obsTimeUtc": "2025-03-31T17:12:33Z",
-            "obsTimeLocal": "2025-03-31 10:12:33",
+            "obsTimeUtc": "2025-03-31T19:44:18Z",
+            "obsTimeLocal": "2025-03-31 12:44:18",
             "neighborhood": "Sierra City",
             "softwareType": "WS-1001 V2.2.9",
             "country": "US",
-            "solarRadiation": 7.3,
+            "solarRadiation": 21.3,
             "lon": -120.632,
             "realtimeFrequency": null,
-            "epoch": 1743441153,
+            "epoch": 1743450258,
             "lat": 39.565,
             "uv": 0.0,
-            "winddir": 248,
-            "humidity": 98,
+            "winddir": 81,
+            "humidity": 91,
             "qcStatus": -1,
             "imperial": {
-              "temp": 35,
-              "heatIndex": 35,
-              "dewpt": 34,
-              "windChill": 35,
-              "windSpeed": 0,
+              "temp": 36,
+              "heatIndex": 36,
+              "dewpt": 33,
+              "windChill": 36,
+              "windSpeed": 2,
               "windGust": 3,
-              "pressure": 25.61,
+              "pressure": 25.59,
               "precipRate": 0.0,
               "precipTotal": 0.0,
               "elev": 4826
@@ -133,28 +133,28 @@
         "observations": [
           {
             "stationID": "KCASIERR72",
-            "obsTimeUtc": "2025-03-31T17:12:37Z",
-            "obsTimeLocal": "2025-03-31 10:12:37",
+            "obsTimeUtc": "2025-03-31T19:44:24Z",
+            "obsTimeLocal": "2025-03-31 12:44:24",
             "neighborhood": "Sierra City",
             "softwareType": null,
             "country": "US",
-            "solarRadiation": 42.1,
+            "solarRadiation": 64.1,
             "lon": -120.601768,
             "realtimeFrequency": null,
-            "epoch": 1743441157,
+            "epoch": 1743450264,
             "lat": 39.612225,
-            "uv": 0.0,
+            "uv": 0.3,
             "winddir": 150,
-            "humidity": 86,
+            "humidity": 85,
             "qcStatus": -1,
             "imperial": {
-              "temp": 37,
-              "heatIndex": 37,
-              "dewpt": 33,
-              "windChill": 37,
-              "windSpeed": 2,
-              "windGust": 2,
-              "pressure": 29.81,
+              "temp": 38,
+              "heatIndex": 38,
+              "dewpt": 34,
+              "windChill": 32,
+              "windSpeed": 9,
+              "windGust": 10,
+              "pressure": 29.8,
               "precipRate": 0.0,
               "precipTotal": 0.45,
               "elev": 5320
@@ -171,7 +171,7 @@
         "relative_humidity": 98.0,
         "wind_speed": 0.0,
         "soil_moisture_15cm": 22.0,
-        "wind_gust": 2.6666666666666665,
+        "wind_gust": 5.666666666666667,
         "data_sources": {
           "weather_station": "SEYC1",
           "soil_moisture_station": "C3DLA",
@@ -185,17 +185,17 @@
           "KCASIERR63": {
             "value": 3,
             "is_cached": false,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
-          },
-          "KCASIERR68": {
-            "value": 3,
-            "is_cached": false,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
           },
           "KCASIERR72": {
-            "value": 2,
+            "value": 10,
             "is_cached": false,
-            "timestamp": "2025-03-31T10:12:44.717101-07:00"
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
+          },
+          "KCASIERR68": {
+            "value": 4,
+            "is_cached": false,
+            "timestamp": "2025-03-31T12:44:30.366632-07:00"
           }
         },
         "data_status": {
@@ -203,8 +203,8 @@
             "SEYC1",
             "C3DLA",
             "KCASIERR63",
-            "KCASIERR68",
-            "KCASIERR72"
+            "KCASIERR72",
+            "KCASIERR68"
           ],
           "missing_stations": [],
           "issues": [
@@ -212,7 +212,7 @@
             "Soil moisture data missing from station C3DLA"
           ]
         },
-        "cache_timestamp": "2025-03-31T10:12:44.717472-07:00",
+        "cache_timestamp": "2025-03-31T12:44:30.366804-07:00",
         "cached_fields": {
           "temperature": false,
           "humidity": false,
@@ -222,7 +222,7 @@
         }
       }
     },
-    "timestamp": "2025-03-31T10:12:44.717692-07:00"
+    "timestamp": "2025-03-31T12:44:30.366973-07:00"
   },
-  "last_updated": "2025-03-31T10:12:44.717692-07:00"
+  "last_updated": "2025-03-31T12:44:30.366973-07:00"
 }

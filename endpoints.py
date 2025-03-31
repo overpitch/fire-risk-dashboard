@@ -98,17 +98,36 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     
     # Ensure all weather metrics have values (never return None)
     if result and "weather" in result:
+        # This method now also updates data_cache.cached_fields and data_cache.using_cached_data
         result["weather"] = data_cache.ensure_complete_weather_data(result["weather"])
         
-        # Add cache info to the response
-        if "cached_data" not in result:
-            result["cache_info"] = {
-                "using_cached_data": data_cache.using_cached_data,
-                "using_default_values": getattr(data_cache, 'using_default_values', False),
-                "cached_fields": data_cache.cached_fields.copy() if hasattr(data_cache, 'cached_fields') else {}
-            }
-    
-    # Add field-level caching information to the response
+        # Initialize cached_fields in the result weather data if it doesn't exist
+        if "cached_fields" not in result["weather"]:
+            result["weather"]["cached_fields"] = {}
+            
+        # Ensure the timestamp sub-object exists
+        if "timestamp" not in result["weather"]["cached_fields"]:
+             result["weather"]["cached_fields"]["timestamp"] = {}
+
+        # Populate the timestamp object based on the cached_fields flags
+        for field_name, is_cached in data_cache.cached_fields.items():
+            if is_cached:
+                # Add the boolean flag (for potential future use or clarity)
+                result["weather"]["cached_fields"][field_name] = True
+                # Add the timestamp from last_valid_data
+                if field_name in data_cache.last_valid_data["fields"]:
+                    timestamp = data_cache.last_valid_data["fields"][field_name].get("timestamp")
+                    if timestamp:
+                        result["weather"]["cached_fields"]["timestamp"][field_name] = timestamp.isoformat()
+            else:
+                 # Ensure boolean flag is set to false if not cached
+                 result["weather"]["cached_fields"][field_name] = False
+
+        # Update the main cache_info in the result based on the final state
+        result["cache_info"]["using_cached_data"] = data_cache.using_cached_data
+        result["cache_info"]["cached_fields"] = data_cache.cached_fields.copy() # Add the flags here too
+            
+    # Add field-level caching information to the response (This block might be redundant now)
     # Check the flag *in the result* now, not just the global state
     if result["cache_info"]["using_cached_data"]:
         # Add field-specific cache information
@@ -127,7 +146,25 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                 "cached_fields": data_cache.cached_fields.copy() # Use a copy
             }
 
-            # --- START NEW CODE ---
+            # Ensure weather data has the cached_fields structure
+            if "weather" in result:
+                if "cached_fields" not in result["weather"]:
+                    result["weather"]["cached_fields"] = {}
+                
+                # Copy the cached_fields structure with proper flags
+                result["weather"]["cached_fields"] = data_cache.cached_fields.copy()
+                
+                # Add timestamp information for each field
+                if "timestamp" not in result["weather"]["cached_fields"]:
+                    result["weather"]["cached_fields"]["timestamp"] = {}
+                
+                # Add timestamps for all cached fields
+                for field_name, is_cached in data_cache.cached_fields.items():
+                    if is_cached and field_name in data_cache.last_valid_data["fields"]:
+                        field_timestamp = data_cache.last_valid_data["fields"][field_name].get("timestamp")
+                        if field_timestamp:
+                            result["weather"]["cached_fields"]["timestamp"][field_name] = field_timestamp.isoformat()
+                
             # Ensure the weather data in the result reflects the cached values
             if "weather" in result and "weather" in data_cache.last_valid_data:
                 cached_weather = data_cache.last_valid_data["weather"]

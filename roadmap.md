@@ -251,6 +251,7 @@
   - [ ] Implement lazy loading
   - [ ] Add client-side caching
   - [ ] Enhance wind gust tooltip to show data from multiple stations
+  - [ ] Simplify wind gust tooltip status indicators (remove confusing checkmarks, use consistent age indicators)
 
 **Completion Criteria**:
 - Performance bottlenecks are identified and addressed
