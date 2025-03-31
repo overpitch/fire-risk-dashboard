@@ -367,6 +367,10 @@ async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = Fal
         # Disable test mode and return to normal operation
         data_cache.using_cached_data = False
         
+        # Reset all cached field flags to False
+        for field in data_cache.cached_fields:
+            data_cache.cached_fields[field] = False
+        
         # Reset the fire risk data to remove any cached data indicators
         if data_cache.fire_risk_data and "cached_data" in data_cache.fire_risk_data:
             # Remove the cached_data field
