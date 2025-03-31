@@ -23,6 +23,8 @@ def test_get_api_token_failure(mock_get):
     mock_get.return_value.status_code = 400  # Simulate a bad request
     # Properly mock the json method to return a dict instead of a MagicMock
     mock_get.return_value.json.return_value = {"error": "Bad request"}
+    # Configure raise_for_status to raise an exception
+    mock_get.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError("400 Error")
     token = get_api_token()
     assert token is None
 

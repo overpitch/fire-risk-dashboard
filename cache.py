@@ -337,7 +337,10 @@ class DataCache:
     
     def reset_update_event(self):
         """Reset the update complete event for next update cycle"""
+        # Directly clear the event
+        self._update_complete_event.clear()
         try:
+            # Also try the threadsafe approach as a backup
             loop = asyncio.get_event_loop()
             if not loop.is_closed():
                 loop.call_soon_threadsafe(self._update_complete_event.clear)
