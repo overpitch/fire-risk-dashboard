@@ -42,6 +42,9 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     is_stale = data_cache.is_stale(max_age_minutes=60)
     refresh_in_progress = data_cache.update_in_progress
     
+    # Initialize timeout flag
+    timed_out_waiting_for_fresh = False
+    
     # Handle stale data
     if is_stale:
         # If requested to wait for fresh data or if data is critically stale
@@ -56,9 +59,11 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
             
             # Wait for the update to complete with timeout
             success = await data_cache.wait_for_update()
-            
+
+            timed_out_waiting_for_fresh = False # Flag to track timeout specifically in wait_for_fresh path
             if not success:
                 logger.warning("Timeout waiting for fresh data, returning potentially stale data")
+                timed_out_waiting_for_fresh = True # Set the flag
         else:
             # Schedule background refresh if not already in progress
             if not refresh_in_progress:
@@ -73,9 +78,14 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
         "last_updated": data_cache.last_updated.isoformat() if data_cache.last_updated else None,
         "is_fresh": not data_cache.is_stale(max_age_minutes=60), # Use 60-minute threshold
         "refresh_in_progress": data_cache.update_in_progress,
-        "using_cached_data": data_cache.using_cached_data
+        "using_cached_data": data_cache.using_cached_data # Initial value from global state
     }
-    
+
+    # If we specifically timed out while waiting for fresh data, override the flag in the response
+    if timed_out_waiting_for_fresh:
+        result["cache_info"]["using_cached_data"] = True
+        logger.debug("Overriding cache_info.using_cached_data to True due to wait_for_fresh timeout.")
+
     # Add threshold values from config to the response
     from config import THRESH_TEMP, THRESH_HUMID, THRESH_WIND, THRESH_GUSTS, THRESH_SOIL_MOIST
     result["thresholds"] = {
@@ -99,11 +109,11 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
             }
     
     # Add field-level caching information to the response
-    # If we're using cached data from a previous successful API call (fallback mode)
-    if data_cache.using_cached_data:
+    # Check the flag *in the result* now, not just the global state
+    if result["cache_info"]["using_cached_data"]:
         # Add field-specific cache information
         current_time = datetime.now(TIMEZONE)
-        
+
         # Calculate how old the data is
         if data_cache.last_valid_data["timestamp"]:
             cached_time = data_cache.last_valid_data["timestamp"]
@@ -168,8 +178,21 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                     modal_content["warning_title"] = "Data Quality Warning (from cached data):"
                     modal_content["warning_issues"] = issues
             
+            # Set the note specifically because we know we fell back to cache
+            modal_content["note"] = "Displaying cached weather data. Current data is unavailable."
+
+            # Check for data quality issues from the original (cached) data
+            if "weather" in data_cache.last_valid_data and \
+               "data_status" in data_cache.last_valid_data["weather"] and \
+               data_cache.last_valid_data["weather"]["data_status"].get("issues"):
+
+                issues = data_cache.last_valid_data["weather"]["data_status"]["issues"]
+                if issues:
+                    modal_content["warning_title"] = "Data Quality Warning (from cached data):"
+                    modal_content["warning_issues"] = issues
+
             result["modal_content"] = modal_content
-            
+
     # If not using cached data, check for current data quality issues
     elif "weather" in result and "data_status" in result["weather"] and result["weather"]["data_status"].get("issues"):
          issues = result["weather"]["data_status"]["issues"]
