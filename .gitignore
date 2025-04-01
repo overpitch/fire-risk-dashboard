@@ -1,3 +1,7 @@
+# Cache files
+data/test_weather_cache.json
+data/weather_cache.json
+GIT commits.txt
 # Ignore Python compiled files
 __pycache__/
 *.pyc
@@ -22,4 +26,3 @@ Feedback/
 # Ignore macOS system files
 .DS_Store
 
-GIT commits.txtdata/test_weather_cache.json
