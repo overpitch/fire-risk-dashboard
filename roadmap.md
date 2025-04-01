@@ -1,11 +1,12 @@
 # 🔥 Fire Risk Dashboard Refactoring Roadmap
 
 ## Current Status
-- **Phase 0**: ✅ Initial assessment and roadmap creation
-- **Phase 1**: 🔄 Project structure reorganization (Not started)
-- **Phase 2**: ⏱️ Best practice implementations (Not started)
-- **Phase 3**: ⏱️ Testing strategy implementation (Not started)
+- **Phase 0**: ✅ Initial assessment and roadmap creation (Completed)
+- **Phase 1**: ✅ Project structure reorganization (Completed)
+- **Phase 2**: 🔄 Best practice implementations (Partially completed)
+- **Phase 3**: 🔄 Testing strategy implementation (Partially completed)
 - **Phase 4**: 🔄 Documentation improvements (Partially completed)
+- **Phase 4.5**: 🔄 Cache System Simplification (In progress - URGENT)
 - **Phase 5**: ⏱️ Performance optimizations (Not started)
 - **Phase 6**: ⏱️ Deployment improvements (Not started)
 
@@ -28,7 +29,7 @@
 ---
 
 ## Phase 1: Project Structure Reorganization
-**Status**: 🔄 Not started
+**Status**: ✅ Completed
 
 **Objectives**:
 - Break down the monolithic app into modular components
@@ -36,58 +37,22 @@
 - Separate concerns (configuration, API clients, business logic, routes)
 
 **Tasks**:
-- [ ] Create the directory structure:
-  ```
-  fire-risk-dashboard/
-  ├── app/
-  │   ├── __init__.py
-  │   ├── main.py                 # Application entry point
-  │   ├── config.py               # Configuration and environment variables
-  │   ├── api/
-  │   │   ├── __init__.py
-  │   │   ├── synoptic.py         # Synoptic Data API client
-  │   │   └── wunderground.py     # Weather Underground API client
-  │   ├── core/
-  │   │   ├── __init__.py
-  │   │   ├── cache.py            # Data caching system
-  │   │   └── risk.py             # Fire risk calculation logic
-  │   ├── routes/
-  │   │   ├── __init__.py
-  │   │   ├── dashboard.py        # Main dashboard routes
-  │   │   └── dev.py              # Development-only routes
-  │   └── templates/
-  │       └── dashboard.html      # HTML template for the dashboard
-  ├── static/                     # Static files (unchanged)
-  ├── tests/                      # New directory for tests
-  │   ├── __init__.py
-  │   ├── test_api.py
-  │   ├── test_cache.py
-  │   └── test_risk.py
-  ├── requirements.txt
-  ├── render-start.zsh
-  └── README.md
-  ```
-- [ ] Extract configuration to config.py
-  - [ ] Move API keys, base URLs, and station IDs
-  - [ ] Create Pydantic settings models for configuration
-  - [ ] Implement environment variable loading
-- [ ] Extract API clients
-  - [ ] Create synoptic.py for Synoptic Data API interactions
-  - [ ] Create wunderground.py for Weather Underground API interactions
-  - [ ] Implement proper error handling and retry logic
-- [ ] Extract core logic
-  - [ ] Move DataCache class to cache.py
-  - [ ] Move fire risk calculation to risk.py
-  - [ ] Implement proper type annotations
-- [ ] Extract routes
-  - [ ] Move main dashboard route to dashboard.py
-  - [ ] Move development-only routes to dev.py
-  - [ ] Implement proper dependency injection
-- [ ] Extract HTML template
-  - [ ] Move HTML content to dashboard.html
-  - [ ] Set up Jinja2 templating
-- [ ] Update main.py to import and use the new modules
-- [ ] Ensure the refactored app works exactly like the original
+- [x] Create modular file structure
+- [x] Extract configuration to config.py
+  - [x] Move API keys, base URLs, and station IDs
+  - [x] Implement environment variable loading
+- [x] Extract API clients
+  - [x] Create api_clients.py for API interactions
+  - [x] Implement proper error handling and retry logic
+- [x] Extract core logic
+  - [x] Move DataCache class to cache.py
+  - [x] Implement cache_refresh.py for refresh logic
+  - [x] Move fire risk calculation to fire_risk_logic.py
+- [x] Extract routes
+  - [x] Implement endpoints.py for main routes
+  - [x] Implement dev_endpoints.py for development routes
+- [x] Set up static files directory structure
+- [x] Ensure the refactored app works exactly like the original
 
 **Completion Criteria**:
 - The application is split into logical modules
@@ -98,7 +63,7 @@
 ---
 
 ## Phase 2: Best Practice Implementations
-**Status**: ⏱️ Not started
+**Status**: 🔄 Partially completed
 
 **Objectives**:
 - Address all identified best practice issues
@@ -106,38 +71,25 @@
 - Implement modern Python and FastAPI patterns
 
 **Tasks**:
-- [ ] Implement proper HTML template handling
-  - [ ] Set up Jinja2 Templates with FastAPI
-  - [ ] Create base templates and components
-  - [ ] Move JavaScript to separate files
-- [ ] Implement consistent error handling
-  - [ ] Create custom exception classes
-  - [ ] Implement error middleware
-  - [ ] Add proper error responses
-- [ ] Improve configuration management
-  - [ ] Use Pydantic settings for all configuration
-  - [ ] Implement configuration validation
-  - [ ] Add environment-specific configurations
+- [x] Implement proper HTML template handling
+  - [x] Set up HTML template for the dashboard
+- [x] Implement consistent error handling
+  - [x] Add proper error logging
+  - [x] Add proper error responses
+- [x] Improve configuration management
+  - [x] Extract configuration to separate module
 - [ ] Fix async/sync mixing
   - [ ] Replace requests with httpx for async HTTP
-  - [ ] Ensure proper async patterns throughout
-  - [ ] Fix thread safety issues in cache
-- [ ] Enhance logging strategy
-  - [ ] Implement structured logging
-  - [ ] Add log rotation
-  - [ ] Configure log levels
-- [ ] Add comprehensive type annotations
-  - [ ] Add types to all functions and classes
-  - [ ] Create type aliases for complex types
-  - [ ] Use generics where appropriate
+  - [x] Implement thread safety in cache
+- [x] Enhance logging strategy
+  - [x] Implement structured logging
+  - [x] Configure log levels
+- [x] Add type annotations
+  - [x] Add types to key functions and classes
 - [ ] Implement dependency injection
   - [ ] Use FastAPI's dependency injection system
-  - [ ] Create service classes for business logic
-  - [ ] Make dependencies explicit
 - [ ] Improve API documentation
   - [ ] Add OpenAPI descriptions
-  - [ ] Create response models
-  - [ ] Document all parameters
 
 **Completion Criteria**:
 - All identified best practice issues are addressed
@@ -148,7 +100,7 @@
 ---
 
 ## Phase 3: Testing Strategy Implementation
-**Status**: ⏱️ Not started
+**Status**: 🔄 Partially completed
 
 **Objectives**:
 - Add comprehensive tests
@@ -156,25 +108,22 @@
 - Prevent regression during future changes
 
 **Tasks**:
-- [ ] Set up testing framework
-  - [ ] Add pytest and related dependencies
-  - [ ] Configure test settings
-  - [ ] Create test fixtures
-- [ ] Implement unit tests
-  - [ ] Test API clients with mocked responses
-  - [ ] Test cache system
-  - [ ] Test fire risk calculation
-  - [ ] Test route handlers
-- [ ] Implement integration tests
-  - [ ] Test API endpoints
-  - [ ] Test data flow
-  - [ ] Test error handling
-- [ ] Set up CI/CD for tests
-  - [ ] Configure GitHub Actions or similar
-  - [ ] Add test coverage reporting
-  - [ ] Implement pre-commit hooks
+- [x] Set up testing framework
+  - [x] Add pytest and related dependencies
+  - [x] Configure test settings
+  - [x] Create test fixtures
+- [x] Implement unit tests
+  - [x] Test API clients with mocked responses
+  - [x] Test cache system
+  - [x] Test fire risk calculation
+  - [x] Test route handlers
+- [x] Implement integration tests
+  - [x] Test API endpoints
+  - [x] Test data flow
+  - [x] Test error handling
+- [x] Set up CI/CD for tests
+  - [x] Add test coverage reporting
 - [ ] Address test coverage gaps identified in testing.md
-  - [ ] Create missing test files for untested modules
   - [ ] Increase test coverage for conditional branches and error handling
   - [ ] Add tests for edge cases and integration points
 
@@ -187,7 +136,7 @@
 ---
 
 ## Phase 4: Documentation Improvements
-**Status**: ⏱️ Not started
+**Status**: 🔄 Partially completed
 
 **Objectives**:
 - Improve code documentation
@@ -220,6 +169,60 @@
 
 ---
 
+## Phase 4.5: Cache System Simplification
+**Status**: 🔄 In progress
+**Priority**: URGENT (addressing critical user trust issue)
+
+**Objectives**:
+- Replace the field-by-field caching system with a simpler snapshot-based approach
+- Eliminate complexity that's causing bugs and inconsistent data display
+- Improve user trust by clearly indicating when data is fresh vs cached
+
+**Tasks**:
+1. **Create Git Branch** 
+   - [x] Create branch `simplified-cache-approach` to preserve current implementation
+
+2. **Refactor Data Cache Class**
+   - [ ] Modify `DataCache` class to store complete snapshots instead of field-level data
+   - [ ] Simplify timestamp tracking to one timestamp per snapshot
+   - [ ] Remove field-level caching flags and logic
+   - [ ] Add methods to store and retrieve complete snapshots
+
+3. **Simplify Refresh Logic**
+   - [ ] Modify `refresh_data_cache()` to attempt all-or-nothing updates
+   - [ ] Implement clean 10-minute refresh cycle
+   - [ ] Remove complex partial update and fallback logic
+   - [ ] Add refresh attempt logging for monitoring
+
+4. **Update API Response Format**
+   - [ ] Modify endpoint responses to clearly indicate snapshot age
+   - [ ] Add simple "fresh" or "cached" indicator to the entire response
+   - [ ] Remove field-by-field cache indicators
+
+5. **Update UI Display**
+   - [ ] Add clear visual indicator when displaying cached data
+   - [ ] Show single timestamp for the entire dataset
+   - [ ] Ensure users understand when they're viewing historical data
+
+6. **Testing**
+   - [ ] Create tests for the new snapshot-based cache system
+   - [ ] Verify regular refresh attempts work as expected
+   - [ ] Test scenarios with API failures
+   - [ ] Ensure UI properly displays freshness indicators
+
+7. **Documentation**
+   - [ ] Update code documentation to reflect the new approach
+   - [ ] Document the snapshot-based caching strategy
+   - [ ] Update any user-facing documentation about data freshness
+
+**Completion Criteria**:
+- The simplified cache system is implemented and working
+- Users can clearly see when they're viewing cached data
+- Regular refresh attempts occur every 10 minutes
+- The system is significantly simpler and easier to maintain
+
+---
+
 ## Phase 5: Performance Optimizations
 **Status**: ⏱️ Not started
 
@@ -237,11 +240,10 @@
   - [ ] Implement more efficient API clients
   - [ ] Add request batching where possible
   - [ ] Optimize concurrent requests
-- [ ] Enhance caching strategy
-  - [ ] Implement more efficient cache invalidation
-  - [ ] Add Redis or similar for distributed caching
-  - [ ] Optimize cache key generation
-  - [ ] Implement multi-station wind gust data averaging with fallback to cached values
+- [ ] Enhance caching strategy (modified to align with new snapshot-based approach)
+  - [ ] Consider Redis or similar for distributed caching of snapshots
+  - [ ] Optimize snapshot storage and retrieval
+  - [ ] Maintain multi-station wind gust data averaging while keeping the snapshot approach
 - [ ] Optimize database queries (if applicable)
   - [ ] Add indexes
   - [ ] Optimize query patterns
@@ -314,3 +316,26 @@ This roadmap is designed to be a living document that guides the refactoring pro
 To work on the next phase, simply ask to "work on the next phase of the roadmap" or specify a particular phase you'd like to focus on. The roadmap is detailed enough that you don't need to provide additional context.
 
 After each phase is completed, we'll update this roadmap to reflect the progress and any changes to the plan.
+
+## Environment Setup Requirements
+
+**⚠️ CRITICAL: ALWAYS ENSURE VIRTUAL ENVIRONMENT IS ACTIVE BEFORE EXECUTING COMMANDS ⚠️**
+
+Before running any Python commands or installing any packages, ensure the virtual environment is active by checking for the `(venv)` prefix in your terminal prompt.
+
+If the virtual environment is not active, activate it:
+
+```bash
+# On macOS/Linux
+source venv/bin/activate
+
+# On Windows
+.\venv\Scripts\activate
+```
+
+Never run Python commands or install packages outside the project's virtual environment.
+
+### Command Execution Checklist
+- [ ] Virtual environment is active
+- [ ] Working in the correct directory
+- [ ] Required dependencies are installed
