@@ -94,10 +94,18 @@ self.using_cached_data: bool = False
 ### 2. Update Data Refresh Logic
 
 #### Current Implementation
-The `refresh_data_cache()` function in `cache_refresh.py` attempts to fetch data, combines partial results, and updates individual fields with their own timestamps.
+The `refresh_data_cache()` function in `cache_refresh.py` attempts to fetch data, combines partial results, and updates individual fields with their own timestamps. It refreshes at fixed 10-minute intervals regardless of when the source data is updated.
 
 #### New Implementation
-Simplify to an all-or-nothing approach:
+We've implemented a smarter approach with these key improvements:
+
+1. **All-or-nothing Data Updates**: Instead of partial field updates, we only update when we have complete data
+
+2. **Optimized Refresh Schedule**: Instead of fixed intervals, we schedule refreshes at :20, :40, and :00 past each hour to align with the SEYC1 weather station's update schedule (which updates at :00, :15, :30, and :45)
+
+3. **Clear Indication of Data Freshness**: Users can always see if they're viewing fresh or cached data
+
+Here's the core implementation:
 
 ```python
 async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None) -> bool:
@@ -157,12 +165,37 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None)
     data_cache.update_in_progress = False
     data_cache.last_update_success = success
     
-    # Schedule next refresh in 10 minutes
+    # Schedule next refresh at optimal time based on SEYC1 update schedule
     if background_tasks:
-        background_tasks.add_task(schedule_next_refresh, 10)
+        background_tasks.add_task(schedule_next_refresh)
         
     return success
 ```
+
+#### Smart Refresh Scheduling
+
+The system calculates the optimal time for the next refresh to align with SEYC1 weather station updates:
+
+```python
+def get_next_refresh_delay() -> int:
+    """Calculate minutes until next scheduled refresh at :20, :40, or :00.
+    
+    The SEYC1 weather station updates on the quarter-hour (:00, :15, :30, :45),
+    so we fetch at :20, :40, and :00 to get data ~5 minutes after it updates.
+    """
+    now = datetime.now(TIMEZONE)
+    current_minute = now.minute
+    
+    # Calculate minutes until next scheduled refresh
+    if current_minute < 20:
+        return 20 - current_minute     # Wait until XX:20
+    elif current_minute < 40:
+        return 40 - current_minute     # Wait until XX:40
+    else:
+        return 60 - current_minute     # Wait until the next hour's XX:00
+```
+
+This approach ensures we fetch fresh data approximately 5 minutes after the weather station updates it, maximizing the freshness of our data while minimizing unnecessary API calls.
 
 ### 3. Simplify Cache Update Method
 

@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Tuple
 from fastapi import BackgroundTasks
 
@@ -100,8 +100,8 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
     
     # Schedule next refresh if running as a background task
     if background_tasks and not data_cache.refresh_task_active:
-        # Schedule the next refresh based on the configured interval
-        background_tasks.add_task(schedule_next_refresh, data_cache.background_refresh_interval)
+        # Schedule the next refresh based on the optimal timing for SEYC1 updates
+        background_tasks.add_task(schedule_next_refresh)
         data_cache.refresh_task_active = True
         
     return success
@@ -149,10 +149,46 @@ async def fetch_all_data() -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str,
         logger.error(f"Error during concurrent data fetch: {e}")
         return None, None
 
-async def schedule_next_refresh(minutes: int):
-    """Schedule the next refresh after a delay."""
+def get_next_refresh_delay() -> int:
+    """Calculate minutes until next scheduled refresh at :20, :40, or :00.
+    
+    The SEYC1 weather station updates on the quarter-hour (:00, :15, :30, :45),
+    so we fetch at :20, :40, and :00 to get data ~5 minutes after it updates.
+    
+    Returns:
+        int: Minutes until the next scheduled refresh time
+    """
+    now = datetime.now(TIMEZONE)
+    
+    # Get minutes component of current time
+    current_minute = now.minute
+    
+    # Calculate minutes until next scheduled refresh
+    if current_minute < 20:
+        # Wait until XX:20
+        return 20 - current_minute
+    elif current_minute < 40:
+        # Wait until XX:40
+        return 40 - current_minute
+    else:
+        # Wait until the next hour's XX:00
+        return 60 - current_minute
+
+async def schedule_next_refresh(minutes: Optional[int] = None):
+    """Schedule the next refresh at the optimal time.
+    
+    Args:
+        minutes: Optional override for refresh delay. If not provided,
+                will calculate optimal time based on SEYC1 update schedule.
+    """
     try:
-        logger.info(f"Scheduling next background refresh in {minutes} minutes")
+        # If minutes is not provided, calculate optimal timing
+        if minutes is None:
+            minutes = get_next_refresh_delay()
+            
+        logger.info(f"Scheduling next background refresh in {minutes} minutes "
+                   f"(at {(datetime.now(TIMEZONE) + timedelta(minutes=minutes)).strftime('%H:%M:%S')})")
+        
         await asyncio.sleep(minutes * 60)
         await refresh_data_cache()
     except Exception as e:
