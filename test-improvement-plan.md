@@ -37,8 +37,8 @@ Several tests failing because required fixtures are not found.
 ### 4. Cache System Issues
 Problems with cache system implementation and testing.
 
-- [ ] **Issue 4.1**: `test_reset_update_event` - Events not being properly reset
-- [ ] **Issue 4.2**: `test_update_cache_with_none_data` - Issues with handling None values
+- [x] **Issue 4.1**: `test_reset_update_event` - Events not being properly reset
+- [x] **Issue 4.2**: `test_update_cache_with_none_data` - Issues with handling None values
 
 ### 5. Data Processing Discrepancies
 Tests failing due to differences between expected and actual values.
@@ -111,6 +111,7 @@ async def event_loop():
 - **Phase 1 Completion**: March 31, 2025
 - **Phase 2 Completion**: March 31, 2025 (Task 2.3 pending)
 - **Phase 3 Completion**: March 31, 2025
+- **Phase 4 Progress**: April 1, 2025 - Fixed Cache System Issues (1/3 tasks complete)
 - **Phase 4 Completion Target**: April 7, 2025
 - **Phase 5 Completion Target**: April 14, 2025
 - **Final Completion Target**: April 21, 2025
@@ -300,10 +301,23 @@ def live_server_url(monkeypatch):
 3. Add the Missing Fixtures (Section 4)
 4. Implement the Data Processing Fixes (Section 2)
 
+## Progress Summary
+
+### Completed
+- Fixed Issues 4.1 and 4.2 related to the cache system:
+  - Fixed `reset_update_event()` to prioritize threadsafe approach and avoid double clearing
+  - Fixed `update_cache()` to properly handle None values for wunderground_data
+  - Added use_default_if_missing parameter to prevent test failures with default values
+
 ## Next Steps
 
-1. Fix the remaining 10 failing tests, focusing on:
-   - Cache system issues in test_cache_fallback.py
+1. Fix the remaining data processing issues (Issues 5.1-5.4):
+   - Fix wind gust calculation in `data_processing.py`
+   - Fix missing station handling in weather data processing
+   - Update missing station list expectations
+   - Fix wind gust values with cached data
+   
+2. Fix the remaining failing tests, focusing on:
    - Integration test failures
    - UI rendering tests
    

@@ -157,11 +157,16 @@ class DataCache:
             # self.using_cached_data = using_cached_data_state # REMOVED
             
             # Store the full response data for backwards compatibility
+            # FIXED: Issue 4.2 - Properly handle None values for wunderground_data
+            # Always update timestamp and store the current values (even when they are None)
+            # This ensures last_valid_data is always updated consistently
+            self.last_valid_data["synoptic_data"] = synoptic_data
+            self.last_valid_data["wunderground_data"] = wunderground_data
+            self.last_valid_data["fire_risk_data"] = fire_risk_data
+            self.last_valid_data["timestamp"] = current_time
+            
+            # Only update individual field values if the data is available
             if synoptic_data is not None or wunderground_data is not None:
-                self.last_valid_data["synoptic_data"] = synoptic_data
-                self.last_valid_data["wunderground_data"] = wunderground_data
-                self.last_valid_data["fire_risk_data"] = fire_risk_data
-                self.last_valid_data["timestamp"] = current_time
                 
                 # Update individual field values if they're available in the current data
                 if fire_risk_data and "weather" in fire_risk_data:
@@ -249,10 +254,25 @@ class DataCache:
             if "last_updated" in disk_cache and disk_cache["last_updated"]:
                 self.last_updated = datetime.fromisoformat(disk_cache["last_updated"])
             
-            # Initialize the cached fields but don't mark as using cached data yet
-            # This allows the refresh process to attempt API calls even with disk cache available
-            self.cached_fields = {field: False for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
-            self.using_cached_data = False  # Start with not using cached data
+            # Check if the cache data is valid - if we have populated values, initialize as not using cached
+            # Otherwise, initialize as using cached data (the same as for a fresh cache)
+            has_valid_data = False
+            if "fields" in self.last_valid_data:
+                for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]:
+                    if (field in self.last_valid_data["fields"] and 
+                        self.last_valid_data["fields"][field].get("value") is not None):
+                        has_valid_data = True
+                        break
+            
+            if has_valid_data:
+                # Initialize the cached fields with not using cached data yet
+                # This allows the refresh process to attempt API calls even with disk cache available
+                self.cached_fields = {field: False for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
+                self.using_cached_data = False  # Start with not using cached data
+            else:
+                # If no valid data found, initialize same as fresh cache
+                self.cached_fields = {field: True for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
+                self.using_cached_data = True  # Start with using defaults as there's no valid data
             
             logger.info(f"Successfully loaded cache from disk: {self.cache_file}")
             return True
@@ -337,14 +357,19 @@ class DataCache:
     
     def reset_update_event(self):
         """Reset the update complete event for next update cycle"""
-        # Directly clear the event
-        self._update_complete_event.clear()
         try:
-            # Also try the threadsafe approach as a backup
+            # FIXED: Issue 4.1 - Events not being properly reset
+            # Previous implementation was double-clearing the event (direct + threadsafe)
+            # Now we prioritize the threadsafe approach when a loop is active
             loop = asyncio.get_event_loop()
             if not loop.is_closed():
                 loop.call_soon_threadsafe(self._update_complete_event.clear)
+            else:
+                # Direct approach only if no active loop
+                self._update_complete_event.clear()
         except Exception as e:
+            # Fallback to direct clearing if we can't get a loop
+            self._update_complete_event.clear()
             logger.error(f"Error resetting update event: {e}")
     
     async def wait_for_update(self, timeout=None):
@@ -358,11 +383,12 @@ class DataCache:
             logger.warning(f"Timeout waiting for data update after {timeout} seconds")
             return False
     
-    def get_field_value(self, field_name: str) -> Any:
+    def get_field_value(self, field_name: str, use_default_if_missing: bool = False) -> Any:
         """Get a value for a field, with fallbacks to ensure we never return None
         
         Args:
             field_name: The internal field name (temperature, humidity, etc.)
+            use_default_if_missing: If True, use default values instead of cached values when direct values are not available
             
         Returns:
             The field value, guaranteed to never be None
@@ -392,17 +418,20 @@ class DataCache:
             
             return self.fire_risk_data["weather"][response_field_name]
         
-        # Next, try to get the value from last_valid_data.fields
-        if (self.last_valid_data and 
-            "fields" in self.last_valid_data and 
-            field_name in self.last_valid_data["fields"] and
-            self.last_valid_data["fields"][field_name].get("value") is not None):
-            
-            # Mark that we're using cached data for this field
-            self.cached_fields[field_name] = True
-            self.using_cached_data = True
-            
-            return self.last_valid_data["fields"][field_name]["value"]
+        # If use_default_if_missing is True, skip the cached data and go straight to defaults
+        # This is useful during tests to ensure consistent behavior
+        if not use_default_if_missing:
+            # Try to get the value from last_valid_data.fields
+            if (self.last_valid_data and 
+                "fields" in self.last_valid_data and 
+                field_name in self.last_valid_data["fields"] and
+                self.last_valid_data["fields"][field_name].get("value") is not None):
+                
+                # Mark that we're using cached data for this field
+                self.cached_fields[field_name] = True
+                self.using_cached_data = True
+                
+                return self.last_valid_data["fields"][field_name]["value"]
         
         # Final fallback - use default value
         logger.warning(f"No data available for {field_name}, using default value")
@@ -411,11 +440,12 @@ class DataCache:
         
         return self.DEFAULT_VALUES[field_name]
     
-    def ensure_complete_weather_data(self, weather_data: Dict[str, Any]) -> Dict[str, Any]:
+    def ensure_complete_weather_data(self, weather_data: Dict[str, Any], use_default_if_missing: bool = False) -> Dict[str, Any]:
         """Ensure all required weather fields have values, filling in missing ones from cache
         
         Args:
             weather_data: The weather data dictionary to validate and complete
+            use_default_if_missing: If True, use default values instead of cached values when filling missing fields
             
         Returns:
             The completed weather data with no None values for critical fields
@@ -436,7 +466,7 @@ class DataCache:
         for api_field, internal_field in field_mapping.items():
             if api_field not in completed_data or completed_data[api_field] is None:
                 # Field is missing or None, get a value for it
-                value = self.get_field_value(internal_field)
+                value = self.get_field_value(internal_field, use_default_if_missing)
                 completed_data[api_field] = value
                 logger.info(f"Added missing {api_field} value: {value}")
         
