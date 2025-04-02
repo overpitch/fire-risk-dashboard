@@ -110,18 +110,14 @@ class DataCache:
         age = now - self.last_updated
         return age > timedelta(minutes=self.data_timeout_threshold)
     
-    def update_cache(self, synoptic_data, wunderground_data, fire_risk_data):
+    def update_cache(self, synoptic_data, fire_risk_data):
         """Update the cache with new data"""
         # Create timezone-aware datetime for Pacific timezone
         current_time = datetime.now(TIMEZONE)
         
-        # Store the current cached_fields and using_cached_data state
-        # cached_fields_state = self.cached_fields.copy() # REMOVED
-        # using_cached_data_state = self.using_cached_data # REMOVED
-        
         with self._lock:
             self.synoptic_data = synoptic_data
-            self.wunderground_data = wunderground_data
+            self.wunderground_data = None  # No longer used
             
             # If we're using cached data, make sure the fire_risk_data has a cached_data field
             # Use self.using_cached_data directly now
@@ -157,16 +153,15 @@ class DataCache:
             # self.using_cached_data = using_cached_data_state # REMOVED
             
             # Store the full response data for backwards compatibility
-            # FIXED: Issue 4.2 - Properly handle None values for wunderground_data
             # Always update timestamp and store the current values (even when they are None)
             # This ensures last_valid_data is always updated consistently
             self.last_valid_data["synoptic_data"] = synoptic_data
-            self.last_valid_data["wunderground_data"] = wunderground_data
+            self.last_valid_data["wunderground_data"] = None  # No longer used
             self.last_valid_data["fire_risk_data"] = fire_risk_data
             self.last_valid_data["timestamp"] = current_time
             
             # Only update individual field values if the data is available
-            if synoptic_data is not None or wunderground_data is not None:
+            if synoptic_data is not None:
                 
                 # Update individual field values if they're available in the current data
                 if fire_risk_data and "weather" in fire_risk_data:

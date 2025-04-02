@@ -5,8 +5,7 @@ from typing import Dict, Any, Optional
 
 from config import (
     SYNOPTIC_API_KEY, SYNOPTIC_BASE_URL,
-    WUNDERGROUND_API_KEY, WUNDERGROUND_BASE_URL,
-    SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, WUNDERGROUND_STATION_IDS,
+    SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, WIND_STATION_ID,
     logger
 )
 
@@ -107,57 +106,13 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
                 logger.error(f"🚨 API error response text: {e.response.text[:200]}")
         return None
 
-def get_wunderground_data(station_ids: list = None) -> Dict[str, Optional[Dict[str, Any]]]:
-    """Get weather data from Weather Underground API for multiple stations.
-    
-    Args:
-        station_ids: List of Weather Underground station IDs (e.g. ["KCASIERR68", "KCASIERR63"])
-                    If None, uses the default stations from config
-    
-    Returns:
-        Dictionary mapping station IDs to their respective API responses or None if an error occurred
-        Example: {"KCASIERR68": {response_data}, "KCASIERR63": None}
-    """
-    if station_ids is None:
-        station_ids = WUNDERGROUND_STATION_IDS
-        
-    if not WUNDERGROUND_API_KEY:
-        logger.error("🚨 WEATHER UNDERGROUND API KEY NOT FOUND! Environment variable is missing.")
-        return {station_id: None for station_id in station_ids}
-    
-    # Initialize results dictionary
-    results = {}
-    
-    # Fetch data for each station
-    for station_id in station_ids:
-        try:
-            # Build the URL to get the current conditions for the station
-            url = f"{WUNDERGROUND_BASE_URL}/observations/current?stationId={station_id}&format=json&units=e&apiKey={WUNDERGROUND_API_KEY}"
-            logger.info(f"🔎 Fetching Weather Underground data for station {station_id}")
-            
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            
-            # Check if we have the expected data structure
-            if "observations" in data and len(data["observations"]) > 0:
-                logger.info(f"✅ Successfully received data from Weather Underground for station {station_id}")
-                results[station_id] = data
-            else:
-                logger.error(f"🚨 No observations found in Weather Underground response for station {station_id}")
-                results[station_id] = None
-                
-        except requests.exceptions.RequestException as e:
-            logger.error(f"🚨 Error fetching Wind Gust data from Weather Underground for station {station_id}: {e}")
-            results[station_id] = None
-    
-    return results
+# Weather Underground data retrieval function has been removed as we now use Synoptic for wind gust data
 
 def get_synoptic_data() -> Optional[Dict[str, Any]]:
-    """Get weather data from Synoptic API for both weather and soil moisture stations.
+    """Get weather data from Synoptic API for weather, soil moisture, and wind stations.
     
     Returns:
         Dictionary containing the weather data or None if an error occurred
     """
-    station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID}"
+    station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID},{WIND_STATION_ID}"
     return get_weather_data(station_ids)

@@ -23,15 +23,17 @@ IS_PRODUCTION = os.getenv("RENDER") is not None
 SYNOPTIC_API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
 SYNOPTIC_BASE_URL = "https://api.synopticdata.com/v2"
 
-# Weather Underground API
-WUNDERGROUND_API_KEY = os.getenv("WUNDERGROUND_API_KEY")
-WUNDERGROUND_BASE_URL = "https://api.weather.com/v2/pws"
+# Weather Underground API - No longer used
+# WUNDERGROUND_API_KEY = os.getenv("WUNDERGROUND_API_KEY")
+# WUNDERGROUND_BASE_URL = "https://api.weather.com/v2/pws"
 
 # Station IDs (hard-coded)
 SOIL_MOISTURE_STATION_ID = "C3DLA"  # Station for soil moisture data
-WEATHER_STATION_ID = "SEYC1"        # Station for temperature, humidity, and winds
-# Multiple stations for wind gusts data (for averaging)
-WUNDERGROUND_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"]
+WEATHER_STATION_ID = "SEYC1"        # Station for temperature and humidity
+WIND_STATION_ID = "629PG"           # Station for wind speed and gust data (PG&E Sand Shed)
+WIND_GUST_STATION_ID = "629PG"      # Same as WIND_STATION_ID, defined for backwards compatibility
+# No longer using Weather Underground stations for wind gust data
+# WUNDERGROUND_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"]
 
 # Fire risk thresholds from environment variables
 THRESH_TEMP = float(os.getenv("THRESH_TEMP", 75))            # Temperature threshold in Fahrenheit
@@ -50,8 +52,9 @@ TIMEZONE = pytz.timezone('America/Los_Angeles')
 if not SYNOPTIC_API_KEY:
     logger.warning("No API key provided. Set SYNOPTICDATA_API_KEY environment variable.")
 
-if not WUNDERGROUND_API_KEY:
-    logger.warning("No Weather Underground API key provided. Set WUNDERGROUND_API_KEY environment variable.")
+# No longer warning about Weather Underground API key as we don't use it anymore
+# if not WUNDERGROUND_API_KEY:
+#     logger.warning("No Weather Underground API key provided. Set WUNDERGROUND_API_KEY environment variable.")
 
 logger.info(f"Using thresholds: TEMP={THRESH_TEMP}°F, "
             f"HUMID={THRESH_HUMID}%, WIND={THRESH_WIND}mph, "

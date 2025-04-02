@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Tuple
 from fastapi import BackgroundTasks
 
 from config import TIMEZONE, logger
-from api_clients import get_synoptic_data, get_wunderground_data
+from api_clients import get_synoptic_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from simplified_cache import data_cache
@@ -120,7 +120,7 @@ async def fetch_all_data() -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str,
         return get_synoptic_data()
         
     def fetch_wunderground():
-        return get_wunderground_data()
+        return None  # Weather Underground data no longer used
     
     # Run both API calls concurrently in thread pool
     try:

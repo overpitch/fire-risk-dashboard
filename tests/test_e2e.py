@@ -47,12 +47,12 @@ def test_dashboard_displays_data_correctly(page: Page, live_server_url: str):
     humidity_li = weather_details_container.locator("li:has-text('Humidity:')")
     expect(humidity_li).to_contain_text(EXPECTED_HUMIDITY)
 
-    # Wind Speed
-    wind_speed_li = weather_details_container.locator("li:has-text('Wind Speed:')")
+    # Average Winds
+    wind_speed_li = weather_details_container.locator("li:has-text('Average Winds:')")
     expect(wind_speed_li).to_contain_text(EXPECTED_WIND_SPEED)
 
-    # Wind Gusts
-    wind_gust_li = weather_details_container.locator("li:has-text('Wind Gusts:')")
+    # Wind Gust
+    wind_gust_li = weather_details_container.locator("li:has-text('Wind Gust:')")
     expect(wind_gust_li).to_contain_text(EXPECTED_WIND_GUST)
 
     # Soil Moisture

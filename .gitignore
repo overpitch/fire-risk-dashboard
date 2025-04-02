@@ -26,3 +26,6 @@ Feedback/
 # Ignore macOS system files
 .DS_Store
 
+email.txt
+WX URL.docx
+~*.doc*

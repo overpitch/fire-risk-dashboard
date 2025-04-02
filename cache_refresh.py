@@ -5,8 +5,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import BackgroundTasks
 
 from config import TIMEZONE, logger
-from api_clients import get_synoptic_data, get_wunderground_data
-from config import WUNDERGROUND_STATION_IDS
+from api_clients import get_synoptic_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache
@@ -38,50 +37,26 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
     start_time = time.time()
     
     async def fetch_all_data():
-        """Fetch all data concurrently using asyncio."""
-        # Create tasks for both API calls
+        """Fetch weather data using asyncio."""
         loop = asyncio.get_running_loop()
         
-        # Define functions to run in thread pool
+        # Define function to run in thread pool
         def fetch_synoptic():
             return get_synoptic_data()
-            
-        def fetch_wunderground():
-            # Get data for all stations
-            return get_wunderground_data()
         
-        # Run both API calls concurrently in thread pool
+        # Run API call in thread pool
         try:
             weather_data_task = loop.run_in_executor(None, fetch_synoptic)
-            wunderground_data_task = loop.run_in_executor(None, fetch_wunderground)
             
-            # Wait for both tasks to complete with timeout
-            weather_data, wunderground_data = await asyncio.gather(
-                weather_data_task,
-                wunderground_data_task,
-                return_exceptions=True
-            )
+            # Wait for task to complete with timeout
+            weather_data = await weather_data_task
             
             # Check for exceptions
             if isinstance(weather_data, Exception):
                 logger.error(f"Error fetching Synoptic data: {weather_data}")
                 weather_data = None
                 
-            if isinstance(wunderground_data, Exception):
-                logger.error(f"Error fetching Weather Underground data: {wunderground_data}")
-                wunderground_data = None
-            else:
-                # Log summary of station data
-                if wunderground_data:
-                    successful_stations = [station_id for station_id, data in wunderground_data.items() if data is not None]
-                    failed_stations = [station_id for station_id, data in wunderground_data.items() if data is None]
-                    
-                    if successful_stations:
-                        logger.info(f"Successfully fetched data from {len(successful_stations)} Weather Underground stations: {', '.join(successful_stations)}")
-                    if failed_stations:
-                        logger.warning(f"Failed to fetch data from {len(failed_stations)} Weather Underground stations: {', '.join(failed_stations)}")
-                
-            return weather_data, wunderground_data
+            return weather_data
                 
         except Exception as e:
             logger.error(f"Error during concurrent data fetch: {e}")
@@ -94,15 +69,15 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                 logger.warning(f"Data refresh taking too long (over {data_cache.update_timeout}s), aborting")
                 break
                 
-            # Fetch data from both APIs concurrently
-            weather_data, wunderground_data = await fetch_all_data()
+            # Fetch data from Synoptic API
+            weather_data = await fetch_all_data()
             
             # Initialize variables for tracking cached data usage
             any_field_using_cache = False
             cached_fields_info = []
             
-            # Process the API responses to get the latest weather data
-            latest_weather = combine_weather_data(weather_data, wunderground_data, data_cache.cached_fields)
+            # Process the API response to get the latest weather data
+            latest_weather = combine_weather_data(weather_data, data_cache.cached_fields)
             
             # Ensure all weather data fields have values using the new method
             # This will fill in any missing values with cached data or defaults
@@ -168,15 +143,15 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                     "cached_fields": data_cache.cached_fields.copy()
                 }
             
-            # Check if we actually got *any* fresh data from APIs
-            # If both are None, the refresh essentially failed to get new data
-            if weather_data is None and wunderground_data is None:
-                 logger.warning("Both API calls failed, refresh did not obtain new data.")
+            # Check if we got any fresh data from API
+            # If it's None, the refresh essentially failed to get new data
+            if weather_data is None:
+                 logger.warning("Synoptic API call failed, refresh did not obtain new data.")
                  # Keep success as False if it wasn't already True from a previous retry
                  # success = False # This line is implicitly handled by loop condition
             else:
-                 # Update cache with new data only if at least one API succeeded
-                 data_cache.update_cache(weather_data, wunderground_data, fire_risk_data)
+                 # Update cache with new data
+                 data_cache.update_cache(weather_data, fire_risk_data)
                  # If we got here with some data, the refresh was successful in processing
                  success = True
                  logger.info("Data cache refresh successful (processed available data)")

@@ -7,7 +7,7 @@ import json
 from fastapi import APIRouter, BackgroundTasks, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
-from config import IS_PRODUCTION, SYNOPTIC_BASE_URL, SYNOPTIC_API_KEY, WUNDERGROUND_API_KEY, SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, logger
+from config import IS_PRODUCTION, SYNOPTIC_BASE_URL, SYNOPTIC_API_KEY, SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, WIND_STATION_ID, logger
 from cache import data_cache
 from cache_refresh import refresh_data_cache
 
@@ -33,10 +33,8 @@ async def check_env():
     This endpoint is only available in development mode for security reasons.
     """
     synoptic_key = os.getenv("SYNOPTICDATA_API_KEY")
-    wunderground_key = os.getenv("WUNDERGROUND_API_KEY")
     return {
-        "SYNOPTICDATA_API_KEY": synoptic_key if synoptic_key else "MISSING",
-        "WUNDERGROUND_API_KEY": wunderground_key if wunderground_key else "MISSING"
+        "SYNOPTICDATA_API_KEY": synoptic_key if synoptic_key else "MISSING"
     }
 
 @router.get("/test-api")
@@ -565,13 +563,13 @@ async def test_partial_failure(background_tasks: BackgroundTasks):
         </div>
         
         <div class="fresh-field">
-            <span class="field-label">Wind Speed:</span>
+            <span class="field-label">Average Winds:</span>
             <span class="field-value">0 mph</span>
             <span class="badge bg-success text-white badge-fresh">FRESH</span>
         </div>
         
         <div class="fresh-field">
-            <span class="field-label">Wind Gusts:</span>
+            <span class="field-label">Wind Gust:</span>
             <span class="field-value">&lt;unavailable&gt;</span>
             <span class="badge bg-success text-white badge-fresh">FRESH</span>
         </div>
