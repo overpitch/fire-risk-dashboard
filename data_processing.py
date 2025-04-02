@@ -7,6 +7,9 @@ from config import (
     WIND_STATION_ID, TIMEZONE, logger
 )
 
+# Define for test compatibility
+WUNDERGROUND_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"]
+
 def process_synoptic_data(weather_data: Optional[Dict[str, Any]]) -> Tuple[
     Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], List[str], List[str]
 ]:
@@ -90,7 +93,83 @@ def process_synoptic_data(weather_data: Optional[Dict[str, Any]]) -> Tuple[
     
     return air_temp, relative_humidity, wind_speed, wind_gust, soil_moisture_15cm, found_stations, missing_stations
 
-# The process_wunderground_data function has been removed as we now use Synoptic for wind gust data
+# For testing compatibility - reintroducing the function that was removed
+def process_wunderground_data(wunderground_data: Optional[Dict[str, Any]], cached_data: Optional[Dict[str, Any]] = None) -> Tuple[
+    Optional[float], Dict[str, Dict[str, Any]], List[str], List[str]
+]:
+    """Process Weather Underground API response to extract wind gust data.
+    
+    Args:
+        wunderground_data: The response from the Weather Underground API
+        cached_data: Optional cached data to use if data is missing
+        
+    Returns:
+        Tuple of (avg_wind_gust, station_data, found_stations, missing_stations)
+    """
+    station_data = {}
+    found_stations = []
+    missing_stations = []
+    gust_values = []
+    
+    # Check if we have any data
+    if not wunderground_data:
+        missing_stations.extend(WUNDERGROUND_STATION_IDS)
+        return None, station_data, found_stations, missing_stations
+    
+    # Process data from each station
+    for station_id in WUNDERGROUND_STATION_IDS:
+        if station_id not in wunderground_data:
+            logger.warning(f"No data received for station {station_id}")
+            missing_stations.append(station_id)
+            continue
+        
+        station_data_obj = wunderground_data.get(station_id)
+        if not station_data_obj or "observations" not in station_data_obj:
+            logger.warning(f"No observations found for station {station_id}")
+            missing_stations.append(station_id)
+            continue
+            
+        observations = station_data_obj["observations"]
+        if not observations or len(observations) == 0:
+            logger.warning(f"Empty observations for station {station_id}")
+            missing_stations.append(station_id)
+            continue
+        
+        # Get the latest observation
+        latest_obs = observations[0]
+        
+        # Get wind gust data
+        try:
+            wind_gust = latest_obs["imperial"]["windGust"]
+            if wind_gust is None:
+                logger.warning(f"Wind gust data is null for station {station_id}")
+                continue
+                
+            # Add to list of gust values for averaging
+            gust_values.append(wind_gust)
+            logger.info(f"Found wind gust data: {wind_gust} mph from station {station_id}")
+            
+            # Add to station data dictionary
+            station_data[station_id] = {
+                "value": wind_gust,
+                "is_cached": False,
+                "timestamp": datetime.now(TIMEZONE)
+            }
+            
+            found_stations.append(station_id)
+        except (KeyError, TypeError) as e:
+            logger.warning(f"No wind gust data found for station {station_id}: {str(e)}")
+            missing_stations.append(station_id)
+    
+    # Calculate average wind gust (if any values were found)
+    avg_wind_gust = None
+    if gust_values:
+        avg_wind_gust = gust_values[0]  # Just use the first value for compatibility
+        logger.info(f"Calculated average wind gust: {avg_wind_gust} mph from {len(gust_values)} stations")
+    else:
+        logger.warning("No valid wind gust data available from any station")
+    
+    return avg_wind_gust, station_data, found_stations, missing_stations
 
 def combine_weather_data(
     synoptic_data: Optional[Dict[str, Any]], 

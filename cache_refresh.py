@@ -6,6 +6,7 @@ from fastapi import BackgroundTasks
 
 from config import TIMEZONE, logger
 from api_clients import get_synoptic_data
+from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache

@@ -49,11 +49,13 @@ async def client():
 def event_loop():
     """Create an event loop for each test."""
     # Create a new loop for each test
-    loop = asyncio.new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     asyncio.set_event_loop(loop)
     yield loop
     # Close the loop after the test is done
-    loop.close()
+    if not loop.is_closed():
+        loop.close()
 
 @pytest.fixture
 def reset_cache(): # Reverted fixture to sync
@@ -147,6 +149,12 @@ def mock_failed_synoptic_api():
         yield
 
 @pytest.fixture
+def mock_failed_wunderground_api():
+    """Mock a failed Weather Underground API response."""
+    with patch('tests.mock_utils.get_wunderground_data', return_value=None):
+        yield
+
+@pytest.fixture
 def mock_partial_api_failure(mock_synoptic_response):
     """Mock a partial API failure where some fields are missing."""
     # Create a copy of the mock response with some fields set to None
@@ -160,9 +168,32 @@ def mock_partial_api_failure(mock_synoptic_response):
 @pytest.fixture
 def mock_refresh_data_cache():
     """Mock the refresh_data_cache function for tests that depend on it."""
-    with patch('cache_refresh.refresh_data_cache') as mock_func:
+    with patch('cache_refresh.refresh_data_cache', new_callable=AsyncMock) as mock_func:
         mock_func.return_value = True
         yield mock_func
+
+@pytest.fixture
+def mock_get():
+    """Mock the requests.get function for tests."""
+    with patch('requests.get') as mock_func:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True, "data": {"token": "test_token"}}
+        mock_func.return_value = mock_response
+        yield mock_func
+
+# Mock implementation of get_wunderground_data for tests
+def get_wunderground_data(station_id=None):
+    """Mock function for the removed get_wunderground_data API client function."""
+    return {
+        "observations": [
+            {
+                "imperial": {
+                    "windGust": 3.0
+                }
+            }
+        ]
+    }
 
 @pytest.fixture
 def live_server_url():
