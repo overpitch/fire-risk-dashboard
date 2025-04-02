@@ -4,7 +4,9 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timedelta, timezone
 from cache_refresh import refresh_data_cache, schedule_next_refresh
 from cache import DataCache
-from api_clients import get_synoptic_data, get_wunderground_data
+from api_clients import get_synoptic_data
+# Mock for the removed get_wunderground_data function
+from tests.conftest import get_wunderground_data
 from data_processing import combine_weather_data
 from fire_risk_logic import calculate_fire_risk
 

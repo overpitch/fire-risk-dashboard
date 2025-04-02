@@ -16,14 +16,12 @@ from unittest.mock import patch, MagicMock, AsyncMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from fire_risk_logic import calculate_fire_risk
-from api_clients import get_weather_data, get_wunderground_data
+from api_clients import get_weather_data
+
 # Add the parent directory to sys.path to import the main module
 # Ensure this runs only once or handle potential multiple additions if conftest is loaded multiple times
 if os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) not in sys.path:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from fire_risk_logic import calculate_fire_risk
-from api_clients import get_weather_data, get_wunderground_data
 # Import app from main, assuming main.py initializes the FastAPI app instance
 # If app is defined directly in endpoints.py, keep the original import
 try:
@@ -126,23 +124,17 @@ def mock_wunderground_response():
         ]
     }
 
-# Import WUNDERGROUND_STATION_IDS from config to use in the mock
-from config import WUNDERGROUND_STATION_IDS
+# Define test station IDs (since WUNDERGROUND_STATION_IDS was removed from config.py)
+TEST_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"] 
 
 
 # --- Fixture using patch to mock API calls within cache_refresh ---
 
 @pytest.fixture
-def mock_api_responses(mock_synoptic_response, mock_wunderground_response):
+def mock_api_responses(mock_synoptic_response):
     """Mock API responses by patching the functions called by cache_refresh."""
-    # Create the dictionary structure expected by data_processing.py
-    mock_wunderground_dict = {
-        station_id: mock_wunderground_response 
-        for station_id in WUNDERGROUND_STATION_IDS
-    }
-    # Patch the functions *where they are looked up* (in cache_refresh module)
-    with patch('cache_refresh.get_synoptic_data', return_value=mock_synoptic_response), \
-         patch('cache_refresh.get_wunderground_data', return_value=mock_wunderground_dict):
+    # Patch only the Synoptic data function
+    with patch('cache_refresh.get_synoptic_data', return_value=mock_synoptic_response):
         yield
 
 
@@ -155,12 +147,6 @@ def mock_failed_synoptic_api():
         yield
 
 @pytest.fixture
-def mock_failed_wunderground_api():
-    """Mock a failed Weather Underground API response."""
-    with patch('api_clients.get_wunderground_data', return_value=None):
-        yield
-
-@pytest.fixture
 def mock_partial_api_failure(mock_synoptic_response):
     """Mock a partial API failure where some fields are missing."""
     # Create a copy of the mock response with some fields set to None
@@ -168,8 +154,7 @@ def mock_partial_api_failure(mock_synoptic_response):
     partial_response["STATION"][0]["OBSERVATIONS"]["air_temp_value_1"]["value"] = None
     partial_response["STATION"][1]["OBSERVATIONS"]["soil_moisture_value_1"]["value"] = None
     
-    with patch('api_clients.get_weather_data', return_value=partial_response), \
-         patch('api_clients.get_wunderground_data', return_value=None):
+    with patch('api_clients.get_weather_data', return_value=partial_response):
         yield
 
 @pytest.fixture
@@ -222,6 +207,7 @@ def populate_cache_with_valid_data(mock_synoptic_response, mock_wunderground_res
     pacific_tz = pytz.timezone('America/Los_Angeles')
     current_time = datetime.now(pacific_tz)
     
-    data_cache.update_cache(mock_synoptic_response, mock_wunderground_response, fire_risk_data)
+    # Modified to match the new update_cache signature (removed wunderground_data parameter)
+    data_cache.update_cache(mock_synoptic_response, fire_risk_data)
     
     return fire_risk_data

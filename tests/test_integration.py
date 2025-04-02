@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 
 # Removed app import, assuming it's available via client fixture context
 from cache import data_cache
-from config import WUNDERGROUND_STATION_IDS, TIMEZONE
+from config import TIMEZONE
+# Use TEST_STATION_IDS from conftest for tests
+from tests.conftest import TEST_STATION_IDS
 
 # Removed local client = TestClient(app)
 
@@ -205,7 +207,7 @@ async def test_api_client_integration():
         "STATION": [{"STID": "CEYC1", "OBSERVATIONS": {}}]
     }
     wunderground_data = {
-        station_id: {"observations": [{"imperial": {}}]} for station_id in WUNDERGROUND_STATION_IDS
+        station_id: {"observations": [{"imperial": {}}]} for station_id in TEST_STATION_IDS
     }
 
     # Setup the mock functions
@@ -263,7 +265,7 @@ async def test_data_processing_integration():
     }
     mock_wunderground_response = {
         station_id: {"observations": [{"imperial": {"windGust": 20.1}}]}
-        for station_id in WUNDERGROUND_STATION_IDS
+        for station_id in TEST_STATION_IDS
     }
     
     # Create proper AsyncMock objects
@@ -289,7 +291,7 @@ async def test_data_processing_integration():
             "data_sources": {
                 "weather_station": "CEYC1",
                 "soil_moisture_station": "C3DLA",
-                "wind_gust_station": list(WUNDERGROUND_STATION_IDS)[0]
+                "wind_gust_station": list(TEST_STATION_IDS)[0]
             }
         }
         
