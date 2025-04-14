@@ -25,6 +25,7 @@ class DataCache:
         self.synoptic_data: Optional[Dict[str, Any]] = None
         self.wunderground_data: Optional[Dict[str, Any]] = None
         self.fire_risk_data: Optional[Dict[str, Any]] = None
+        self.previous_risk_level: Optional[str] = None # Added to track the last known risk level
         self.last_updated: Optional[datetime] = None
         self.update_in_progress: bool = False
         self.last_update_success: bool = False
@@ -47,7 +48,7 @@ class DataCache:
         current_time = datetime.now(TIMEZONE)
         
         # First try to load cache from disk
-        disk_cache_loaded = self._load_cache_from_disk()
+        disk_cache_loaded, disk_cache = self._load_cache_from_disk()
         
         if not disk_cache_loaded:
             # No disk cache available, initialize with default values
@@ -91,6 +92,9 @@ class DataCache:
             # Disk cache was loaded successfully, cached_fields and using_cached_data 
             # will be already set by _load_cache_from_disk
             self.using_default_values = False
+            # Also load previous risk level if available
+            if "previous_risk_level" in disk_cache:
+                self.previous_risk_level = disk_cache["previous_risk_level"]
 
     def is_stale(self, max_age_minutes: int = 15) -> bool:
         """Check if the data is stale (older than max_age_minutes)"""
@@ -221,7 +225,7 @@ class DataCache:
         # Save cache to disk
         self._save_cache_to_disk()
     
-    def _load_cache_from_disk(self) -> bool:
+    def _load_cache_from_disk(self) -> tuple[bool, Dict[str, Any]]:
         """Load cached data from disk if available.
         
         Returns:
@@ -230,7 +234,7 @@ class DataCache:
         try:
             if not self.cache_file.exists():
                 logger.info(f"Cache file does not exist: {self.cache_file}")
-                return False
+                return False, {}
                 
             with open(self.cache_file, 'r') as f:
                 disk_cache = json.load(f)
@@ -238,7 +242,7 @@ class DataCache:
             # Validate the loaded data
             if not disk_cache or "last_valid_data" not in disk_cache:
                 logger.warning(f"Invalid cache file format: {self.cache_file}")
-                return False
+                return False, {}
                 
             # Convert ISO timestamps back to datetime objects
             self._convert_timestamps(disk_cache["last_valid_data"])
@@ -270,10 +274,10 @@ class DataCache:
                 self.using_cached_data = True  # Start with using defaults as there's no valid data
             
             logger.info(f"Successfully loaded cache from disk: {self.cache_file}")
-            return True
+            return True, disk_cache
         except Exception as e:
             logger.error(f"Error loading cache from disk: {e}")
-            return False
+            return False, {}
     
     def _save_cache_to_disk(self) -> bool:
         """Save current cache data to disk.
@@ -288,7 +292,8 @@ class DataCache:
             # Prepare data for serialization
             cache_data = {
                 "last_valid_data": self._prepare_for_serialization(self.last_valid_data.copy()),
-                "last_updated": self.last_updated.isoformat() if self.last_updated else None
+                "last_updated": self.last_updated.isoformat() if self.last_updated else None,
+                "previous_risk_level": self.previous_risk_level # Save the previous risk level
             }
             
             # Write to disk

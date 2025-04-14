@@ -10,6 +10,7 @@ from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache
+from email_service import send_test_email # Import the email sending function
 
 async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None, force: bool = False) -> bool:
     """Refresh the data cache by fetching new data from APIs.
@@ -120,8 +121,44 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                             "age": age_str
                         })
             
+            # Get the previous risk level before calculating the new one
+            previous_risk = data_cache.previous_risk_level
+            
             # Calculate fire risk based on the latest weather data
             risk, explanation = calculate_fire_risk(latest_weather)
+            
+            # --- Email Alert Logic ---
+            if previous_risk == "Orange" and risk == "Red":
+                logger.info(f"Risk transition detected: {previous_risk} -> {risk}. Sending alert.")
+                try:
+                    # Construct email content
+                    subject = "Fire Risk Alert: Level Increased to RED"
+                    body = (
+                        f"The fire risk level for Sierra City has increased from Orange to RED.\n\n"
+                        f"Reason: {explanation}\n\n"
+                        f"Current Conditions:\n"
+                        f"- Temperature: {latest_weather.get('air_temp', 'N/A')}°C\n"
+                        f"- Humidity: {latest_weather.get('relative_humidity', 'N/A')}%\n"
+                        f"- Wind Speed: {latest_weather.get('wind_speed', 'N/A')} mph\n"
+                        f"- Wind Gusts: {latest_weather.get('wind_gust', 'N/A')} mph\n"
+                        f"- Soil Moisture (15cm): {latest_weather.get('soil_moisture_15cm', 'N/A')}%\n\n"
+                        f"Please consult the dashboard for full details and safety recommendations."
+                    )
+                    
+                    # Send the email
+                    send_test_email(
+                        sender="advisory@scfireweather.org",
+                        recipient="info@scfireweather.org", # Use the confirmed recipient
+                        subject=subject,
+                        body_text=body
+                    )
+                    logger.info("Orange-to-Red alert email sent successfully.")
+                except Exception as email_err:
+                    logger.error(f"Failed to send Orange-to-Red alert email: {email_err}")
+            # --- End Email Alert Logic ---
+
+            # Update the previous risk level in the cache *after* checking the transition
+            data_cache.previous_risk_level = risk
             
             # Explanation is now just the base risk explanation from calculate_fire_risk
             # Notes about data issues or cached values are handled by the modal content in endpoints.py

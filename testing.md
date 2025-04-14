@@ -12,6 +12,17 @@ Tests are organized in the `tests/` directory with the following structure:
 - `test_endpoints.py` - Tests for API endpoints
 - `test_ui_rendering.py` - Tests for UI rendering
 
+## IMPORTANT: Activate Virtual Environment
+
+**Before running any tests, ensure you have activated the project's Python virtual environment.** This ensures you are using the correct dependencies and Python interpreter.
+
+Common activation commands (replace `venv` with your environment name if different, e.g., `.venv`):
+
+- **Bash/Zsh:** `source venv/bin/activate`
+- **Fish:** `source venv/bin/activate.fish`
+- **Cmd.exe:** `venv\Scripts\activate.bat`
+- **PowerShell:** `venv\Scripts\Activate.ps1`
+
 ## Running Tests
 
 ### Prerequisites

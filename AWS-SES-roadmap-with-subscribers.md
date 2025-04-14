@@ -11,13 +11,13 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Create IAM users with appropriate SES permissions. [COMPLETED - Dedicated user `fire-risk-dashboard-ses-user` created]
   
 - **SES Configuration:**
-  - Verify your sender email address (e.g., info@scfireweather.org, advisory@scfireweather.org). [COMPLETED - Per user confirmation]
-  - Verify your domain for improved deliverability and professional appearance. [COMPLETED - Per user confirmation]
+  - Verify sender/recipient email addresses (`advisory@scfireweather.org`, `info@scfireweather.org`). [COMPLETED]
+  - Verify your domain (`scfireweather.org`) for improved deliverability and professional appearance. [COMPLETED - Per user confirmation]
   - Request production access to move out of the SES sandbox environment. [PENDING]
 
 - **Email Authentication Setup:**
   - Configure DKIM, SPF, and DMARC records for your domain. [COMPLETED - Per user confirmation via Cloudflare CNAMEs/TXT]
-  - Create dedicated sending identities for different notification types (alerts vs. reports). [PARTIALLY COMPLETE - Sender email verified]
+  - Create dedicated sending identities for different notification types (alerts vs. reports). [COMPLETED - `advisory@scfireweather.org` verified for alerts]
 
 - **Credentials Management:**
   - Store AWS credentials securely using environment variables on Render. [COMPLETED - Added to Render and local .env]
@@ -27,10 +27,12 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
 
 ## 2. Notification Types and Content Design
 
-- **Risk-Level Change Alerts:**
-  - Design email templates for risk level transitions (Green→Yellow, Yellow→Red, etc.).
-  - Include current weather parameters that triggered the change.
-  
+- **Risk-Level Change Alerts (Orange -> Red Only):**
+  - **Trigger Condition:** Emails will *only* be sent when the calculated fire risk level transitions from **Orange** to **Red**. No alerts will be sent for other transitions (e.g., Red -> Orange, or transitions involving other potential levels if they existed).
+  - **Content:** Design an email template specifically for the Orange-to-Red alert.
+  - **Key Information:** Include the current weather parameters (temperature, humidity, wind speed, soil moisture) that contributed to the Red status.
+  - **Clarity:** Clearly state that the risk level has increased to Red and advise recipients to consult the full dashboard for details and safety recommendations.
+
 - **Daily Risk Summary Reports:**
   - Create a template showing 24-hour trends of temperature, humidity, wind speed, and soil moisture.
   - Include screenshot of the current dashboard status.
