@@ -6,22 +6,22 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
 
 ## 1. AWS SES Account Setup and Configuration
 
-- **Create/Access AWS Account:**
+- **Create/Access AWS Account:** [ASSUMED COMPLETE]
   - Sign up or log in to your AWS account.
-  - Create IAM users with appropriate SES permissions.
+  - Create IAM users with appropriate SES permissions. [COMPLETED - Dedicated user `fire-risk-dashboard-ses-user` created]
   
 - **SES Configuration:**
-  - Verify your sender email address (e.g., alerts@sierracityfire.org).
-  - Verify your domain for improved deliverability and professional appearance.
-  - Request production access to move out of the SES sandbox environment.
+  - Verify your sender email address (e.g., info@scfireweather.org, advisory@scfireweather.org). [COMPLETED - Per user confirmation]
+  - Verify your domain for improved deliverability and professional appearance. [COMPLETED - Per user confirmation]
+  - Request production access to move out of the SES sandbox environment. [PENDING]
 
 - **Email Authentication Setup:**
-  - Configure DKIM, SPF, and DMARC records for your domain.
-  - Create dedicated sending identities for different notification types (alerts vs. reports).
+  - Configure DKIM, SPF, and DMARC records for your domain. [COMPLETED - Per user confirmation via Cloudflare CNAMEs/TXT]
+  - Create dedicated sending identities for different notification types (alerts vs. reports). [PARTIALLY COMPLETE - Sender email verified]
 
 - **Credentials Management:**
-  - Store AWS credentials securely using environment variables on Render.
-  - Implement credential rotation practices following AWS best practices.
+  - Store AWS credentials securely using environment variables on Render. [COMPLETED - Added to Render and local .env]
+  - Implement credential rotation practices following AWS best practices. [PENDING]
 
 ---
 
@@ -63,9 +63,9 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Add special notifications for extended periods of cached-only operation.
 
 - **Email Sending Module:**
-  - Create a new module `email_service.py` to handle all SES interactions.
-  - Implement boto3-based functions for sending different types of emails.
-  - Add robust error handling and retry logic.
+  - Create a new module `email_service.py` to handle all SES interactions. [COMPLETED]
+  - Implement boto3-based functions for sending different types of emails. [IN PROGRESS - Basic test function implemented and tested]
+  - Add robust error handling and retry logic. [IN PROGRESS - Basic error handling added]
 
 ---
 
