@@ -7,6 +7,9 @@ from typing import Dict, Any, Optional
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Debug flags - set to False by default for production
+DEBUG_API_RESPONSES = os.getenv("DEBUG_API_RESPONSES", "False").lower() == "true"
+
 # Only load .env for local development (not on Render)
 if os.getenv("RENDER") is None:
     try:

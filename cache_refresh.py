@@ -10,7 +10,9 @@ from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache
-from email_service import send_test_email # Import the email sending function
+# Import the specific alert function and subscriber function
+from email_service import send_orange_to_red_alert
+from subscriber_service import get_active_subscribers
 
 async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None, force: bool = False) -> bool:
     """Refresh the data cache by fetching new data from APIs.
@@ -129,32 +131,37 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             
             # --- Email Alert Logic ---
             if previous_risk == "Orange" and risk == "Red":
-                logger.info(f"Risk transition detected: {previous_risk} -> {risk}. Sending alert.")
+                logger.info(f"Risk transition detected: {previous_risk} -> {risk}. Preparing alert.")
                 try:
-                    # Construct email content
-                    subject = "Fire Risk Alert: Level Increased to RED"
-                    body = (
-                        f"The fire risk level for Sierra City has increased from Orange to RED.\n\n"
-                        f"Reason: {explanation}\n\n"
-                        f"Current Conditions:\n"
-                        f"- Temperature: {latest_weather.get('air_temp', 'N/A')}°C\n"
-                        f"- Humidity: {latest_weather.get('relative_humidity', 'N/A')}%\n"
-                        f"- Wind Speed: {latest_weather.get('wind_speed', 'N/A')} mph\n"
-                        f"- Wind Gusts: {latest_weather.get('wind_gust', 'N/A')} mph\n"
-                        f"- Soil Moisture (15cm): {latest_weather.get('soil_moisture_15cm', 'N/A')}%\n\n"
-                        f"Please consult the dashboard for full details and safety recommendations."
-                    )
-                    
-                    # Send the email
-                    send_test_email(
-                        sender="advisory@scfireweather.org",
-                        recipient="info@scfireweather.org", # Use the confirmed recipient
-                        subject=subject,
-                        body_text=body
-                    )
-                    logger.info("Orange-to-Red alert email sent successfully.")
+                    # 1. Get active subscribers
+                    recipients = get_active_subscribers()
+
+                    if not recipients:
+                        logger.warning("Orange-to-Red transition detected, but no active subscribers found.")
+                    else:
+                        logger.info(f"Found {len(recipients)} active subscribers for the alert.")
+                        # 2. Prepare weather data in the format expected by the email function
+                        # Map API field names to more user-friendly names if needed by the template
+                        alert_weather_data = {
+                            'temperature': f"{latest_weather.get('air_temp', 'N/A')}°C", # Assuming Celsius for now
+                            'humidity': f"{latest_weather.get('relative_humidity', 'N/A')}%",
+                            'wind_speed': f"{latest_weather.get('wind_speed', 'N/A')} mph",
+                            'wind_gust': f"{latest_weather.get('wind_gust', 'N/A')} mph", # Include gusts if available
+                            'soil_moisture': f"{latest_weather.get('soil_moisture_15cm', 'N/A')}%" # Assuming 15cm value
+                            # Add any other relevant fields used in the email template
+                        }
+
+                        # 3. Send the alert using the dedicated function
+                        message_id = send_orange_to_red_alert(recipients, alert_weather_data)
+
+                        if message_id:
+                            logger.info(f"Orange-to-Red alert email sent successfully to {len(recipients)} subscribers. Message ID: {message_id}")
+                        else:
+                            logger.error("Failed to send Orange-to-Red alert email (send_orange_to_red_alert returned None).")
+
                 except Exception as email_err:
-                    logger.error(f"Failed to send Orange-to-Red alert email: {email_err}")
+                    # Catch errors during subscriber fetching or email sending
+                    logger.error(f"Failed during Orange-to-Red alert process: {email_err}", exc_info=True) # Log traceback
             # --- End Email Alert Logic ---
 
             # Update the previous risk level in the cache *after* checking the transition

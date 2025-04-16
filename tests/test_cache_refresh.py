@@ -9,6 +9,8 @@ from api_clients import get_synoptic_data
 from tests.conftest import get_wunderground_data
 from data_processing import combine_weather_data
 from fire_risk_logic import calculate_fire_risk
+# Import mocks for email/subscriber services
+from unittest.mock import call
 
 
 @pytest.fixture
@@ -45,13 +47,15 @@ async def test_refresh_data_cache_success(mock_calculate_fire_risk, mock_combine
     mock_cache.update_timeout = 10
     mock_cache.retry_delay = 5
     mock_cache.cached_fields = {}
-    
+    mock_cache.previous_risk_level = "Green" # Default previous risk
+
     # Patch the global data_cache instance
     with patch('cache_refresh.data_cache', mock_cache):
         # Run the test
         assert await refresh_data_cache() is True
         mock_cache.update_cache.assert_called_once()
-        assert mock_cache.fire_risk_data["risk"] == "low"
+        assert mock_cache.fire_risk_data["risk"] == "low" # Risk calculated
+        assert mock_cache.previous_risk_level == "low" # Previous risk updated
         assert mock_cache.last_update_success is True
 
 
@@ -367,6 +371,180 @@ async def test_schedule_next_refresh_exception(mock_refresh_data_cache, caplog):
         # The actual error message is "Error in scheduled refresh: Test Exception"
         assert "Error in scheduled refresh: Test Exception" in caplog.text
         assert mock_cache.refresh_task_active is False
+
+
+# --- Tests for Orange-to-Red Alert Logic ---
+
+@pytest.mark.asyncio
+@patch('cache_refresh.get_synoptic_data')
+@patch('cache_refresh.combine_weather_data')
+@patch('cache_refresh.calculate_fire_risk')
+@patch('cache_refresh.get_active_subscribers')
+@patch('cache_refresh.send_orange_to_red_alert')
+async def test_refresh_data_cache_orange_to_red_alert_sent(
+    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
+    mock_combine_weather_data, mock_get_synoptic_data, mock_data
+):
+    """Test that alert is sent on Orange -> Red transition with subscribers."""
+    mock_weather_data, _, mock_combined_data, _ = mock_data
+    test_subscribers = ["test1@example.com", "test2@example.com"]
+    risk_explanation = "Conditions extremely dry and windy"
+
+    # Setup mocks
+    mock_get_synoptic_data.return_value = mock_weather_data
+    mock_combine_weather_data.return_value = mock_combined_data
+    mock_calculate_fire_risk.return_value = ("Red", risk_explanation) # New risk is Red
+    mock_get_subscribers.return_value = test_subscribers
+    mock_send_alert.return_value = "mock-message-id" # Simulate successful send
+
+    # Configure mock cache
+    mock_cache = MagicMock(spec=DataCache)
+    mock_cache.update_in_progress = False
+    mock_cache.reset_update_event = MagicMock()
+    mock_cache.max_retries = 1
+    mock_cache.update_timeout = 10
+    mock_cache.retry_delay = 1
+    mock_cache.cached_fields = {}
+    mock_cache.previous_risk_level = "Orange" # CRITICAL: Previous risk was Orange
+    mock_cache.fire_risk_data = {"risk": "Orange"} # Initial state
+
+    # Patch the global data_cache instance and logger
+    with patch('cache_refresh.data_cache', mock_cache), \
+         patch('cache_refresh.logger') as mock_logger:
+        # Run the refresh
+        result = await refresh_data_cache()
+
+        # Assertions
+        assert result is True # Refresh itself should succeed
+        mock_get_subscribers.assert_called_once()
+        mock_send_alert.assert_called_once()
+
+        # Check arguments passed to send_orange_to_red_alert
+        call_args, call_kwargs = mock_send_alert.call_args
+        sent_recipients = call_args[0]
+        sent_weather_data = call_args[1]
+
+        assert sent_recipients == test_subscribers
+        # Check if weather data was formatted correctly (based on cache_refresh logic)
+        assert sent_weather_data['temperature'] == f"{mock_combined_data.get('air_temp', 'N/A')}°C"
+        assert sent_weather_data['humidity'] == f"{mock_combined_data.get('relative_humidity', 'N/A')}%"
+        assert sent_weather_data['wind_speed'] == f"{mock_combined_data.get('wind_speed', 'N/A')} mph"
+        assert sent_weather_data['wind_gust'] == f"{mock_combined_data.get('wind_gust', 'N/A')} mph"
+        assert sent_weather_data['soil_moisture'] == f"{mock_combined_data.get('soil_moisture_15cm', 'N/A')}%"
+
+        # Check logs
+        mock_logger.info.assert_any_call(f"Risk transition detected: Orange -> Red. Preparing alert.")
+        mock_logger.info.assert_any_call(f"Found {len(test_subscribers)} active subscribers for the alert.")
+        mock_logger.info.assert_any_call(f"Orange-to-Red alert email sent successfully to {len(test_subscribers)} subscribers. Message ID: mock-message-id")
+
+        # Verify cache update
+        mock_cache.update_cache.assert_called_once()
+        # Check that previous_risk_level was updated *after* the check
+        assert mock_cache.previous_risk_level == "Red"
+
+
+@pytest.mark.asyncio
+@patch('cache_refresh.get_synoptic_data')
+@patch('cache_refresh.combine_weather_data')
+@patch('cache_refresh.calculate_fire_risk')
+@patch('cache_refresh.get_active_subscribers')
+@patch('cache_refresh.send_orange_to_red_alert')
+async def test_refresh_data_cache_orange_to_red_no_subscribers(
+    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
+    mock_combine_weather_data, mock_get_synoptic_data, mock_data
+):
+    """Test Orange -> Red transition when no subscribers are found."""
+    mock_weather_data, _, mock_combined_data, _ = mock_data
+    risk_explanation = "Conditions extremely dry and windy"
+
+    # Setup mocks
+    mock_get_synoptic_data.return_value = mock_weather_data
+    mock_combine_weather_data.return_value = mock_combined_data
+    mock_calculate_fire_risk.return_value = ("Red", risk_explanation)
+    mock_get_subscribers.return_value = [] # No subscribers
+
+    # Configure mock cache
+    mock_cache = MagicMock(spec=DataCache)
+    mock_cache.update_in_progress = False
+    mock_cache.reset_update_event = MagicMock()
+    mock_cache.max_retries = 1
+    mock_cache.update_timeout = 10
+    mock_cache.retry_delay = 1
+    mock_cache.cached_fields = {}
+    mock_cache.previous_risk_level = "Orange"
+    mock_cache.fire_risk_data = {"risk": "Orange"}
+
+    # Patch the global data_cache instance and logger
+    with patch('cache_refresh.data_cache', mock_cache), \
+         patch('cache_refresh.logger') as mock_logger:
+        # Run the refresh
+        result = await refresh_data_cache()
+
+        # Assertions
+        assert result is True
+        mock_get_subscribers.assert_called_once()
+        mock_send_alert.assert_not_called() # Alert should NOT be sent
+
+        # Check logs
+        mock_logger.info.assert_any_call(f"Risk transition detected: Orange -> Red. Preparing alert.")
+        mock_logger.warning.assert_any_call("Orange-to-Red transition detected, but no active subscribers found.")
+
+        # Verify cache update
+        mock_cache.update_cache.assert_called_once()
+        assert mock_cache.previous_risk_level == "Red"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("prev_risk, new_risk", [
+    ("Green", "Orange"),
+    ("Orange", "Orange"),
+    ("Red", "Orange"),
+    ("Red", "Red"),
+    ("Green", "Red"), # Test non-Orange start
+])
+@patch('cache_refresh.get_synoptic_data')
+@patch('cache_refresh.combine_weather_data')
+@patch('cache_refresh.calculate_fire_risk')
+@patch('cache_refresh.get_active_subscribers')
+@patch('cache_refresh.send_orange_to_red_alert')
+async def test_refresh_data_cache_no_alert_on_other_transitions(
+    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
+    mock_combine_weather_data, mock_get_synoptic_data, mock_data,
+    prev_risk, new_risk
+):
+    """Test that alert is NOT sent for transitions other than Orange -> Red."""
+    mock_weather_data, _, mock_combined_data, _ = mock_data
+    risk_explanation = "Some reason"
+
+    # Setup mocks
+    mock_get_synoptic_data.return_value = mock_weather_data
+    mock_combine_weather_data.return_value = mock_combined_data
+    mock_calculate_fire_risk.return_value = (new_risk, risk_explanation)
+
+    # Configure mock cache
+    mock_cache = MagicMock(spec=DataCache)
+    mock_cache.update_in_progress = False
+    mock_cache.reset_update_event = MagicMock()
+    mock_cache.max_retries = 1
+    mock_cache.update_timeout = 10
+    mock_cache.retry_delay = 1
+    mock_cache.cached_fields = {}
+    mock_cache.previous_risk_level = prev_risk # Set previous risk from parameter
+    mock_cache.fire_risk_data = {"risk": prev_risk}
+
+    # Patch the global data_cache instance
+    with patch('cache_refresh.data_cache', mock_cache):
+        # Run the refresh
+        result = await refresh_data_cache()
+
+        # Assertions
+        assert result is True
+        mock_get_subscribers.assert_not_called() # Should not even check subscribers
+        mock_send_alert.assert_not_called()     # Alert should definitely not be sent
+
+        # Verify cache update
+        mock_cache.update_cache.assert_called_once()
+        assert mock_cache.previous_risk_level == new_risk # Previous risk updated to new risk
 
 
 @pytest.mark.asyncio

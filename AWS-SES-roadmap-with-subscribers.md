@@ -42,18 +42,18 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Target these emails to system administrators rather than general subscribers.
 
 - **Template Development:**
-  - Use responsive HTML templates with fallback plain text versions.
-  - Incorporate your existing fire risk color coding and branding.
-  - Design templates to display properly on mobile devices.
+  - Use responsive HTML templates with fallback plain text versions. [COMPLETED - Initial templates `orange_to_red_alert.html` and `.txt` created]
+  - Incorporate your existing fire risk color coding and branding. [COMPLETED - Basic red theme used in HTML template]
+  - Design templates to display properly on mobile devices. [IN PROGRESS - Basic responsive styles included, needs wider testing]
 
 ---
 
 ## 3. Integration with Fire Risk Dashboard Backend
 
 - **Event-Based Triggers:**
-  - Modify `fire_risk_logic.py` to detect meaningful changes in risk levels.
-  - Create hooks in `cache_refresh.py` to trigger emails when data is significantly updated.
-  - Implement logic to prevent notification flooding during rapidly changing conditions.
+  - Modify `fire_risk_logic.py` to detect meaningful changes in risk levels. [PENDING - Logic currently resides entirely in `cache_refresh.py`]
+  - Create hooks in `cache_refresh.py` to trigger emails when data is significantly updated. [COMPLETED - Orange-to-Red transition hook implemented]
+  - Implement logic to prevent notification flooding during rapidly changing conditions. [PENDING]
 
 - **Dashboard Screenshot Automation:**
   - Implement headless browser automation (Selenium or Puppeteer) to capture dashboard state.
@@ -66,17 +66,21 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
 
 - **Email Sending Module:**
   - Create a new module `email_service.py` to handle all SES interactions. [COMPLETED]
-  - Implement boto3-based functions for sending different types of emails. [IN PROGRESS - Basic test function implemented and tested]
-  - Add robust error handling and retry logic. [IN PROGRESS - Basic error handling added]
+  - Implement boto3-based functions for sending different types of emails. [COMPLETED - Generic `send_email` and specific `send_orange_to_red_alert` implemented]
+  - Add robust error handling and retry logic. [IN PROGRESS - Basic ClientError handling in `send_email`, needs refinement for retries/throttling]
+  - Integrate Jinja2 for HTML/Text templating. [COMPLETED]
 
 ---
 
 ## 4. Subscriber Management System
 
 - **Database Schema:**
-  - Design a schema for storing subscriber information (email, name, preferences).
-  - Include subscription status, preference settings, and audit fields.
-  - Consider using DynamoDB or similar AWS service for tight integration.
+  - Design a schema for storing subscriber information (email, name, preferences). [COMPLETED - Basic SQLite schema in `subscriber_service.py`]
+  - Include subscription status, preference settings, and audit fields. [COMPLETED - `is_subscribed`, `created_at`, `unsubscribed_at` included]
+  - Consider using DynamoDB or similar AWS service for tight integration. [PENDING - Currently using SQLite]
+
+- **Subscriber Retrieval:**
+  - Implement function to retrieve active subscribers. [COMPLETED - `get_active_subscribers` in `subscriber_service.py`]
 
 - **Subscription Management UI:**
   - Create simple web forms for subscription sign-up and management.
@@ -84,9 +88,9 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Design mobile-friendly interfaces for community access.
 
 - **API Endpoints:**
-  - Add new endpoints in `endpoints.py` for subscription management.
-  - Implement secure token-based unsubscribe links.
-  - Create admin endpoints for subscription list management.
+  - Add new endpoints in `endpoints.py` for subscription management. [PENDING]
+  - Implement secure token-based unsubscribe links. [PENDING - Placeholder in templates]
+  - Create admin endpoints for subscription list management. [PENDING]
 
 - **Compliance Features:**
   - Implement double opt-in flows with confirmation emails.

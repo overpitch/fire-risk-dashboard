@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 from config import (
     SYNOPTIC_API_KEY, SYNOPTIC_BASE_URL,
     SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, WIND_STATION_ID,
-    logger
+    DEBUG_API_RESPONSES, logger
 )
 
 def get_api_token() -> Optional[str]:
@@ -93,6 +93,16 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
         # Log a snippet of the response data
         logger.info(f"✅ Successfully received data from Synoptic API")
         
+        # Add debug logging of response structure when enabled
+        if DEBUG_API_RESPONSES:
+            logger.debug(f"🔍 API Response Keys: {list(data.keys())}")
+            if 'STATION' in data:
+                logger.debug(f"🔍 Number of stations: {len(data.get('STATION', []))}")
+                station_ids = [s.get('STID') for s in data.get('STATION', [])]
+                logger.debug(f"🔍 Station IDs in response: {station_ids}")
+            else:
+                logger.debug(f"🔍 STATION key missing. Full response sample: {json.dumps(data, default=str)[:500]}...")
+                
         return data
 
     except requests.exceptions.RequestException as e:
@@ -115,4 +125,20 @@ def get_synoptic_data() -> Optional[Dict[str, Any]]:
         Dictionary containing the weather data or None if an error occurred
     """
     station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID},{WIND_STATION_ID}"
-    return get_weather_data(station_ids)
+    data = get_weather_data(station_ids)
+    
+    # Validate that the response contains the expected STATION field
+    if data and "STATION" not in data:
+        logger.error("Weather API response missing STATION data")
+        if DEBUG_API_RESPONSES:
+            logger.debug(f"🚨 Response keys available: {list(data.keys())}")
+            if "SUMMARY" in data:
+                logger.debug(f"🚨 API Summary: {data.get('SUMMARY')}")
+            if "ERROR" in data:
+                logger.debug(f"🚨 API Error: {data.get('ERROR')}")
+            logger.debug(f"🚨 Response sample: {json.dumps(data, default=str)[:500]}...")
+        
+        # Return None to trigger cache fallback
+        return None
+        
+    return data

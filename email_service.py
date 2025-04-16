@@ -1,6 +1,19 @@
 import os
 import boto3
 from botocore.exceptions import ClientError
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+# Setup Jinja2 environment (assuming templates are in a 'templates' directory)
+# We'll create this directory later if needed.
+try:
+    template_loader = FileSystemLoader(searchpath="./templates")
+    jinja_env = Environment(
+        loader=template_loader,
+        autoescape=select_autoescape(['html', 'xml'])
+    )
+except Exception as e:
+    print(f"Warning: Jinja2 template directory './templates' not found or error initializing: {e}")
+    jinja_env = None # Fallback or handle as needed
 
 # Load credentials and region from environment variables
 # Ensure these are set in your .env file locally and in Render's environment variables
@@ -17,16 +30,17 @@ ses_client = boto3.client(
     aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 )
 
-# Function to send email using SES
-def send_test_email(sender, recipient, subject, body_text):
+# Function to send a generic email using SES
+def send_email(sender, recipients, subject, body_text, body_html=None):
     """
-    Sends a test email using AWS SES.
+    Sends an email using AWS SES to one or more recipients.
 
     Args:
         sender (str): The verified sender email address.
-        recipient (str): The recipient email address (must be verified if in sandbox).
+        recipients (list): A list of recipient email addresses.
         subject (str): The subject line of the email.
         body_text (str): The plain text body of the email.
+        body_html (str, optional): The HTML body of the email. Defaults to None.
 
     Returns:
         str: The message ID if successful, None otherwise.
@@ -36,69 +50,127 @@ def send_test_email(sender, recipient, subject, body_text):
     if not ses_client:
         print("Error: SES client not initialized.")
         return None
+    if not recipients:
+        print("Error: No recipients provided.")
+        return None
+
+    message_body = {
+        'Text': {
+            'Charset': CHARSET,
+            'Data': body_text,
+        }
+    }
+    if body_html:
+        message_body['Html'] = {
+            'Charset': CHARSET,
+            'Data': body_html,
+        }
 
     try:
+        # Note: send_email sends to all recipients in the list as one API call
         response = ses_client.send_email(
-            Destination={
-                'ToAddresses': [
-                    recipient,
-                ],
-            },
-            Message={
-                'Body': {
-                    'Text': {
-                        'Charset': CHARSET,
-                        'Data': body_text,
-                    },
-                    # Optionally add HTML body:
-                    # 'Html': {
-                    #     'Charset': CHARSET,
-                    #     'Data': body_html,
-                    # },
-                },
-                'Subject': {
-                    'Charset': CHARSET,
-                    'Data': subject,
-                },
-            },
             Source=sender,
+            Destination={'ToAddresses': recipients},
+            Message={
+                'Subject': {'Charset': CHARSET, 'Data': subject},
+                'Body': message_body
+            }
             # If you are using a configuration set, specify it here:
             # ConfigurationSetName=CONFIGURATION_SET,
         )
     except ClientError as e:
-        print(f"Error sending email: {e.response['Error']['Message']}")
+        # More specific error handling can be added here (e.g., for throttling)
+        print(f"Error sending email via SES: {e.response['Error']['Message']}")
         return None
     except Exception as e:
-        print(f"An unexpected error occurred during sending: {e}")
+        print(f"An unexpected error occurred during email sending: {e}")
         return None
     else:
+        # Log success
         message_id = response.get('MessageId')
-        print(f"Email sent! Message ID: {message_id}")
+        print(f"Email sent successfully to {len(recipients)} recipients. Message ID: {message_id}")
         return message_id
 
+# --- Specific Alert Functions ---
+
+def send_orange_to_red_alert(recipients, weather_data):
+    """
+    Sends the specific 'Orange to Red' fire risk alert email.
+
+    Args:
+        recipients (list): List of email addresses to send the alert to.
+        weather_data (dict): Dictionary containing current weather parameters
+                             (e.g., temp, humidity, wind_speed, soil_moisture).
+    """
+    sender = "advisory@scfireweather.org" # Use the designated alert sender
+    subject = "URGENT: Fire Risk Level Increased to RED"
+
+    if not jinja_env:
+        print("Error: Jinja environment not available. Cannot render templates.")
+        # Fallback to basic text if templates fail
+        body_text = f"""
+        Attention: The fire risk level for Sierra City has increased to RED.
+
+        Current Conditions contributing to this level:
+        - Temperature: {weather_data.get('temperature', 'N/A')}
+        - Humidity: {weather_data.get('humidity', 'N/A')}
+        - Wind Speed: {weather_data.get('wind_speed', 'N/A')}
+        - Soil Moisture: {weather_data.get('soil_moisture', 'N/A')}
+
+        Please consult the Fire Risk Dashboard for detailed information and safety recommendations: [Link to Dashboard]
+
+        Stay safe,
+        Sierra City Fire Weather Advisory
+        """
+        body_html = None # Or generate basic HTML fallback
+    else:
+        try:
+            # Render templates (assuming template files exist)
+            # TODO: Create 'orange_to_red_alert.html' and 'orange_to_red_alert.txt' in ./templates/
+            html_template = jinja_env.get_template('orange_to_red_alert.html')
+            text_template = jinja_env.get_template('orange_to_red_alert.txt')
+            body_html = html_template.render(weather=weather_data, dashboard_url="[Link to Dashboard]") # Replace with actual URL
+            body_text = text_template.render(weather=weather_data, dashboard_url="[Link to Dashboard]") # Replace with actual URL
+        except Exception as e:
+            print(f"Error rendering email templates: {e}")
+            # Consider fallback mechanism here as well
+            return None # Or raise error
+
+    # Send the email using the generic function
+    return send_email(sender, recipients, subject, body_text, body_html)
+
+
+# --- Test Functions (Optional) ---
+
+def send_test_email(recipient):
+    """Sends a simple test email to a single recipient."""
+    sender = "advisory@scfireweather.org" # Or a different test sender
+    subject = "SES Test Email from Fire Risk Dashboard"
+    body_text = "This is a test email sent via AWS SES using boto3 from the Fire Risk Dashboard application."
+    print(f"Attempting to send test email to {recipient}...")
+    return send_email(sender, [recipient], subject, body_text)
+
+
 if __name__ == '__main__':
-    # Example usage (for direct testing of this module)
-    # Replace with your SES-verified sender and recipient emails for testing
-    SENDER_EMAIL = "advisory@scfireweather.org"
-    RECIPIENT_EMAIL = "info@scfireweather.org" # Replace!
+    # Example usage for direct testing
+    TEST_RECIPIENT = "info@scfireweather.org" # Replace with a verified recipient for testing
 
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         print("Error: AWS credentials or region not found in environment variables.")
-        print("Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY.")
-    elif SENDER_EMAIL == "your-verified-sender@example.com" or RECIPIENT_EMAIL == "your-verified-recipient@example.com":
-         print("Error: Please replace placeholder SENDER_EMAIL and RECIPIENT_EMAIL in email_service.py before testing.")
     else:
-        print("Attempting to send test email...")
-        try:
-            message_id = send_test_email(
-                sender=SENDER_EMAIL,
-                recipient=RECIPIENT_EMAIL,
-                subject="SES Test Email from Fire Risk Dashboard",
-                body_text="This is a test email sent via AWS SES using boto3 from the Fire Risk Dashboard application."
-            )
-            if message_id:
-                print(f"Test email sent successfully. Message ID: {message_id}")
-            else:
-                print("Test email sending failed.")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        # Test the basic send_test_email
+        # send_test_email(TEST_RECIPIENT)
+
+        # Test the orange_to_red_alert (using dummy data and fallback text for now)
+        print("\nAttempting to send Orange-to-Red alert (using fallback text)...")
+        dummy_weather = {
+            'temperature': '95F',
+            'humidity': '15%',
+            'wind_speed': '25 mph',
+            'soil_moisture': 'Very Low'
+        }
+        # Temporarily disable template loading for this test if templates don't exist
+        original_jinja_env = jinja_env
+        jinja_env = None
+        send_orange_to_red_alert([TEST_RECIPIENT], dummy_weather)
+        jinja_env = original_jinja_env # Restore env

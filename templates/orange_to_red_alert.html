@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URGENT: Fire Risk Level Increased to RED</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .header { background-color: #d9534f; /* Red color */ color: white; padding: 10px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { padding: 20px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; text-align: center; }
+        .data-point { margin-bottom: 5px; }
+        strong { color: #d9534f; } /* Red emphasis */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>URGENT: Fire Risk Level Increased to RED</h1>
+        </div>
+        <div class="content">
+            <p>Attention,</p>
+            <p>The fire risk level for the Sierra City area has increased from Orange to <strong>RED</strong>.</p>
+            <p>Current conditions contributing to this elevated risk level include:</p>
+            <ul>
+                <li class="data-point"><strong>Temperature:</strong> {{ weather.temperature | default('N/A') }}</li>
+                <li class="data-point"><strong>Humidity:</strong> {{ weather.humidity | default('N/A') }}</li>
+                <li class="data-point"><strong>Wind Speed:</strong> {{ weather.wind_speed | default('N/A') }}</li>
+                {% if weather.wind_gust and weather.wind_gust != 'N/A' %}
+                <li class="data-point"><strong>Wind Gusts:</strong> {{ weather.wind_gust }}</li>
+                {% endif %}
+                <li class="data-point"><strong>Soil Moisture:</strong> {{ weather.soil_moisture | default('N/A') }}</li>
+            </ul>
+            <p>Please exercise extreme caution and stay informed about local conditions and potential evacuation orders.</p>
+            <p>For the latest detailed information, safety recommendations, and real-time updates, please consult the official Fire Risk Dashboard:</p>
+            <p><a href="{{ dashboard_url | default('#') }}">Visit the Dashboard</a></p>
+            <p>Stay safe,</p>
+            <p><em>Sierra City Fire Weather Advisory</em></p>
+        </div>
+        <div class="footer">
+            <p>You are receiving this alert because you subscribed to Sierra City Fire Weather Advisories.</p>
+            <p><a href="#unsubscribe_link">Unsubscribe</a></p> {# TODO: Replace #unsubscribe_link with actual unsubscribe URL logic #}
+        </div>
+    </div>
+</body>
+</html>
