@@ -15,46 +15,21 @@ FALLBACK_DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "synoptic_f
 
 def configure_production_environment() -> Dict[str, Any]:
     """
-    Configure request parameters to mimic production environment.
+    Configure request parameters for API calls.
     
-    This function checks if we're running in a development environment and applies
-    special configuration to make the requests appear to come from production.
+    This function was previously attempting to mimic production environment
+    with custom headers and proxies, but this was causing 403 Forbidden errors.
     
     Returns:
-        Dict of parameters for requests to use (headers, proxies, etc)
+        Dict of parameters for requests to use (empty headers, no proxies)
     """
-    if IS_PRODUCTION:
-        # In production, use default request parameters
-        logger.info("🏢 Running in production environment, using default request parameters")
-        return {
-            "headers": {},
-            "proxies": None
-        }
-    else:
-        # In development, apply special configuration to mimic production requests
-        logger.info("🏠 Running in development environment, applying production simulation parameters")
-
-        # Get the production API proxy URL from environment or use default
-        proxy_url = os.getenv("SYNOPTIC_API_PROXY_URL", "")
-        if proxy_url:
-            logger.info(f"🔄 Using API proxy: {proxy_url}")
-            return {
-                "headers": {
-                    "User-Agent": "Mozilla/5.0 (compatible; RenderBot/1.0; +https://render.com)"
-                },
-                "proxies": {
-                    "http": proxy_url,
-                    "https": proxy_url
-                }
-            }
-        else:
-            logger.info("🔄 No API proxy configured. Using production-like headers only.")
-            return {
-                "headers": {
-                    "User-Agent": "Mozilla/5.0 (compatible; RenderBot/1.0; +https://render.com)"
-                },
-                "proxies": None
-            }
+    # Use default request parameters regardless of environment
+    # This fixes the 403 Forbidden errors from the Synoptic API
+    logger.info("🔍 Using default request parameters for best API compatibility")
+    return {
+        "headers": {},  # Empty headers - use default browser-like ones
+        "proxies": None  # No proxies
+    }
 
 def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[str]:
     """
