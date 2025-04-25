@@ -220,63 +220,95 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
         # Make sure all fields are marked as using cached data
         for field in data_cache.cached_fields:
             data_cache.cached_fields[field] = True
-        
-        # Get the cached data to update with correct cache markers
-        if data_cache.fire_risk_data:
-            # Make a copy of the existing fire risk data
-            fire_risk_data = data_cache.fire_risk_data.copy()
-            
-            # Ensure cached_data object is present and properly formatted
+
+        # Ensure fire_risk_data exists, even if minimal, to store cache status
+        if not data_cache.fire_risk_data:
+             # Initialize with a default/error state if completely empty
+             logger.warning("Initializing fire_risk_data in cache during fallback as it was empty.")
+             data_cache.fire_risk_data = {
+                 "risk": "Unknown",
+                 "explanation": "Failed to fetch initial data.",
+                 "weather": {}, # Start with empty weather
+                 "cached_data": {} # Initialize cached_data structure
+             }
+
+        # Now, we can safely assume data_cache.fire_risk_data is a dict
+        # Make a copy to modify
+        fire_risk_data = data_cache.fire_risk_data.copy()
+
+        # Ensure essential keys exist before trying to access them
+        fire_risk_data.setdefault("weather", {})
+        fire_risk_data.setdefault("cached_data", {})
+        fire_risk_data["weather"].setdefault("cached_fields", {})
+        fire_risk_data["weather"]["cached_fields"].setdefault("timestamp", {})
+
+        # Ensure cached_data object is present and properly formatted
+        try:
+            # Attempt to get the timestamp of the last known valid data
             current_time = datetime.now(TIMEZONE)
-            cached_time = data_cache.last_valid_data["timestamp"]
-            
-            # Calculate age of data
+            # Use a sensible default if last_valid_data itself is missing
+            cached_time = data_cache.last_valid_data.get("timestamp", current_time)
             age_str = format_age_string(current_time, cached_time)
-            
+            original_timestamp_iso = cached_time.isoformat()
+
             # Add or update cached_data field in fire_risk_data
-            fire_risk_data["cached_data"] = {
+            fire_risk_data["cached_data"].update({
                 "is_cached": True,
-                "original_timestamp": cached_time.isoformat(),
+                "original_timestamp": original_timestamp_iso,
                 "age": age_str,
-                "cached_fields": data_cache.cached_fields.copy()
+                "cached_fields": data_cache.cached_fields.copy() # Mark all as cached
+            })
+
+            # Ensure weather data reflects cached state
+            fire_risk_data["weather"]["cached_fields"] = data_cache.cached_fields.copy()
+            fire_risk_data["weather"]["cached_fields"]["timestamp"] = {} # Reset timestamps dict
+
+            # Add timestamp information for each field if available in last_valid_data
+            if data_cache.last_valid_data and "fields" in data_cache.last_valid_data:
+                 for field_name in data_cache.cached_fields:
+                     field_data = data_cache.last_valid_data["fields"].get(field_name, {})
+                     field_timestamp = field_data.get("timestamp")
+                     if field_timestamp:
+                         fire_risk_data["weather"]["cached_fields"]["timestamp"][field_name] = field_timestamp.isoformat()
+
+            # Add modal content to indicate cached data
+            fire_risk_data["modal_content"] = {
+                "note": "Displaying cached weather data. Current data is unavailable.",
+                "warning_title": "Using Cached Data",
+                "warning_issues": ["Unable to fetch fresh data from weather APIs."]
             }
-            
-            # Make sure weather data has the cached_fields structure
-            if "weather" in fire_risk_data:
-                if "cached_fields" not in fire_risk_data["weather"]:
-                    fire_risk_data["weather"]["cached_fields"] = {}
-                
-                # Copy the cached_fields structure with all fields marked as cached
-                fire_risk_data["weather"]["cached_fields"] = data_cache.cached_fields.copy()
-                
-                # Add timestamp information for each field
-                if "timestamp" not in fire_risk_data["weather"]["cached_fields"]:
-                    fire_risk_data["weather"]["cached_fields"]["timestamp"] = {}
-                
-                for field_name in data_cache.cached_fields:
-                    if field_name in data_cache.last_valid_data["fields"]:
-                        field_timestamp = data_cache.last_valid_data["fields"][field_name].get("timestamp")
-                        if field_timestamp:
-                            fire_risk_data["weather"]["cached_fields"]["timestamp"][field_name] = field_timestamp.isoformat()
-                
-                # Add modal content to indicate cached data
-                fire_risk_data["modal_content"] = {
-                    "note": "Displaying cached weather data. Current data is unavailable.",
-                    "warning_title": "Using Cached Data",
-                    "warning_issues": ["Unable to fetch fresh data from weather APIs."]
-                }
-            
+
             # Update the cache with the properly marked data
             data_cache.fire_risk_data = fire_risk_data
-        
-        logger.info("Fallback to cached data after refresh failure with proper cache indicators")
-    
+            logger.info("Fallback to cached data after refresh failure with proper cache indicators")
+
+        except KeyError as e:
+             logger.error(f"Fallback logic failed: Missing key {e} in data_cache.last_valid_data. Cache might be incomplete.", exc_info=True)
+             # Ensure a minimal error state is still set in the cache
+             data_cache.fire_risk_data = {
+                 "risk": "Unknown",
+                 "explanation": f"Failed to fetch data and process fallback due to missing key: {e}",
+                 "weather": {},
+                 "cached_data": {"is_cached": True, "cached_fields": data_cache.cached_fields.copy()}
+             }
+        except Exception as fallback_err:
+            logger.error(f"Unexpected error during fallback logic: {fallback_err}", exc_info=True)
+            # Ensure a minimal error state
+            data_cache.fire_risk_data = {
+                 "risk": "Unknown",
+                 "explanation": f"Failed to fetch data and process fallback due to error: {fallback_err}",
+                 "weather": {},
+                 "cached_data": {"is_cached": True, "cached_fields": data_cache.cached_fields.copy()}
+             }
+        # End of the 'if not success' block's try/except
+
     # Schedule next refresh if running as a background task
+    # This should be outside the 'if not success' block's try/except, but still within the main function scope
     if background_tasks and not data_cache.refresh_task_active:
         # Schedule the next refresh based on the configured interval
         background_tasks.add_task(schedule_next_refresh, data_cache.background_refresh_interval)
         data_cache.refresh_task_active = True
-        
+
     return success
 
 async def schedule_next_refresh(minutes: int):

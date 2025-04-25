@@ -1,0 +1,131 @@
+✅ Loaded .env file
+
+================================================================================
+📋 SYSTEM INFORMATION
+================================================================================
+OS:
+  name: Darwin
+  version: Darwin Kernel Version 24.4.0: Wed Mar 19 21:17:35 PDT 2025; root:xnu-11417.101.15~1/RELEASE_ARM64_T6041
+  release: 24.4.0
+  platform: macOS-15.4-arm64-arm-64bit-Mach-O
+  machine: arm64
+  processor: arm
+Python:
+  version: 3.13.2 (main, Feb  4 2025, 14:51:09) [Clang 16.0.0 (clang-1600.0.26.6)]
+  implementation: CPython
+  compiler: Clang 16.0.0 (clang-1600.0.26.6)
+  build: ('main', 'Feb  4 2025 14:51:09')
+Network:
+  hostname: Davids-MacBook-Pro.local
+  fqdn: 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa
+  local_ips: [{'name': 'primary', 'ip': '127.0.0.1'}, {'name': 'local', 'ip': '192.168.1.92'}]
+  external_ip: 68.8.182.150
+Time:
+  current_time: 2025-04-16 07:09:24
+  utc_time: 2025-04-16 14:09:24
+Environment:
+  env_vars:
+    SYNOPTICDATA_API_KEY: KuAerjMkaWLANnz1qvM7hnRiRLNM6vwYannq70v6dv
+    DEBUG: true
+    DEBUG_API_RESPONSES: false
+
+================================================================================
+📋 API TOKEN TEST WITH DETAILED HEADERS
+================================================================================
+🔑 Token URL: https://api.synopticdata.com/v2/auth?apikey=KuAerjMkaWLANnz1qvM7hnRiRLNM6vwYannq70v6dv
+📤 Request Headers:
+  User-Agent: SierraWildfire/1.0 PythonRequests/2.31.0
+  X-Test-ID: 8301024f-cbd0-4130-acd4-2edad6af6050
+  X-Client-IP: 68.8.182.150
+📥 Response Status: 200
+📥 Response Headers:
+  Date: Wed, 16 Apr 2025 14:09:25 GMT
+  Content-Type: application/json
+  Content-Length: 45
+  Connection: keep-alive
+  Access-Control-Max-Age: 3600
+  Access-Control-Allow-Headers: X-Version, Content-type, Server, Authorization
+  Access-Control-Allow-Methods: GET, PATCH
+  Access-Control-Allow-Origin: *
+  X-Version: v1.6.1
+  Server: SynopticCreds
+✅ Token retrieved: 45b7b9041a...
+
+================================================================================
+📋 STATION DATA TEST: Default Headers
+================================================================================
+🌐 Request URL: https://api.synopticdata.com/v2/stations/latest?stid=C3DLA&token=45b7b9041ada47ed857fd5a9198eca21
+📤 Request Headers:
+📥 Response Status: 200
+📥 Response Headers:
+  Date: Wed, 16 Apr 2025 14:09:25 GMT
+  Content-Type: application/json; charset=UTF-8
+  Content-Length: 104
+  Connection: keep-alive
+  Server: nginx
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: x-requested-with
+  Access-Control-Allow-Methods: POST, GET, OPTIONS
+  Etag: "b1e7fa1abbd719e649523da999434ca1daabc281"
+  Vary: Accept-Encoding
+📥 Response Body (truncated):
+{
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}...
+❌ Missing STATION data in response
+
+================================================================================
+📋 STATION DATA TEST: Custom Headers
+================================================================================
+🌐 Request URL: https://api.synopticdata.com/v2/stations/latest?stid=C3DLA&token=45b7b9041ada47ed857fd5a9198eca21
+📤 Request Headers:
+  User-Agent: SierraWildfire/1.0 PythonRequests/2.31.0
+  X-Test-ID: 8301024f-cbd0-4130-acd4-2edad6af6050
+  X-Client-IP: 68.8.182.150
+📥 Response Status: 200
+📥 Response Headers:
+  Date: Wed, 16 Apr 2025 14:09:26 GMT
+  Content-Type: application/json; charset=UTF-8
+  Content-Length: 104
+  Connection: keep-alive
+  Server: nginx
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: x-requested-with
+  Access-Control-Allow-Methods: POST, GET, OPTIONS
+  Etag: "b1e7fa1abbd719e649523da999434ca1daabc281"
+  Vary: Accept-Encoding
+📥 Response Body (truncated):
+{
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}...
+❌ Missing STATION data in response
+
+================================================================================
+📋 STATION DATA TEST: Production-like Headers
+================================================================================
+🌐 Request URL: https://api.synopticdata.com/v2/stations/latest?stid=C3DLA&token=45b7b9041ada47ed857fd5a9198eca21
+📤 Request Headers:
+  User-Agent: Mozilla/5.0 (compatible; RenderBot/1.0; +https://render.com)
+  X-Forwarded-For: 54.183.201.99
+  X-Real-IP: 54.183.201.99
+  Host: api.synopticdata.com
+📥 Response Status: 200
+📥 Response Headers:
+  Date: Wed, 16 Apr 2025 14:09:26 GMT
+  Content-Type: application/json; charset=UTF-8
+  Content-Length: 104
+  Connection: keep-alive
+  Server: nginx
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: x-requested-with
+  Access-Control-Allow-Methods: POST, GET, OPTIONS
+  Etag: "b1e7fa1abbd719e649523da999434ca1daabc281"
+  Vary: Accept-Encoding
+📥 Response Body (truncated):
+{
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}...
+❌ Missing STATION data in response

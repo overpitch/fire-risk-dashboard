@@ -1,0 +1,113 @@
+✅ Loaded .env file
+
+📊 SYNOPTIC API DIAGNOSTIC REPORT 📊
+Generated at: 2025-04-16 06:37:43
+
+================================================================================
+📋 SYSTEM INFORMATION
+================================================================================
+ℹ️ Operating System: macOS-15.4-arm64-arm-64bit-Mach-O
+ℹ️ Python Version: 3.13.2
+ℹ️ Hostname: Davids-MacBook-Pro.local
+ℹ️ Date and Time: 2025-04-16 06:37:43
+
+🌐 Network Information:
+ℹ️ External IP: 68.8.182.150
+
+================================================================================
+📋 ENVIRONMENT VARIABLES
+================================================================================
+✅ SYNOPTICDATA_API_KEY: KuAer...0v6dv
+ℹ️ DEBUG: true
+ℹ️ DEBUG_API_RESPONSES: false
+
+🔍 All SYNOPTIC* Environment Variables:
+  - SYNOPTICDATA_API_KEY: KuA...6dv
+
+================================================================================
+📋 DNS RESOLUTION TEST
+================================================================================
+ℹ️ API Hostname: api.synopticdata.com
+✅ DNS Resolution: Successful
+ℹ️ IP Addresses: ['54.69.226.54', '35.81.203.100']
+
+================================================================================
+📋 API TOKEN TEST
+================================================================================
+ℹ️ Token URL: https://api.synopticdata.com/v2/auth?apikey=KuAerjMkaWLANnz1qvM7hnRiRLNM6vwYannq70v6dv
+ℹ️ Response Time: 0.17 seconds
+ℹ️ Status Code: 200
+ℹ️ Response Headers: {'Date': 'Wed, 16 Apr 2025 13:37:43 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'Access-Control-Max-Age': '3600', 'Access-Control-Allow-Headers': 'X-Version, Content-type, Server, Authorization', 'Access-Control-Allow-Methods': 'GET, PATCH', 'Access-Control-Allow-Origin': '*', 'X-Version': 'v1.6.1', 'Server': 'SynopticCreds'}
+ℹ️ Response Data: {
+  "TOKEN": "0fdcd9a2d7764a2aa38f3985e52245e3"
+}
+✅ Token: 0fdcd9a2d7...
+
+================================================================================
+📋 STATION DATA TEST: C3DLA
+================================================================================
+ℹ️ Request URL: https://api.synopticdata.com/v2/stations/latest?stid=C3DLA&token=0fdcd9a2d7764a2aa38f3985e52245e3
+ℹ️ Response Time: 0.15 seconds
+ℹ️ Status Code: 200
+ℹ️ Response Headers: {'Date': 'Wed, 16 Apr 2025 13:37:44 GMT', 'Content-Type': 'application/json; charset=UTF-8', 'Content-Length': '104', 'Connection': 'keep-alive', 'Server': 'nginx', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-requested-with', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Etag': '"b1e7fa1abbd719e649523da999434ca1daabc281"', 'Vary': 'Accept-Encoding'}
+ℹ️ Response Keys: ['status', 'message']
+❌ STATION Data: Missing
+ℹ️ Response Data: {
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}
+
+================================================================================
+📋 STATION DATA TEST: SEYC1
+================================================================================
+ℹ️ Request URL: https://api.synopticdata.com/v2/stations/latest?stid=SEYC1&token=0fdcd9a2d7764a2aa38f3985e52245e3
+ℹ️ Response Time: 0.15 seconds
+ℹ️ Status Code: 200
+ℹ️ Response Headers: {'Date': 'Wed, 16 Apr 2025 13:37:44 GMT', 'Content-Type': 'application/json; charset=UTF-8', 'Content-Length': '104', 'Connection': 'keep-alive', 'Server': 'nginx', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-requested-with', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Etag': '"b1e7fa1abbd719e649523da999434ca1daabc281"', 'Vary': 'Accept-Encoding'}
+ℹ️ Response Keys: ['status', 'message']
+❌ STATION Data: Missing
+ℹ️ Response Data: {
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}
+
+================================================================================
+📋 STATION DATA TEST: 629PG
+================================================================================
+ℹ️ Request URL: https://api.synopticdata.com/v2/stations/latest?stid=629PG&token=0fdcd9a2d7764a2aa38f3985e52245e3
+ℹ️ Response Time: 0.15 seconds
+ℹ️ Status Code: 200
+ℹ️ Response Headers: {'Date': 'Wed, 16 Apr 2025 13:37:44 GMT', 'Content-Type': 'application/json; charset=UTF-8', 'Content-Length': '104', 'Connection': 'keep-alive', 'Server': 'nginx', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'x-requested-with', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Etag': '"b1e7fa1abbd719e649523da999434ca1daabc281"', 'Vary': 'Accept-Encoding'}
+ℹ️ Response Keys: ['status', 'message']
+❌ STATION Data: Missing
+ℹ️ Response Data: {
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}
+
+================================================================================
+📋 ALL STATIONS TEST: C3DLA,SEYC1,629PG
+================================================================================
+ℹ️ Request URL: https://api.synopticdata.com/v2/stations/latest?stid=C3DLA,SEYC1,629PG&token=0fdcd9a2d7764a2aa38f3985e52245e3
+ℹ️ Status Code: 200
+ℹ️ Response Keys: ['status', 'message']
+❌ STATION Data: Missing
+ℹ️ Response Data: {
+  "status": 403,
+  "message": "Unauthorized. Review your account access settings in the customer console."
+}
+
+================================================================================
+📋 RECOMMENDATIONS
+================================================================================
+
+Based on this diagnostic, you can:
+
+1. Compare these results with the production environment to identify differences
+2. Check the Synoptic Data customer console for account restrictions
+3. Try a different API key if available
+4. Contact Synoptic Data support with these diagnostic results
+
+For additional troubleshooting, you can save this output to a file:
+    python diagnose_api.py > api_diagnostics.txt
+

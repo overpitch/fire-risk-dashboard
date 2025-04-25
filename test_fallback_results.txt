@@ -1,0 +1,49 @@
+Loaded .env file for local development.
+
+================================================================================
+📋 ENVIRONMENT DETECTION
+================================================================================
+Running in DEVELOPMENT mode
+
+================================================================================
+📋 TOKEN ACQUISITION TEST
+================================================================================
+Successfully got API token: True
+Token preview: 8797290796...
+
+================================================================================
+📋 WEATHER DATA TEST
+================================================================================
+Data retrieved: True
+Using fallback data: True
+Number of stations: 3
+Station: C3DLA - Dry Lake
+  - soil_temp: 8.5 C
+  - soil_moisture: 15.3 %
+Station: SEYC1 - Sierraville Ranger Station
+  - air_temp: 18.2 C
+  - relative_humidity: 38.5 %
+Station: 629PG - PG&E Sand Shed
+  - wind_speed: 12.4 mph
+  - wind_gust: 18.3 mph
+
+================================================================================
+📋 SYNOPTIC DATA TEST
+================================================================================
+Synoptic data retrieved: True
+Using fallback data: True
+
+================================================================================
+📋 DETAILED INFORMATION
+================================================================================
+
+Summary Information:
+  - RESPONSE_CODE: 1
+  - RESPONSE_MESSAGE: OK
+  - DATA_TIMESTAMP: 2025-04-16T07:00:00Z
+  - FALLBACK_DATA: True
+
+Fallback data path: /Users/david/Documents/Coding/dev/fire-risk-dashboard/data/synoptic_fallback_data.json
+Fallback data exists: True
+Fallback file size: 1191 bytes
+Last modified: 1744813090.723926

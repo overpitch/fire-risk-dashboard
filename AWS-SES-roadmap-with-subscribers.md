@@ -270,3 +270,54 @@ For anti-spam compliance, consider sending a confirmation email after signup. On
 | Templates           | Jinja2 (for email formatting) |
 
 This subscriber system will let you securely manage your daily distro list with support for user consent, easy opt-out, and automated delivery.
+
+---
+
+## 11. API Reliability and Access Management
+
+The system's ability to send accurate alerts depends critically on reliable access to weather data. Recent diagnostics have identified API access issues that must be addressed:
+
+### 1. Synoptic API Access Restoration (URGENT)
+
+- **Issue Identified**: 403 Forbidden errors when requesting station data despite successful authentication
+- **Error Message**: "Unauthorized. Review your account access settings in the customer console"
+- **Root Causes to Investigate**:
+  - API key permissions may be insufficient for the requested stations
+  - Account subscription may have expired or been downgraded
+  - Station IDs may have changed or are no longer available under current plan
+
+### 2. API Access Management Plan
+
+- **Account Review**:
+  - Log in to Synoptic customer console to review subscription status
+  - Verify that requested stations (C3DLA, SEYC1, 629PG) are available under current plan
+  - Request plan adjustment if necessary to access required stations
+
+- **API Key Management**:
+  - Generate new API key with appropriate permissions
+  - Securely update API key in environment variables (Render and local development)
+  - Implement key rotation schedule to prevent future access issues
+
+- **Error Handling Improvements**:
+  - Enhance error messages to clearly indicate when API access issues occur
+  - Implement more detailed logging to capture specific API response codes
+  - Create admin notification pathway for API subscription/access issues
+
+- **Response Monitoring**:
+  - Add regular checks for API response validity beyond HTTP status codes
+  - Monitor API quota usage to anticipate potential throttling or limits
+  - Create fallback data sources for critical stations when possible
+
+### 3. Implementation Timeline
+
+| Task                                      | Priority | Timeline    |
+|-------------------------------------------|----------|-------------|
+| Console login and subscription validation | Critical | Immediate   |
+| Station access verification               | Critical | Immediate   |
+| API key regeneration and update           | Critical | Immediate   |
+| Enhanced error monitoring                 | High     | 1-2 days    |
+| Admin notification system                 | High     | 2-3 days    |
+| Documentation update                      | Medium   | 1 week      |
+| Long-term monitoring improvements         | Medium   | 2-4 weeks   |
+
+This section addresses critical reliability concerns that directly impact the core functionality of the Fire Risk Dashboard and consequently the email notification system. Resolving these API access issues must be prioritized before proceeding with further email system enhancements.

@@ -1,0 +1,60 @@
+{
+  "STATION": [
+    {
+      "STID": "C3DLA",
+      "NAME": "Dry Lake",
+      "LATITUDE": 39.52,
+      "LONGITUDE": -120.08,
+      "ELEVATION": 6700,
+      "SENSOR_VARIABLES": {
+        "soil_temp": {
+          "value": 8.5,
+          "unit": "C"
+        },
+        "soil_moisture": {
+          "value": 15.3,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "STID": "SEYC1",
+      "NAME": "Sierraville Ranger Station",
+      "LATITUDE": 39.58,
+      "LONGITUDE": -120.37,
+      "ELEVATION": 4950,
+      "SENSOR_VARIABLES": {
+        "air_temp": {
+          "value": 18.2,
+          "unit": "C"
+        },
+        "relative_humidity": {
+          "value": 38.5,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "STID": "629PG",
+      "NAME": "PG&E Sand Shed",
+      "LATITUDE": 39.32,
+      "LONGITUDE": -120.41,
+      "ELEVATION": 6800,
+      "SENSOR_VARIABLES": {
+        "wind_speed": {
+          "value": 12.4,
+          "unit": "mph"
+        },
+        "wind_gust": {
+          "value": 18.3,
+          "unit": "mph"
+        }
+      }
+    }
+  ],
+  "SUMMARY": {
+    "RESPONSE_CODE": 1,
+    "RESPONSE_MESSAGE": "OK",
+    "DATA_TIMESTAMP": "2025-04-16T07:00:00Z"
+  }
+}
