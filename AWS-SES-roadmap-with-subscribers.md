@@ -125,6 +125,12 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
 
 ## 6. Testing Strategy
 
+- **Admin UI Email Testing Functionality:** [PENDING]
+  - Add a dedicated section in the Admin UI for testing email alerts.
+  - Implement controls to simulate Orange-to-Red transitions without affecting the public dashboard.
+  - Create an interface to send test emails to verified subscribers.
+  - Add a log of test email activity for monitoring and debugging.
+
 - **Email Template Testing:**
   - Test templates across major email clients (Gmail, Outlook, Apple Mail).
   - Verify mobile display of all templates.
@@ -139,7 +145,7 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Test subscriber database performance with realistic data volumes.
 
 - **End-to-End Testing:**
-  - Create automated tests covering the complete notification workflow.
+  - Create automated tests covering the complete notification workflow. [COMPLETED - Basic test for Orange-to-Red transition implemented]
   - Test all subscription management functions.
 
 ---

@@ -134,7 +134,14 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                 logger.info(f"Risk transition detected: {previous_risk} -> {risk}. Preparing alert.")
                 try:
                     # 1. Get active subscribers
-                    recipients = get_active_subscribers()
+                    subscribers_result = get_active_subscribers()
+
+                    # Check for error in subscribers result
+                    if "error" in subscribers_result:
+                        logger.error(f"Failed to get subscribers: {subscribers_result['error']}")
+                        recipients = []
+                    else:
+                        recipients = subscribers_result.get("subscribers", [])
 
                     if not recipients:
                         logger.warning("Orange-to-Red transition detected, but no active subscribers found.")

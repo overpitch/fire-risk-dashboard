@@ -34,13 +34,13 @@
             </ul>
             <p>Please exercise extreme caution and stay informed about local conditions and potential evacuation orders.</p>
             <p>For the latest detailed information, safety recommendations, and real-time updates, please consult the official Fire Risk Dashboard:</p>
-            <p><a href="{{ dashboard_url | default('#') }}">Visit the Dashboard</a></p>
+            <p><a href="{{ dashboard_url | default('https://scfireweather.org/dashboard.html') }}">Visit the Dashboard</a></p>
             <p>Stay safe,</p>
             <p><em>Sierra City Fire Weather Advisory</em></p>
         </div>
         <div class="footer">
             <p>You are receiving this alert because you subscribed to Sierra City Fire Weather Advisories.</p>
-            <p><a href="#unsubscribe_link">Unsubscribe</a></p> {# TODO: Replace #unsubscribe_link with actual unsubscribe URL logic #}
+            <p><a href="mailto:info@scfireweather.org?subject=UNSUBSCRIBE">Unsubscribe</a></p>
         </div>
     </div>
 </body>

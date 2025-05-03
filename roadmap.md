@@ -325,7 +325,14 @@
    - [ ] Add configurable PIN complexity requirements
    - [ ] Implement PIN reset functionality for administrators
 
-3. **Email Subscriber Management Integration (Future Implementation)**
+3. **Email Alert Testing Admin Interface (Future Implementation)**
+   - [ ] Create a dedicated admin UI section for testing email alerts
+   - [ ] Implement controls to simulate Orange-to-Red risk level transitions
+   - [ ] Add functionality to send test emails to selected subscribers
+   - [ ] Implement logging of test email activity for monitoring
+   - [ ] Ensure test emails are clearly marked as test messages
+
+4. **Email Subscriber Management Integration (Future Implementation)**
    - [ ] Integrate with the subscriber management system outlined in AWS-SES-roadmap
    - [ ] Enhance the UI for managing email subscribers
    - [ ] Implement secure API endpoints for subscriber operations

@@ -129,8 +129,9 @@ def send_orange_to_red_alert(recipients, weather_data):
             # TODO: Create 'orange_to_red_alert.html' and 'orange_to_red_alert.txt' in ./templates/
             html_template = jinja_env.get_template('orange_to_red_alert.html')
             text_template = jinja_env.get_template('orange_to_red_alert.txt')
-            body_html = html_template.render(weather=weather_data, dashboard_url="[Link to Dashboard]") # Replace with actual URL
-            body_text = text_template.render(weather=weather_data, dashboard_url="[Link to Dashboard]") # Replace with actual URL
+            dashboard_url = "https://scfireweather.org/dashboard.html"
+            body_html = html_template.render(weather=weather_data, dashboard_url=dashboard_url)
+            body_text = text_template.render(weather=weather_data, dashboard_url=dashboard_url)
         except Exception as e:
             print(f"Error rendering email templates: {e}")
             # Consider fallback mechanism here as well
@@ -151,26 +152,45 @@ def send_test_email(recipient):
     return send_email(sender, [recipient], subject, body_text)
 
 
+def send_test_orange_to_red_alert(recipient_email):
+    """
+    Sends a test Orange to Red alert email to a specified recipient.
+    This is useful for testing the email templates and AWS SES connectivity.
+
+    Args:
+        recipient_email (str): The email address to send the test alert to.
+
+    Returns:
+        str: The message ID if successful, None otherwise.
+    """
+    # Sample weather data for testing
+    test_weather_data = {
+        'temperature': '32°C (90°F)',
+        'humidity': '12%',
+        'wind_speed': '25 mph',
+        'wind_gust': '35 mph',
+        'soil_moisture': '8%'
+    }
+
+    print(f"Sending test Orange to Red alert email to {recipient_email}...")
+    return send_orange_to_red_alert([recipient_email], test_weather_data)
+
+
 if __name__ == '__main__':
     # Example usage for direct testing
-    TEST_RECIPIENT = "info@scfireweather.org" # Replace with a verified recipient for testing
+    TEST_RECIPIENT = "overpitch@icloud.com"  # Default test recipient
 
     if not all([AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
         print("Error: AWS credentials or region not found in environment variables.")
     else:
-        # Test the basic send_test_email
-        # send_test_email(TEST_RECIPIENT)
-
-        # Test the orange_to_red_alert (using dummy data and fallback text for now)
-        print("\nAttempting to send Orange-to-Red alert (using fallback text)...")
-        dummy_weather = {
-            'temperature': '95F',
-            'humidity': '15%',
+        # Test the orange_to_red_alert with templates
+        print("\nAttempting to send Orange-to-Red alert with templates...")
+        test_weather_data = {
+            'temperature': '32°C (90°F)',
+            'humidity': '12%',
             'wind_speed': '25 mph',
-            'soil_moisture': 'Very Low'
+            'wind_gust': '35 mph',
+            'soil_moisture': '8%'
         }
-        # Temporarily disable template loading for this test if templates don't exist
-        original_jinja_env = jinja_env
-        jinja_env = None
-        send_orange_to_red_alert([TEST_RECIPIENT], dummy_weather)
-        jinja_env = original_jinja_env # Restore env
+        
+        send_orange_to_red_alert([TEST_RECIPIENT], test_weather_data)
