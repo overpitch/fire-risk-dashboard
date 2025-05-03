@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Admin Portal - Fire Weather Advisory</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href='/static/synoptic-logo.css' rel='stylesheet'>
+    <style>
+        /* Custom toggle colors for Test Mode */
+        .form-check-input.normal-mode {
+            background-color: #198754; /* Bootstrap green */
+            border-color: #198754;
+        }
+
+        .form-check-input.test-mode {
+            background-color: #dc3545; /* Bootstrap red */
+            border-color: #dc3545;
+        }
+        
+        /* PIN input styling */
+        .pin-digit {
+            width: 50px;
+            height: 60px;
+            font-size: 24px;
+            text-align: center;
+            margin: 0 5px;
+        }
+        
+        .pin-display {
+            letter-spacing: 5px;
+            font-family: monospace;
+            font-size: 24px;
+        }
+        
+        .numpad {
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+        .numpad-btn {
+            width: 70px;
+            height: 70px;
+            margin: 5px;
+            font-size: 24px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary" style="background-color: #003366 !important;">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                Fire Weather Advisory — Sierra City, CA
+            </a>
+            <span class="navbar-text text-light ms-auto">
+                Admin Portal
+            </span>
+            <a class="navbar-brand fw-bold ms-3" href="/">
+                <small>Back to Dashboard</small>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- PIN Entry Interface -->
+        <div id="pinPrompt" class="card mb-4">
+            <div class="card-header">Admin Access Required</div>
+            <div class="card-body">
+                <p>Please enter the Admin PIN to access the portal.</p>
+                
+                <div class="mb-3 text-center">
+                    <div class="pin-display p-2 border rounded mb-3" id="pinDisplay">****</div>
+                    
+                    <div class="numpad">
+                        <div class="d-flex justify-content-center mb-2">
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('1')">1</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('2')">2</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('3')">3</button>
+                        </div>
+                        <div class="d-flex justify-content-center mb-2">
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('4')">4</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('5')">5</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('6')">6</button>
+                        </div>
+                        <div class="d-flex justify-content-center mb-2">
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('7')">7</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('8')">8</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('9')">9</button>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                            <button class="btn btn-danger numpad-btn" onclick="clearPin()">C</button>
+                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('0')">0</button>
+                            <button class="btn btn-success numpad-btn" onclick="submitPin()">✓</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="pinError" class="alert alert-danger mt-3" style="display: none;">
+                    Invalid PIN. Please try again.
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Content (initially hidden) -->
+        <div id="adminContent" style="display: none;">
+            <h2 class="mb-4">Admin Dashboard</h2>
+
+            <!-- Test Mode Toggle -->
+            <div class="card mb-4">
+                <div class="card-header">System Settings</div>
+                <div class="card-body">
+                    <h5 class="card-title">Test Mode</h5>
+                    <p class="card-text">Toggle between normal operation and test mode. Test mode uses cached data to simulate a system with limited connectivity.</p>
+                    
+                    <div class="form-check form-switch d-flex align-items-center mb-3">
+                        <span class="me-3" style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
+                        <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle"
+                            style="cursor: pointer; margin-left: 0;">
+                        <label class="form-check-label ms-2" for="testModeToggle"
+                            style="font-size: 0.9rem;">Test</label>
+                    </div>
+                    <p id="testModeStatus">Current mode: <span class="badge bg-success">NORMAL</span></p>
+                    <div id="testModeResponse" class="alert" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Subscriber Management Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Subscriber List Management
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Email Subscribers</h5>
+                    <p class="card-text">Manage email addresses that will receive notifications when weather conditions warrant alerts.</p>
+                    
+                    <!-- Import Subscribers -->
+                    <div class="mb-4">
+                        <h6>Import Subscribers</h6>
+                        <p>Upload a CSV (with 'email' header) or XLSX (no header, emails in first column) file to add subscribers to the notification list.</p>
+                        <div class="mb-3">
+                            <label for="subscriberFile" class="form-label">Select File</label>
+                            <input class="form-control" type="file" id="subscriberFile" accept=".csv, .xlsx">
+                        </div>
+                        <button id="importButton" class="btn btn-primary" onclick="importSubscribers()">Import List</button>
+                        <div id="importFeedback" class="mt-2"></div>
+                    </div>
+                    
+                    <!-- Add Single Subscriber -->
+                    <div class="mb-4">
+                        <h6>Add Single Subscriber</h6>
+                        <div class="input-group mb-3">
+                            <input type="email" class="form-control" id="singleEmail" placeholder="email@example.com">
+                            <button class="btn btn-outline-primary" type="button" id="addSingleEmailBtn">Add</button>
+                        </div>
+                        <div id="singleEmailFeedback"></div>
+                    </div>
+                    
+                    <!-- Active Subscribers List -->
+                    <div class="mt-4">
+                        <h6>Active Subscribers</h6>
+                        <div id="subscriberList" class="border rounded p-3">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading subscribers...</span>
+                                </div>
+                                <p>Loading subscribers...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Information -->
+            <div class="card mb-4">
+                <div class="card-header">System Information</div>
+                <div class="card-body">
+                    <h5 class="card-title">System Status</h5>
+                    <div id="systemStatus" class="mb-3">
+                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
+                            <span>Server Status:</span>
+                            <span><span class="badge bg-success">Online</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
+                            <span>API Connectivity:</span>
+                            <span><span class="badge bg-success">Connected</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
+                            <span>Last Data Update:</span>
+                            <span id="lastDataUpdate">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-outline-secondary" id="refreshSystemStatus">Refresh Status</button>
+                </div>
+            </div>
+        </div>
+    </div> <!-- Close container -->
+
+    <script>
+        // PIN handling
+        let currentPin = '';
+        const correctPin = '1446'; // Hard-coded for now, will be made admin-resettable later
+        
+        function addPinDigit(digit) {
+            if (currentPin.length < 4) {
+                currentPin += digit;
+                updatePinDisplay();
+                
+                // Auto-submit if we have 4 digits
+                if (currentPin.length === 4) {
+                    setTimeout(submitPin, 300); // Small delay for better UX
+                }
+            }
+        }
+        
+        function clearPin() {
+            currentPin = '';
+            updatePinDisplay();
+            document.getElementById('pinError').style.display = 'none';
+        }
+        
+        function updatePinDisplay() {
+            let displayText = '';
+            for (let i = 0; i < 4; i++) {
+                if (i < currentPin.length) {
+                    displayText += '•'; // Use bullet character instead of actual number for security
+                } else {
+                    displayText += '*';
+                }
+            }
+            document.getElementById('pinDisplay').textContent = displayText;
+        }
+        
+        function submitPin() {
+            if (currentPin === correctPin) {
+                // PIN is correct
+                document.getElementById('pinPrompt').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+                
+                // Initialize admin content
+                initializeAdminContent();
+            } else {
+                // PIN is incorrect
+                document.getElementById('pinError').style.display = 'block';
+                
+                // Clear the PIN after a brief delay
+                setTimeout(clearPin, 500);
+                
+                // Add security delay to prevent brute force
+                disableNumpad(1500);
+            }
+        }
+        
+        function disableNumpad(duration) {
+            const buttons = document.querySelectorAll('.numpad-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            setTimeout(() => {
+                buttons.forEach(btn => btn.disabled = false);
+            }, duration);
+        }
+        
+        // Initialize admin content
+        function initializeAdminContent() {
+            // Initialize the test mode toggle
+            const testModeToggle = document.getElementById('testModeToggle');
+            
+            // Get current test mode status
+            fetchTestModeStatus().then(isTestMode => {
+                testModeToggle.checked = isTestMode;
+                updateTestModeUI(isTestMode);
+            });
+            
+            // Add event listener for toggle changes
+            testModeToggle.addEventListener('change', function() {
+                const isEnabled = this.checked;
+                toggleTestMode(isEnabled);
+            });
+            
+            // Load subscriber list
+            loadSubscribers();
+            
+            // Initialize system status
+            updateSystemStatus();
+            
+            // Add event listener for system status refresh
+            document.getElementById('refreshSystemStatus').addEventListener('click', updateSystemStatus);
+            
+            // Add event listener for adding single email
+            document.getElementById('addSingleEmailBtn').addEventListener('click', addSingleSubscriber);
+        }
+        
+        // Test Mode functions
+        async function fetchTestModeStatus() {
+            try {
+                const response = await fetch('/api/test-mode-status');
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                const data = await response.json();
+                return data.testModeEnabled || false;
+            } catch (error) {
+                console.error('Error fetching test mode status:', error);
+                return false; // Default to normal mode on error
+            }
+        }
+        
+        async function toggleTestMode(enable) {
+            try {
+                // Disable toggle while request is in progress
+                const toggle = document.getElementById('testModeToggle');
+                toggle.disabled = true;
+                
+                const response = await fetch('/toggle-test-mode?enable=' + enable);
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Show response message
+                const responseDiv = document.getElementById('testModeResponse');
+                responseDiv.innerHTML = data.message;
+                responseDiv.className = 'alert ' + (data.status === 'success' ? 'alert-success' : 'alert-danger');
+                responseDiv.style.display = 'block';
+                
+                // Update UI
+                updateTestModeUI(enable);
+                
+                // Re-enable toggle
+                toggle.disabled = false;
+                
+                // Hide message after delay
+                setTimeout(() => {
+                    responseDiv.style.display = 'none';
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Error toggling test mode:', error);
+                
+                // Show error
+                const responseDiv = document.getElementById('testModeResponse');
+                responseDiv.innerHTML = 'Error: Failed to toggle test mode. Please try again.';
+                responseDiv.className = 'alert alert-danger';
+                responseDiv.style.display = 'block';
+                
+                // Reset toggle to original state
+                document.getElementById('testModeToggle').checked = !enable;
+                updateTestModeUI(!enable);
+                
+                // Re-enable toggle
+                document.getElementById('testModeToggle').disabled = false;
+            }
+        }
+        
+        function updateTestModeUI(isTestMode) {
+            const toggle = document.getElementById('testModeToggle');
+            const status = document.getElementById('testModeStatus');
+            
+            if (isTestMode) {
+                toggle.classList.remove('normal-mode');
+                toggle.classList.add('test-mode');
+                status.innerHTML = 'Current mode: <span class="badge bg-danger">TEST</span>';
+            } else {
+                toggle.classList.remove('test-mode');
+                toggle.classList.add('normal-mode');
+                status.innerHTML = 'Current mode: <span class="badge bg-success">NORMAL</span>';
+            }
+        }
+        
+        // Subscriber management functions
+        async function loadSubscribers() {
+            try {
+                // In a real implementation, this would fetch from your backend
+                const subscriberList = document.getElementById('subscriberList');
+                
+                // Simulate loading
+                setTimeout(() => {
+                    subscriberList.innerHTML = '<p class="text-muted">Subscriber management will be implemented in the next task.</p>';
+                }, 1000);
+            } catch (error) {
+                console.error('Error loading subscribers:', error);
+                document.getElementById('subscriberList').innerHTML = 
+                    '<div class="alert alert-danger">Failed to load subscribers. Please try again later.</div>';
+            }
+        }
+        
+        async function importSubscribers() {
+            const fileInput = document.getElementById('subscriberFile');
+            const feedbackDiv = document.getElementById('importFeedback');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please select a file to import.</div>';
+                return;
+            }
+            
+            // In a real implementation, this would upload to your backend
+            feedbackDiv.innerHTML = '<div class="alert alert-info">Subscriber import will be implemented in the next task.</div>';
+        }
+        
+        async function addSingleSubscriber() {
+            const emailInput = document.getElementById('singleEmail');
+            const feedbackDiv = document.getElementById('singleEmailFeedback');
+            
+            if (!emailInput.value) {
+                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please enter an email address.</div>';
+                return;
+            }
+            
+            // Validate email
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(emailInput.value)) {
+                feedbackDiv.innerHTML = '<div class="alert alert-danger">Please enter a valid email address.</div>';
+                return;
+            }
+            
+            // In a real implementation, this would save to your backend
+            feedbackDiv.innerHTML = '<div class="alert alert-info">Adding single subscribers will be implemented in the next task.</div>';
+        }
+        
+        // System status functions
+        async function updateSystemStatus() {
+            const lastUpdateSpan = document.getElementById('lastDataUpdate');
+            
+            // In a real implementation, this would fetch from your backend
+            // For now, just show current time
+            const now = new Date();
+            lastUpdateSpan.textContent = now.toLocaleString();
+        }
+    </script>
+</body>
+
+</html>

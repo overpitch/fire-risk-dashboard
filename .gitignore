@@ -29,3 +29,6 @@ Feedback/
 email.txt
 WX URL.docx
 ~*.doc*
+
+# Ignore everything in the Ignore folder
+Ignore/

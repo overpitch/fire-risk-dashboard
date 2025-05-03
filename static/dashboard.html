@@ -720,16 +720,9 @@
 
         // Auto-refresh functionality
         function setupRefresh() {
-            // Set up the test mode toggle event listener
-            const testModeToggle = document.getElementById('testModeToggle');
-            testModeToggle.addEventListener('change', function () {
-                toggleTestMode(this.checked);
-            });
-
-            // Always start in normal mode
-            testModeToggle.checked = false;
-            testModeToggle.classList.add('normal-mode');
-
+            // Test mode toggle has been moved to admin page
+            // No need to initialize it here anymore
+            
             // Clear any previously saved test mode state from localStorage
             localStorage.removeItem('testModeEnabled');
 
@@ -763,16 +756,6 @@
                 Fire Weather Advisory — Sierra City, CA
             </a>
             <div class="d-flex align-items-center">
-                <div class="ms-auto d-flex align-items-center me-3">
-                    <div class="form-check form-switch d-flex align-items-center">
-                        <span class="text-light me-3"
-                            style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
-                        <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle"
-                            style="cursor: pointer; margin-left: 0;">
-                        <label class="form-check-label text-light ms-2" for="testModeToggle"
-                            style="font-size: 0.9rem;">Test</label>
-                    </div>
-                </div>
                 <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#aboutUsModal">About
                     Us</button>
             </div>
@@ -844,6 +827,7 @@
                             contact us at <a href="mailto:info@scfireweather.org">info@scfireweather.org</a>.</p>
                     </div>
                     <div class="modal-footer">
+                        <a href="/admin" class="btn btn-outline-primary me-auto">Admin utilities</a>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>

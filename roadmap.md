@@ -9,6 +9,7 @@
 - **Phase 4.5**: 🔄 Cache System Simplification (In progress - URGENT)
 - **Phase 5**: ⏱️ Performance optimizations (Not started)
 - **Phase 6**: ⏱️ Deployment improvements (Not started)
+- **Phase 7**: 🔄 Admin Interface & Security Enhancements (Phase 1 completed)
 
 ---
 
@@ -295,6 +296,47 @@
 - Deployment process is streamlined
 - Monitoring and logging are enhanced
 - The application is reliable and scalable
+
+---
+
+## Phase 7: Admin Interface & Security Enhancements
+**Status**: 🔄 In progress
+
+**Objectives**:
+- Hide administrative functions behind a protected admin interface
+- Move the Test/Normal toggle to the admin page
+- Make the admin page accessible via an "Admin utilities" link
+- Implement production-grade security for the admin PIN
+- Prepare the admin page for future email subscriber management
+
+**Tasks**:
+1. **Initial Admin Page & Toggle Migration**
+   - [x] Create admin-security.md documentation file
+   - [x] Move the Test/Normal toggle from dashboard.html to admin.html
+   - [x] Add "Admin utilities" link to the About Us modal footer
+   - [x] Ensure PIN protection (1446) is properly implemented
+   - [x] Remove current Test/Normal toggle from dashboard.html
+   - [x] Test functionality to ensure the toggle works correctly
+
+2. **Admin Security Hardening (Future Implementation)**
+   - [ ] Move PIN from hardcoded values to environment variables
+   - [ ] Implement proper salted password hashing with bcrypt or Argon2
+   - [ ] Enhance session management and token security
+   - [ ] Add configurable PIN complexity requirements
+   - [ ] Implement PIN reset functionality for administrators
+
+3. **Email Subscriber Management Integration (Future Implementation)**
+   - [ ] Integrate with the subscriber management system outlined in AWS-SES-roadmap
+   - [ ] Enhance the UI for managing email subscribers
+   - [ ] Implement secure API endpoints for subscriber operations
+   - [ ] Add data validation for subscriber information
+
+**Completion Criteria**:
+- Admin page is accessible via "Admin utilities" link in About Us modal
+- PIN protection is working securely
+- Test/Normal toggle is moved from dashboard to admin page
+- All functionality works correctly
+- Security considerations are documented for future implementation
 
 ---
 

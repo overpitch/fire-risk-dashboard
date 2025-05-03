@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Dict, Any
 import os
@@ -9,9 +9,6 @@ from config import logger, TIMEZONE
 from cache import data_cache
 from cache_refresh import refresh_data_cache
 from data_processing import format_age_string
-
-# Create the FastAPI app
-app = FastAPI()
 
 # Create a router for the main endpoints
 router = APIRouter()
@@ -269,8 +266,8 @@ def home():
     <p>The dashboard HTML file could not be loaded.</p>
 </body>
 </html>"""
-# Include the router in the app
-app.include_router(router)
+# Router is included in main.py, not here
+# app.include_router(router)
 
 
 @router.get("/toggle-test-mode", response_class=JSONResponse)

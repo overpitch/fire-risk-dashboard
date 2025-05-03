@@ -8,6 +8,7 @@ from cache import data_cache
 from cache_refresh import refresh_data_cache
 from endpoints import router as main_router
 from dev_endpoints import router as dev_router
+from admin_endpoints import router as admin_router
 
 # Create a lifespan context manager for application startup and shutdown
 @asynccontextmanager
@@ -45,12 +46,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the main router
-app.include_router(main_router)
+# Include routers with explicit route prefixes for clarity
+app.include_router(main_router, prefix="")  # Main router handles root paths like / and /fire-risk
+
+# Include the admin router (stays at its own paths)
+app.include_router(admin_router, prefix="")
 
 # Include the development router only in development mode
 if not IS_PRODUCTION:
-    app.include_router(dev_router)
+    app.include_router(dev_router, prefix="/dev")
     logger.info("Development endpoints enabled")
 else:
     logger.info("Running in production mode - development endpoints disabled")
+
+# Log all registered routes for debugging
+for route in app.routes:
+    logger.info(f"Registered route: {route.path}")
