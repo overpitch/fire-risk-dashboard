@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester</title>
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <style>
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Fire Risk Dashboard API Tester</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">Subscriber List Import Tester</div>
+            <div class="card-body">
+                <form id="subscriberForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="subscriberFile" class="form-label">Select CSV/XLSX File</label>
+                        <input type="file" class="form-control" id="subscriberFile" name="file" accept=".csv, .xlsx, .xls">
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="includeCookies" checked>
+                        <label class="form-check-label" for="includeCookies">
+                            Include Cookies
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+                
+                <div class="mt-3">
+                    <h5>Current Cookies:</h5>
+                    <pre id="currentCookies">Loading...</pre>
+                    
+                    <h5 class="mt-3">Response:</h5>
+                    <pre id="responseOutput">No request sent yet</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">Cookie Management</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="manualCookie" class="form-label">Set Manual Session Token</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="manualCookie" placeholder="Enter session token value">
+                        <button class="btn btn-outline-secondary" type="button" id="setCookieBtn">Set Cookie</button>
+                    </div>
+                    <div class="form-text">This will create a 'session_token' cookie with the value you provide.</div>
+                </div>
+                
+                <button id="clearCookiesBtn" class="btn btn-danger">Clear All Cookies</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Display current cookies on load
+        document.getElementById('currentCookies').textContent = document.cookie || "No cookies found";
+        
+        // Form submission
+        document.getElementById('subscriberForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('subscriberFile');
+            const responseOutput = document.getElementById('responseOutput');
+            const includeCookies = document.getElementById('includeCookies').checked;
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                responseOutput.textContent = "Please select a file first.";
+                return;
+            }
+            
+            responseOutput.textContent = "Uploading...";
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                // Make the request
+                const response = await fetch('/admin/import-subscribers', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: includeCookies ? 'include' : 'omit'
+                });
+                
+                // Get response as text first (safer)
+                const responseText = await response.text();
+                
+                // Try to parse as JSON if possible
+                try {
+                    const responseJson = JSON.parse(responseText);
+                    responseOutput.textContent = JSON.stringify(responseJson, null, 2);
+                } catch (e) {
+                    // If not valid JSON, just display the text
+                    responseOutput.textContent = responseText;
+                }
+                
+                // Update cookie display
+                document.getElementById('currentCookies').textContent = document.cookie || "No cookies found";
+                
+            } catch (error) {
+                responseOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        // Set cookie manually
+        document.getElementById('setCookieBtn').addEventListener('click', function() {
+            const tokenValue = document.getElementById('manualCookie').value.trim();
+            if (tokenValue) {
+                document.cookie = `session_token=${tokenValue}; path=/;`;
+                document.getElementById('currentCookies').textContent = document.cookie;
+                document.getElementById('manualCookie').value = '';
+            }
+        });
+        
+        // Clear all cookies
+        document.getElementById('clearCookiesBtn').addEventListener('click', function() {
+            // Get all cookies and delete them
+            const cookies = document.cookie.split(";");
+            
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;";
+            }
+            
+            document.getElementById('currentCookies').textContent = document.cookie || "No cookies found";
+        });
+    </script>
+</body>
+</html>

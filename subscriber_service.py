@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from typing import Dict, List, Tuple
 from config import logger
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'subscribers.db')
@@ -142,6 +143,117 @@ def get_active_subscribers() -> list[str]:
             conn.close()
             logger.debug("Database connection closed after fetching subscribers.")
     return subscribers
+
+def clear_all_subscribers() -> bool:
+    """
+    Removes all subscribers from the database.
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    if not conn:
+        logger.error("Failed to connect to database when clearing subscribers")
+        return False
+    
+    success = False
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM subscribers;")
+        conn.commit()
+        count = cursor.rowcount
+        logger.info(f"Cleared {count} subscribers from database")
+        success = True
+    except sqlite3.Error as e:
+        logger.error(f"Error clearing subscribers: {e}")
+    finally:
+        conn.close()
+        logger.debug("Database connection closed after clearing subscribers")
+    return success
+
+def bulk_import_subscribers(emails: List[str]) -> Dict:
+    """
+    Replace existing subscribers with a new list.
+    
+    Args:
+        emails: List of validated email addresses
+        
+    Returns:
+        Dict with import statistics
+    """
+    stats = {
+        "total_processed": len(emails),
+        "imported": 0,
+        "failed": 0
+    }
+    
+    # First clear the existing subscribers
+    if not clear_all_subscribers():
+        logger.error("Failed to clear existing subscribers before import")
+        return {
+            "error": "Failed to clear existing subscribers",
+            **stats
+        }
+    
+    # If no emails to import, we're done
+    if not emails:
+        logger.info("No emails to import after clearing subscribers")
+        return stats
+    
+    # Get database connection
+    conn = get_db_connection()
+    if not conn:
+        logger.error("Failed to connect to database for bulk import")
+        return {
+            "error": "Database connection failed",
+            **stats
+        }
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Prepare for bulk insert
+        for email in emails:
+            # Skip empty emails
+            if not email or not isinstance(email, str):
+                logger.warning(f"Skipping invalid email: {email}")
+                stats["failed"] += 1
+                continue
+                
+            # Skip whitespace-only emails
+            if email.strip() == "":
+                logger.warning("Skipping empty email string")
+                stats["failed"] += 1
+                continue
+                
+            try:
+                # Insert new subscriber
+                cursor.execute(
+                    "INSERT INTO subscribers (email, is_subscribed) VALUES (?, TRUE);",
+                    (email,)
+                )
+                stats["imported"] += 1
+            except sqlite3.Error as e:
+                logger.error(f"Error importing subscriber {email}: {e}")
+                stats["failed"] += 1
+        
+        # Commit all changes
+        conn.commit()
+        logger.info(f"Bulk import complete: {stats['imported']} subscribers imported, {stats['failed']} failed")
+        
+    except sqlite3.Error as e:
+        logger.error(f"Error during bulk import: {e}")
+        # Roll back changes if there was an error
+        conn.rollback()
+        return {
+            "error": f"Database error during import: {str(e)}",
+            **stats
+        }
+    finally:
+        conn.close()
+        logger.debug("Database connection closed after bulk import")
+    
+    return stats
 
 # --- Initialization ---
 # Ensure the table exists when the module is imported/app starts

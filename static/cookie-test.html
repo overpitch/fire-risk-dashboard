@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cookie Debug Tool</h1>
+    
+    <div class="card">
+        <h2>Current Cookies</h2>
+        <pre id="currentCookies">Loading...</pre>
+        <button onclick="refreshCookies()">Refresh Cookies</button>
+    </div>
+
+    <div class="card">
+        <h2>Test Authentication</h2>
+        <button onclick="checkAuth()">Check Authentication Status</button>
+        <pre id="authResult">Not checked yet</pre>
+    </div>
+
+    <div class="card">
+        <h2>Debug Information</h2>
+        <button onclick="checkTestMode()">Check Test Mode</button>
+        <pre id="testModeResult">Not checked yet</pre>
+    </div>
+
+    <script>
+        // Display current cookies
+        function refreshCookies() {
+            document.getElementById('currentCookies').textContent = document.cookie || "No cookies found";
+        }
+        
+        // Call it on page load
+        refreshCookies();
+
+        // Test authentication status
+        async function checkAuth() {
+            try {
+                const result = document.getElementById('authResult');
+                result.textContent = "Checking...";
+                
+                const response = await fetch('/admin/subscribers', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.textContent = `Authenticated! Found ${data.subscribers.length} subscribers.`;
+                } else {
+                    const errorData = await response.json();
+                    result.textContent = `Not authenticated: ${response.status} - ${errorData.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                document.getElementById('authResult').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Check test mode status
+        async function checkTestMode() {
+            try {
+                const result = document.getElementById('testModeResult');
+                result.textContent = "Checking...";
+                
+                const response = await fetch('/api/test-mode-status');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.textContent = `Test mode is ${data.testModeEnabled ? 'ENABLED' : 'DISABLED'}`;
+                } else {
+                    result.textContent = `Error checking test mode: ${response.status}`;
+                }
+            } catch (error) {
+                document.getElementById('testModeResult').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

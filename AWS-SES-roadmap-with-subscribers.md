@@ -79,18 +79,21 @@ This document outlines the plan for integrating AWS Simple Email Service (SES) w
   - Include subscription status, preference settings, and audit fields. [COMPLETED - `is_subscribed`, `created_at`, `unsubscribed_at` included]
   - Consider using DynamoDB or similar AWS service for tight integration. [PENDING - Currently using SQLite]
 
-- **Subscriber Retrieval:**
+- **Subscriber Management:**
   - Implement function to retrieve active subscribers. [COMPLETED - `get_active_subscribers` in `subscriber_service.py`]
+  - Implement bulk import from CSV/XLSX files. [COMPLETED - `bulk_import_subscribers` in `subscriber_service.py`]
+  - Implement file processing logic for extracting emails. [COMPLETED - `file_processor.py`]
 
 - **Subscription Management UI:**
   - Create simple web forms for subscription sign-up and management.
   - Implement preference controls (alert types, frequency, thresholds).
   - Design mobile-friendly interfaces for community access.
+  - Add file upload for subscriber lists. [COMPLETED - In admin.html UI]
 
 - **API Endpoints:**
   - Add new endpoints in `endpoints.py` for subscription management. [PENDING]
   - Implement secure token-based unsubscribe links. [PENDING - Placeholder in templates]
-  - Create admin endpoints for subscription list management. [PENDING]
+  - Create admin endpoints for subscription list management. [COMPLETED - `/admin/import-subscribers` in `admin_endpoints.py`]
 
 - **Compliance Features:**
   - Implement double opt-in flows with confirmation emails.

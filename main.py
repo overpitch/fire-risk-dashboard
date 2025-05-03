@@ -38,9 +38,11 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
+# Using "*" for origins with allow_credentials=True is not allowed by browsers
+# so we specify the origin explicitly
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8000", "https://fire-risk-dashboard.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

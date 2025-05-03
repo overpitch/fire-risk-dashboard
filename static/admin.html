@@ -142,10 +142,13 @@
                     <!-- Import Subscribers -->
                     <div class="mb-4">
                         <h6>Import Subscribers</h6>
-                        <p>Upload a CSV (with 'email' header) or XLSX (no header, emails in first column) file to add subscribers to the notification list.</p>
+                        <p>Upload a CSV or XLSX file containing email addresses. The system will look for a column with "email" in the header, or use the first column if no header is found.</p>
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> Importing a new subscriber list will replace all existing subscribers.
+                        </div>
                         <div class="mb-3">
                             <label for="subscriberFile" class="form-label">Select File</label>
-                            <input class="form-control" type="file" id="subscriberFile" accept=".csv, .xlsx">
+                            <input class="form-control" type="file" id="subscriberFile" accept=".csv, .xlsx, .xls">
                         </div>
                         <button id="importButton" class="btn btn-primary" onclick="importSubscribers()">Import List</button>
                         <div id="importFeedback" class="mt-2"></div>
@@ -317,7 +320,9 @@
                 const toggle = document.getElementById('testModeToggle');
                 toggle.disabled = true;
                 
-                const response = await fetch('/toggle-test-mode?enable=' + enable);
+                const response = await fetch('/toggle-test-mode?enable=' + enable, {
+                    credentials: 'include' // Include session cookies
+                });
                 if (!response.ok) {
                     throw new Error(`HTTP error ${response.status}`);
                 }
@@ -377,13 +382,65 @@
         // Subscriber management functions
         async function loadSubscribers() {
             try {
-                // In a real implementation, this would fetch from your backend
                 const subscriberList = document.getElementById('subscriberList');
                 
-                // Simulate loading
-                setTimeout(() => {
-                    subscriberList.innerHTML = '<p class="text-muted">Subscriber management will be implemented in the next task.</p>';
-                }, 1000);
+                // Show loading state
+                subscriberList.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading subscribers...</span>
+                        </div>
+                        <p>Loading subscribers...</p>
+                    </div>
+                `;
+                
+                // Fetch subscribers from the backend
+                const response = await fetch('/admin/subscribers', {
+                    credentials: 'include' // Include session cookies
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const subscribers = data.subscribers || [];
+                
+                // Display the subscribers
+                if (subscribers.length === 0) {
+                    subscriberList.innerHTML = '<p class="text-muted">No subscribers found. Import a list to add subscribers.</p>';
+                } else {
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Email Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    subscribers.forEach((email, index) => {
+                        html += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${email}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted">Total: ${subscribers.length} subscribers</p>
+                    `;
+                    
+                    subscriberList.innerHTML = html;
+                }
+                
             } catch (error) {
                 console.error('Error loading subscribers:', error);
                 document.getElementById('subscriberList').innerHTML = 
@@ -394,14 +451,73 @@
         async function importSubscribers() {
             const fileInput = document.getElementById('subscriberFile');
             const feedbackDiv = document.getElementById('importFeedback');
+            const importButton = document.getElementById('importButton');
             
             if (!fileInput.files || fileInput.files.length === 0) {
                 feedbackDiv.innerHTML = '<div class="alert alert-warning">Please select a file to import.</div>';
                 return;
             }
             
-            // In a real implementation, this would upload to your backend
-            feedbackDiv.innerHTML = '<div class="alert alert-info">Subscriber import will be implemented in the next task.</div>';
+            // Disable button and show loading state
+            importButton.disabled = true;
+            feedbackDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Uploading and processing file...</span>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                // Create form data for the file upload
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                // Send the file to the server
+                const response = await fetch('/admin/import-subscribers', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include' // Include session cookies
+                });
+                
+                // Parse the response
+                const result = await response.json();
+                
+                // Handle success or error
+                if (response.ok && result.status === 'success') {
+                    feedbackDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6>Import Successful</h6>
+                            <ul>
+                                <li>Emails in file: ${result.total}</li>
+                                <li>Valid emails: ${result.valid}</li>
+                                <li>Invalid emails: ${result.invalid}</li>
+                                <li>Successfully imported: ${result.imported}</li>
+                                <li>Failed to import: ${result.failed}</li>
+                            </ul>
+                        </div>
+                    `;
+                    
+                    // Refresh the subscriber list
+                    loadSubscribers();
+                    
+                    // Clear the file input
+                    fileInput.value = '';
+                } else {
+                    // Show error message
+                    const errorMessage = result.error || 'Unknown error occurred during import';
+                    feedbackDiv.innerHTML = `<div class="alert alert-danger">Import failed: ${errorMessage}</div>`;
+                }
+            } catch (error) {
+                console.error('Error during import:', error);
+                feedbackDiv.innerHTML = '<div class="alert alert-danger">Error uploading file. Please try again.</div>';
+            } finally {
+                // Re-enable the import button
+                importButton.disabled = false;
+            }
         }
         
         async function addSingleSubscriber() {
