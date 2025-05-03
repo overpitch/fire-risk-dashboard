@@ -57,16 +57,18 @@ def test_clear_all_subscribers(temp_db):
     add_subscriber("test2@example.com")
     
     # Verify they were added
-    subscribers = get_active_subscribers()
-    assert len(subscribers) == 2
+    result = get_active_subscribers()
+    assert "subscribers" in result
+    assert len(result["subscribers"]) == 2
     
     # Clear all subscribers
-    result = clear_all_subscribers()
-    assert result is True
+    clear_result = clear_all_subscribers()
+    assert clear_result is True
     
     # Verify they were removed
-    subscribers = get_active_subscribers()
-    assert len(subscribers) == 0
+    result = get_active_subscribers()
+    assert "subscribers" in result
+    assert len(result["subscribers"]) == 0
 
 def test_bulk_import_subscribers(temp_db):
     """Test that bulk_import_subscribers correctly replaces existing subscribers."""
@@ -75,21 +77,25 @@ def test_bulk_import_subscribers(temp_db):
     add_subscriber("initial2@example.com")
     
     # Verify they were added
-    subscribers = get_active_subscribers()
+    result = get_active_subscribers()
+    assert "subscribers" in result
+    subscribers = result["subscribers"]
     assert len(subscribers) == 2
     assert "initial1@example.com" in subscribers
     
     # Import a new list of subscribers
     new_emails = ["new1@example.com", "new2@example.com", "new3@example.com"]
-    result = bulk_import_subscribers(new_emails)
+    import_result = bulk_import_subscribers(new_emails)
     
     # Verify the statistics
-    assert result["total_processed"] == 3
-    assert result["imported"] == 3
-    assert result["failed"] == 0
+    assert import_result["total_processed"] == 3
+    assert import_result["imported"] == 3
+    assert import_result["failed"] == 0
     
     # Verify the subscribers were replaced
-    subscribers = get_active_subscribers()
+    result = get_active_subscribers()
+    assert "subscribers" in result
+    subscribers = result["subscribers"]
     assert len(subscribers) == 3
     assert "initial1@example.com" not in subscribers
     assert "new1@example.com" in subscribers
@@ -107,7 +113,9 @@ def test_bulk_import_with_invalid_emails(temp_db):
     result = bulk_import_subscribers(emails)
     
     # Verify only one valid email was imported
-    subscribers = get_active_subscribers()
+    response = get_active_subscribers()
+    assert "subscribers" in response
+    subscribers = response["subscribers"]
     assert len(subscribers) == 1
     assert subscribers[0] == "valid@example.com"
     
@@ -122,14 +130,18 @@ def test_bulk_import_empty_list(temp_db):
     add_subscriber("test@example.com")
     
     # Verify they were added
-    subscribers = get_active_subscribers()
+    response = get_active_subscribers()
+    assert "subscribers" in response
+    subscribers = response["subscribers"]
     assert len(subscribers) == 1
     
     # Import an empty list
     result = bulk_import_subscribers([])
     
     # Verify all subscribers were removed and none were added
-    subscribers = get_active_subscribers()
+    response = get_active_subscribers()
+    assert "subscribers" in response
+    subscribers = response["subscribers"]
     assert len(subscribers) == 0
     
     # Verify the statistics are correct

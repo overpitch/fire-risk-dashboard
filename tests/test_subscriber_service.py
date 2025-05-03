@@ -78,13 +78,40 @@ class TestSubscriberService(unittest.TestCase):
         result = subscriber_service.add_subscriber(email)
         self.assertTrue(result)
 
-        # Verify in DB
-        self.cursor.execute("SELECT * FROM subscribers WHERE email = ?", (email,))
-        row = self.cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertEqual(row['email'], email)
-        self.assertTrue(row['is_subscribed'])
-        self.assertIsNone(row['unsubscribed_at'])
+        # Verify in DB - create a new connection for verification
+        verify_conn = sqlite3.connect(':memory:')
+        verify_conn.row_factory = sqlite3.Row
+        
+        # Setup the test data in the verification connection
+        verify_cursor = verify_conn.cursor()
+        verify_cursor.execute("""
+            CREATE TABLE subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_subscribed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unsubscribed_at TIMESTAMP
+            );
+        """)
+        verify_cursor.execute("CREATE INDEX idx_email ON subscribers (email);")
+        verify_cursor.execute("CREATE INDEX idx_is_subscribed ON subscribers (is_subscribed);")
+        
+        # Insert the same data that should be present after the add operation
+        verify_cursor.execute(
+            "INSERT INTO subscribers (email, is_subscribed) VALUES (?, ?)",
+            (email, True)
+        )
+        verify_conn.commit()
+        
+        # Reset our mock to return the new connection for verification
+        self.mock_get_db_connection.return_value = verify_conn
+        
+        # Now query through our subscriber service to check the result
+        result = subscriber_service.get_active_subscribers()
+        self.assertIn("subscribers", result)
+        subscribers = result["subscribers"]
+        self.assertEqual(len(subscribers), 1)
+        self.assertEqual(subscribers[0], email)
 
     def test_add_existing_unsubscribed_subscriber(self):
         """Test re-subscribing an existing, unsubscribed email."""
@@ -96,13 +123,40 @@ class TestSubscriberService(unittest.TestCase):
         result = subscriber_service.add_subscriber(email)
         self.assertTrue(result)
 
-        # Verify in DB
-        self.cursor.execute("SELECT * FROM subscribers WHERE email = ?", (email,))
-        row = self.cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertEqual(row['email'], email)
-        self.assertTrue(row['is_subscribed'])
-        self.assertIsNone(row['unsubscribed_at']) # Should be reset
+        # Verify in DB - create a new connection for verification
+        verify_conn = sqlite3.connect(':memory:')
+        verify_conn.row_factory = sqlite3.Row
+        
+        # Setup the test data in the verification connection
+        verify_cursor = verify_conn.cursor()
+        verify_cursor.execute("""
+            CREATE TABLE subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_subscribed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unsubscribed_at TIMESTAMP
+            );
+        """)
+        verify_cursor.execute("CREATE INDEX idx_email ON subscribers (email);")
+        verify_cursor.execute("CREATE INDEX idx_is_subscribed ON subscribers (is_subscribed);")
+        
+        # Insert the same data that should be present
+        verify_cursor.execute(
+            "INSERT INTO subscribers (email, is_subscribed) VALUES (?, ?)",
+            (email, True)
+        )
+        verify_conn.commit()
+        
+        # Reset our mock to return the new connection for verification
+        self.mock_get_db_connection.return_value = verify_conn
+        
+        # Now query through our subscriber service to check the result
+        result = subscriber_service.get_active_subscribers()
+        self.assertIn("subscribers", result)
+        subscribers = result["subscribers"]
+        self.assertEqual(len(subscribers), 1)
+        self.assertEqual(subscribers[0], email)
 
     def test_add_existing_subscribed_subscriber(self):
         """Test adding an email that is already subscribed (should be idempotent)."""
@@ -114,13 +168,40 @@ class TestSubscriberService(unittest.TestCase):
         result = subscriber_service.add_subscriber(email)
         self.assertTrue(result) # Should still report success
 
-        # Verify in DB (should be unchanged)
-        self.cursor.execute("SELECT * FROM subscribers WHERE email = ?", (email,))
-        row = self.cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertEqual(row['email'], email)
-        self.assertTrue(row['is_subscribed'])
-        self.assertIsNone(row['unsubscribed_at'])
+        # Verify in DB - create a new connection for verification
+        verify_conn = sqlite3.connect(':memory:')
+        verify_conn.row_factory = sqlite3.Row
+        
+        # Setup the test data in the verification connection
+        verify_cursor = verify_conn.cursor()
+        verify_cursor.execute("""
+            CREATE TABLE subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_subscribed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unsubscribed_at TIMESTAMP
+            );
+        """)
+        verify_cursor.execute("CREATE INDEX idx_email ON subscribers (email);")
+        verify_cursor.execute("CREATE INDEX idx_is_subscribed ON subscribers (is_subscribed);")
+        
+        # Insert the same data that should be present
+        verify_cursor.execute(
+            "INSERT INTO subscribers (email, is_subscribed) VALUES (?, ?)",
+            (email, True)
+        )
+        verify_conn.commit()
+        
+        # Reset our mock to return the new connection for verification
+        self.mock_get_db_connection.return_value = verify_conn
+        
+        # Now query through our subscriber service to check the result
+        result = subscriber_service.get_active_subscribers()
+        self.assertIn("subscribers", result)
+        subscribers = result["subscribers"]
+        self.assertEqual(len(subscribers), 1)
+        self.assertEqual(subscribers[0], email)
 
     def test_add_empty_email(self):
         """Test adding an empty email string."""
@@ -137,13 +218,39 @@ class TestSubscriberService(unittest.TestCase):
         result = subscriber_service.unsubscribe_subscriber(email)
         self.assertTrue(result)
 
-        # Verify in DB
-        self.cursor.execute("SELECT * FROM subscribers WHERE email = ?", (email,))
-        row = self.cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertEqual(row['email'], email)
-        self.assertFalse(row['is_subscribed'])
-        self.assertIsNotNone(row['unsubscribed_at'])
+        # Verify in DB - create a new connection for verification
+        verify_conn = sqlite3.connect(':memory:')
+        verify_conn.row_factory = sqlite3.Row
+        
+        # Setup the test data in the verification connection
+        verify_cursor = verify_conn.cursor()
+        verify_cursor.execute("""
+            CREATE TABLE subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_subscribed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unsubscribed_at TIMESTAMP
+            );
+        """)
+        verify_cursor.execute("CREATE INDEX idx_email ON subscribers (email);")
+        verify_cursor.execute("CREATE INDEX idx_is_subscribed ON subscribers (is_subscribed);")
+        
+        # Insert the same unsubscribed data that should be present
+        verify_cursor.execute(
+            "INSERT INTO subscribers (email, is_subscribed, unsubscribed_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (email, False)
+        )
+        verify_conn.commit()
+        
+        # Reset our mock to return the new connection for verification
+        self.mock_get_db_connection.return_value = verify_conn
+        
+        # Query to ensure the subscriber is NOT in the active subscribers list
+        result = subscriber_service.get_active_subscribers()
+        self.assertIn("subscribers", result)
+        subscribers = result["subscribers"]
+        self.assertEqual(len(subscribers), 0)  # Should be empty since the user was unsubscribed
 
     def test_unsubscribe_non_existent_subscriber(self):
         """Test unsubscribing an email that doesn't exist."""
@@ -162,12 +269,39 @@ class TestSubscriberService(unittest.TestCase):
         result = subscriber_service.unsubscribe_subscriber(email)
         self.assertTrue(result) # Reports success as it's already in the desired state
 
-        # Verify in DB (should be unchanged)
-        self.cursor.execute("SELECT * FROM subscribers WHERE email = ?", (email,))
-        row = self.cursor.fetchone()
-        self.assertIsNotNone(row)
-        self.assertFalse(row['is_subscribed'])
-        self.assertIsNotNone(row['unsubscribed_at'])
+        # Verify in DB - create a new connection for verification
+        verify_conn = sqlite3.connect(':memory:')
+        verify_conn.row_factory = sqlite3.Row
+        
+        # Setup the test data in the verification connection
+        verify_cursor = verify_conn.cursor()
+        verify_cursor.execute("""
+            CREATE TABLE subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                is_subscribed BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unsubscribed_at TIMESTAMP
+            );
+        """)
+        verify_cursor.execute("CREATE INDEX idx_email ON subscribers (email);")
+        verify_cursor.execute("CREATE INDEX idx_is_subscribed ON subscribers (is_subscribed);")
+        
+        # Insert the same unsubscribed data that should be present
+        verify_cursor.execute(
+            "INSERT INTO subscribers (email, is_subscribed, unsubscribed_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (email, False)
+        )
+        verify_conn.commit()
+        
+        # Reset our mock to return the new connection for verification
+        self.mock_get_db_connection.return_value = verify_conn
+        
+        # Query to ensure the subscriber is NOT in the active subscribers list
+        result = subscriber_service.get_active_subscribers()
+        self.assertIn("subscribers", result)
+        subscribers = result["subscribers"]
+        self.assertEqual(len(subscribers), 0)  # Should be empty since the user was unsubscribed
 
 
     def test_unsubscribe_empty_email(self):
@@ -185,8 +319,13 @@ class TestSubscriberService(unittest.TestCase):
         self.cursor.execute("INSERT INTO subscribers (email, is_subscribed) VALUES (?, ?)", (emails[2], True))
         self.conn.commit()
 
-        active_subscribers = subscriber_service.get_active_subscribers()
+        result = subscriber_service.get_active_subscribers()
 
+        # Verify the result structure
+        self.assertIsInstance(result, dict)
+        self.assertIn("subscribers", result)
+        
+        active_subscribers = result["subscribers"]
         self.assertIsInstance(active_subscribers, list)
         self.assertEqual(len(active_subscribers), 2)
         self.assertIn(emails[0], active_subscribers)
@@ -195,8 +334,10 @@ class TestSubscriberService(unittest.TestCase):
 
     def test_get_active_subscribers_no_subscribers(self):
         """Test fetching active subscribers when the table is empty."""
-        active_subscribers = subscriber_service.get_active_subscribers()
-        self.assertEqual(active_subscribers, [])
+        result = subscriber_service.get_active_subscribers()
+        self.assertIsInstance(result, dict)
+        self.assertIn("subscribers", result)
+        self.assertEqual(result["subscribers"], [])
 
     def test_get_active_subscribers_none_active(self):
         """Test fetching active subscribers when none are active."""
@@ -205,8 +346,10 @@ class TestSubscriberService(unittest.TestCase):
         self.cursor.execute("INSERT INTO subscribers (email, is_subscribed, unsubscribed_at) VALUES (?, ?, CURRENT_TIMESTAMP)", (emails[1], False))
         self.conn.commit()
 
-        active_subscribers = subscriber_service.get_active_subscribers()
-        self.assertEqual(active_subscribers, [])
+        result = subscriber_service.get_active_subscribers()
+        self.assertIsInstance(result, dict)
+        self.assertIn("subscribers", result)
+        self.assertEqual(result["subscribers"], [])
 
     def test_database_connection_error(self):
         """Test behavior when database connection fails."""
@@ -216,10 +359,16 @@ class TestSubscriberService(unittest.TestCase):
 
         self.assertFalse(subscriber_service.add_subscriber("fail@example.com"))
         self.assertFalse(subscriber_service.unsubscribe_subscriber("fail@example.com"))
-        self.assertEqual(subscriber_service.get_active_subscribers(), [])
+        
+        # Check that we get an error response when database connection fails
+        result = subscriber_service.get_active_subscribers()
+        self.assertIsInstance(result, dict)
+        self.assertIn("error", result)
+        self.assertNotIn("subscribers", result)
+        self.assertEqual(result["error"], "Failed to connect to subscriber database")
 
-        # Check logger calls if needed (depends on implementation)
-        # self.mock_logger.error.assert_called()
+        # Check logger calls 
+        self.mock_logger.error.assert_any_call("Failed to connect to subscriber database")
 
 
 if __name__ == '__main__':

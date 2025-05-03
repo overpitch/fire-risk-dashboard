@@ -394,16 +394,31 @@
                     </div>
                 `;
                 
+                // Log when fetching subscribers starts
+                console.log('Fetching subscribers...');
+                
                 // Fetch subscribers from the backend
                 const response = await fetch('/admin/subscribers', {
                     credentials: 'include' // Include session cookies
                 });
                 
+                console.log('Response status:', response.status);
+                
+                // Parse the response first
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                // Check for server-reported errors
                 if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status}`);
+                    const errorMessage = data.error || `Server error: ${response.status}`;
+                    throw new Error(errorMessage);
                 }
                 
-                const data = await response.json();
+                // Check if the response has an error field (our custom error format)
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
                 const subscribers = data.subscribers || [];
                 
                 // Display the subscribers
@@ -444,7 +459,11 @@
             } catch (error) {
                 console.error('Error loading subscribers:', error);
                 document.getElementById('subscriberList').innerHTML = 
-                    '<div class="alert alert-danger">Failed to load subscribers. Please try again later.</div>';
+                    `<div class="alert alert-danger">
+                        <h6>Failed to load subscribers</h6>
+                        <p>${error.message || 'Unknown error. Please try again later.'}</p>
+                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadSubscribers()">Retry</button>
+                     </div>`;
             }
         }
         
@@ -452,6 +471,7 @@
             const fileInput = document.getElementById('subscriberFile');
             const feedbackDiv = document.getElementById('importFeedback');
             const importButton = document.getElementById('importButton');
+            const subscriberList = document.getElementById('subscriberList');
             
             if (!fileInput.files || fileInput.files.length === 0) {
                 feedbackDiv.innerHTML = '<div class="alert alert-warning">Please select a file to import.</div>';
@@ -468,6 +488,16 @@
                         </div>
                         <span>Uploading and processing file...</span>
                     </div>
+                </div>
+            `;
+            
+            // Show loading state in the subscriber list area too
+            subscriberList.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Updating subscribers...</span>
+                    </div>
+                    <p>Importing subscribers, please wait...</p>
                 </div>
             `;
             
@@ -501,19 +531,32 @@
                         </div>
                     `;
                     
-                    // Refresh the subscriber list
-                    loadSubscribers();
-                    
                     // Clear the file input
                     fileInput.value = '';
+                    
+                    // Add a small delay before refreshing the subscriber list to ensure
+                    // the database transaction is fully complete
+                    setTimeout(() => {
+                        loadSubscribers();
+                    }, 500);
                 } else {
                     // Show error message
                     const errorMessage = result.error || 'Unknown error occurred during import';
                     feedbackDiv.innerHTML = `<div class="alert alert-danger">Import failed: ${errorMessage}</div>`;
+                    
+                    // Refresh subscriber list to show original state
+                    loadSubscribers();
                 }
             } catch (error) {
                 console.error('Error during import:', error);
-                feedbackDiv.innerHTML = '<div class="alert alert-danger">Error uploading file. Please try again.</div>';
+                feedbackDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error uploading file: ${error.message || 'Could not complete the import operation'}</p>
+                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="importSubscribers()">Retry</button>
+                    </div>`;
+                
+                // Refresh subscriber list to show original state
+                loadSubscribers();
             } finally {
                 // Re-enable the import button
                 importButton.disabled = false;

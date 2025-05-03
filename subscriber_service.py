@@ -126,23 +126,35 @@ def unsubscribe_subscriber(email: str) -> bool:
     return success
 
 
-def get_active_subscribers() -> list[str]:
-    """Fetches a list of email addresses for active subscribers."""
+def get_active_subscribers() -> Dict:
+    """
+    Fetches a list of email addresses for active subscribers.
+    
+    Returns:
+        Dict: Either {'subscribers': [list of emails]} on success 
+              or {'error': error_message} on failure
+    """
     conn = get_db_connection()
-    subscribers = []
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT email FROM subscribers WHERE is_subscribed = TRUE;")
-            rows = cursor.fetchall()
-            subscribers = [row['email'] for row in rows]
-            logger.info(f"Fetched {len(subscribers)} active subscribers.")
-        except sqlite3.Error as e:
-            logger.error(f"Error fetching active subscribers: {e}")
-        finally:
-            conn.close()
-            logger.debug("Database connection closed after fetching subscribers.")
-    return subscribers
+    
+    if not conn:
+        error_msg = "Failed to connect to subscriber database"
+        logger.error(error_msg)
+        return {"error": error_msg}
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT email FROM subscribers WHERE is_subscribed = TRUE;")
+        rows = cursor.fetchall()
+        subscribers = [row['email'] for row in rows]
+        logger.info(f"Fetched {len(subscribers)} active subscribers.")
+        return {"subscribers": subscribers}
+    except sqlite3.Error as e:
+        error_msg = f"Database error when fetching subscribers: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg}
+    finally:
+        conn.close()
+        logger.debug("Database connection closed after fetching subscribers.")
 
 def clear_all_subscribers() -> bool:
     """
