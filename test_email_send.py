@@ -17,16 +17,16 @@ def main():
         print("Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY.")
         return 1
     
-    # Default recipient
-    default_recipient = "overpitch@icloud.com"
+    # Default recipients
+    default_recipients = ["fred@esposto.com", "overpitch@icloud.com"]
     
-    # Allow command-line override of recipient
+    # Allow command-line override of recipients
     if len(sys.argv) > 1:
-        recipient = sys.argv[1]
+        recipients = sys.argv[1:]
     else:
-        recipient = default_recipient
+        recipients = default_recipients
     
-    print(f"Sending test email to: {recipient}")
+    print(f"Sending test email to: {', '.join(recipients)}")
     
     # Test weather data
     test_data = {
@@ -38,7 +38,7 @@ def main():
     }
     
     # Send the test email
-    message_id = send_orange_to_red_alert([recipient], test_data)
+    message_id = send_orange_to_red_alert(recipients, test_data)
     
     if message_id:
         print(f"Success! Email sent with Message ID: {message_id}")

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URGENT: Fire Risk Level Increased to RED</title>
+    <title>URGENT: Fire Risk Level RED</title>
     <style>
         body { font-family: sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
@@ -17,11 +17,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>URGENT: Fire Risk Level Increased to RED</h1>
+            <h1>URGENT: Fire Risk Level RED</h1>
         </div>
         <div class="content">
-            <p>Attention,</p>
-            <p>The fire risk level for the Sierra City area has increased from Orange to <strong>RED</strong>.</p>
+            <p>The Sierra City fire risk level increased from Orange to <strong>RED</strong>.</p>
             <p>Current conditions contributing to this elevated risk level include:</p>
             <ul>
                 <li class="data-point"><strong>Temperature:</strong> {{ weather.temperature | default('N/A') }}</li>
@@ -32,11 +31,7 @@
                 {% endif %}
                 <li class="data-point"><strong>Soil Moisture:</strong> {{ weather.soil_moisture | default('N/A') }}</li>
             </ul>
-            <p>Please exercise extreme caution and stay informed about local conditions and potential evacuation orders.</p>
-            <p>For the latest detailed information, safety recommendations, and real-time updates, please consult the official Fire Risk Dashboard:</p>
-            <p><a href="{{ dashboard_url | default('https://scfireweather.org/dashboard.html') }}">Visit the Dashboard</a></p>
-            <p>Stay safe,</p>
-            <p><em>Sierra City Fire Weather Advisory</em></p>
+            <p>Please exercise extreme caution and stay alert.</p>
         </div>
         <div class="footer">
             <p>You are receiving this alert because you subscribed to Sierra City Fire Weather Advisories.</p>

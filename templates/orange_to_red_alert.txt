@@ -1,9 +1,7 @@
-URGENT: Fire Risk Level Increased to RED
+URGENT: Fire Risk Level RED
 ========================================
 
-Attention,
-
-The fire risk level for the Sierra City area has increased from Orange to RED.
+The Sierra City fire risk level increased from Orange to RED.
 
 Current conditions contributing to this elevated risk level include:
 - Temperature: {{ weather.temperature | default('N/A') }}
@@ -14,14 +12,8 @@ Current conditions contributing to this elevated risk level include:
 {% endif -%}
 - Soil Moisture: {{ weather.soil_moisture | default('N/A') }}
 
-Please exercise extreme caution and stay informed about local conditions and potential evacuation orders.
-
-For the latest detailed information, safety recommendations, and real-time updates, please consult the official Fire Risk Dashboard:
-{{ dashboard_url | default('https://scfireweather.org/dashboard.html') }}
-
-Stay safe,
-Sierra City Fire Weather Advisory
+Please exercise extreme caution and stay alert.
 
 ----------------------------------------
 You are receiving this alert because you subscribed to Sierra City Fire Weather Advisories.
-Unsubscribe: To unsubscribe, please send an email to info@scfireweather.org with the subject "UNSUBSCRIBE"
+Unsubscribe
