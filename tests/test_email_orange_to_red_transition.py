@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import asyncio
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Import the modules we need to test
 from cache_refresh import refresh_data_cache
@@ -13,20 +13,33 @@ from config import TIMEZONE
 class TestOrangeToRedEmailAlert(unittest.TestCase):
     """Test the Orange to Red email alert functionality."""
 
-    @pytest.mark.asyncio
     @patch('cache_refresh.get_active_subscribers')
     @patch('cache_refresh.send_orange_to_red_alert')
     @patch('cache_refresh.calculate_fire_risk')
-    @patch('cache_refresh.fetch_all_data')
+    @patch('cache_refresh.get_synoptic_data')
     @patch('cache_refresh.data_cache')
-    async def test_orange_to_red_transition_sends_email(self, mock_data_cache, mock_fetch_data, 
-                                                       mock_calculate_risk, mock_send_alert, 
-                                                       mock_get_subscribers):
+    def test_orange_to_red_transition_sends_email(self, mock_data_cache, mock_get_synoptic_data, 
+                                                mock_calculate_risk, mock_send_alert, 
+                                                mock_get_subscribers):
         """Test that an Orange to Red transition triggers an email alert."""
-        # Set up mocks
+        # Set up required mock attributes
         mock_data_cache.update_in_progress = False
         mock_data_cache.previous_risk_level = "Orange"
+        mock_data_cache.risk_level_timestamp = datetime.now(TIMEZONE) - timedelta(hours=1)
+        mock_data_cache.last_alerted_timestamp = None
+        mock_data_cache.max_retries = 5
+        mock_data_cache.retry_delay = 0
+        mock_data_cache.update_timeout = 15
+        mock_data_cache.refresh_task_active = False
+        mock_data_cache.using_cached_data = False
         mock_data_cache.cached_fields = {"temperature": False, "humidity": False, "wind_speed": False, "soil_moisture": False}
+        
+        # Mock the methods
+        mock_data_cache.reset_update_event = MagicMock()
+        mock_data_cache.update_cache = MagicMock()
+        mock_data_cache.should_send_alert_for_transition = MagicMock(return_value=True)
+        mock_data_cache.record_alert_sent = MagicMock()
+        mock_data_cache.update_risk_level = MagicMock()
         mock_data_cache.ensure_complete_weather_data.return_value = {
             "air_temp": 32,
             "relative_humidity": 12,
@@ -35,8 +48,8 @@ class TestOrangeToRedEmailAlert(unittest.TestCase):
             "soil_moisture_15cm": 8
         }
         
-        # Mock fetch_all_data to return sample weather data
-        mock_fetch_data.return_value = {"data": "sample"}
+        # Mock get_synoptic_data to return sample weather data
+        mock_get_synoptic_data.return_value = {"data": "sample"}
         
         # Mock calculate_fire_risk to return "Red" risk level
         mock_calculate_risk.return_value = ("Red", "High temperature and low humidity")
@@ -47,8 +60,16 @@ class TestOrangeToRedEmailAlert(unittest.TestCase):
         # Mock send_orange_to_red_alert to return a message ID
         mock_send_alert.return_value = "test-message-id"
         
-        # Call the function being tested
-        result = await refresh_data_cache()
+        # Set up the async function to be called synchronously
+        async def run_refresh():
+            return await refresh_data_cache()
+            
+        # Run the async function in an event loop
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(run_refresh())
+        finally:
+            loop.close()
         
         # Verify the results
         self.assertTrue(result)  # Refresh should be successful
@@ -62,8 +83,10 @@ class TestOrangeToRedEmailAlert(unittest.TestCase):
         self.assertIn('humidity', alert_args[1])
         self.assertIn('wind_speed', alert_args[1])
         
-        # Verify previous_risk_level was updated
-        self.assertEqual(mock_data_cache.previous_risk_level, "Red")
+        # Verify our methods were called correctly
+        mock_data_cache.should_send_alert_for_transition.assert_called_once_with("Red")
+        mock_data_cache.record_alert_sent.assert_called_once()
+        mock_data_cache.update_risk_level.assert_called_once_with("Red")
 
     @patch('email_service.send_email')
     @patch('email_service.jinja_env')

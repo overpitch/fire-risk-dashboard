@@ -123,15 +123,13 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                             "age": age_str
                         })
             
-            # Get the previous risk level before calculating the new one
-            previous_risk = data_cache.previous_risk_level
-            
             # Calculate fire risk based on the latest weather data
             risk, explanation = calculate_fire_risk(latest_weather)
             
             # --- Email Alert Logic ---
-            if previous_risk == "Orange" and risk == "Red":
-                logger.info(f"Risk transition detected: {previous_risk} -> {risk}. Preparing alert.")
+            # Check if we should send an alert for this risk level
+            if data_cache.should_send_alert_for_transition(risk):
+                logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert.")
                 try:
                     # 1. Get active subscribers
                     subscribers_result = get_active_subscribers()
@@ -163,6 +161,8 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
 
                         if message_id:
                             logger.info(f"Orange-to-Red alert email sent successfully to {len(recipients)} subscribers. Message ID: {message_id}")
+                            # Record that we sent an alert for this transition
+                            data_cache.record_alert_sent()
                         else:
                             logger.error("Failed to send Orange-to-Red alert email (send_orange_to_red_alert returned None).")
 
@@ -171,8 +171,8 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                     logger.error(f"Failed during Orange-to-Red alert process: {email_err}", exc_info=True) # Log traceback
             # --- End Email Alert Logic ---
 
-            # Update the previous risk level in the cache *after* checking the transition
-            data_cache.previous_risk_level = risk
+            # Update the risk level in the cache with timestamp
+            data_cache.update_risk_level(risk)
             
             # Explanation is now just the base risk explanation from calculate_fire_risk
             # Notes about data issues or cached values are handled by the modal content in endpoints.py

@@ -26,6 +26,8 @@ class DataCache:
         self.wunderground_data: Optional[Dict[str, Any]] = None
         self.fire_risk_data: Optional[Dict[str, Any]] = None
         self.previous_risk_level: Optional[str] = None # Added to track the last known risk level
+        self.risk_level_timestamp: Optional[datetime] = None # When the risk level was last updated
+        self.last_alerted_timestamp: Optional[datetime] = None # When the last alert was sent
         self.last_updated: Optional[datetime] = None
         self.update_in_progress: bool = False
         self.last_update_success: bool = False
@@ -253,6 +255,13 @@ class DataCache:
             if "last_updated" in disk_cache and disk_cache["last_updated"]:
                 self.last_updated = datetime.fromisoformat(disk_cache["last_updated"])
             
+            # Load risk level and alert timestamps if available
+            if "risk_level_timestamp" in disk_cache and disk_cache["risk_level_timestamp"]:
+                self.risk_level_timestamp = datetime.fromisoformat(disk_cache["risk_level_timestamp"])
+            
+            if "last_alerted_timestamp" in disk_cache and disk_cache["last_alerted_timestamp"]:
+                self.last_alerted_timestamp = datetime.fromisoformat(disk_cache["last_alerted_timestamp"])
+            
             # Check if the cache data is valid - if we have populated values, initialize as not using cached
             # Otherwise, initialize as using cached data (the same as for a fresh cache)
             has_valid_data = False
@@ -293,7 +302,9 @@ class DataCache:
             cache_data = {
                 "last_valid_data": self._prepare_for_serialization(self.last_valid_data.copy()),
                 "last_updated": self.last_updated.isoformat() if self.last_updated else None,
-                "previous_risk_level": self.previous_risk_level # Save the previous risk level
+                "previous_risk_level": self.previous_risk_level, # Save the previous risk level
+                "risk_level_timestamp": self.risk_level_timestamp.isoformat() if self.risk_level_timestamp else None,
+                "last_alerted_timestamp": self.last_alerted_timestamp.isoformat() if self.last_alerted_timestamp else None
             }
             
             # Write to disk
@@ -440,6 +451,67 @@ class DataCache:
         
         return self.DEFAULT_VALUES[field_name]
     
+    def should_send_alert_for_transition(self, current_risk: str) -> bool:
+        """Determine if an alert should be sent based on current and previous risk levels.
+        
+        This method handles the case where a transition may have occurred during server downtime.
+        
+        Args:
+            current_risk: The current risk level ("Red" or "Orange")
+            
+        Returns:
+            bool: True if an alert should be sent, False otherwise
+        """
+        current_time = datetime.now(TIMEZONE)
+        
+        # No alert needed if current risk is not Red
+        if current_risk != "Red":
+            return False
+            
+        # No alert needed if previous risk was not Orange (or is None)
+        if self.previous_risk_level != "Orange":
+            return False
+        
+        # First time detecting risk (no previous timestamp), send alert
+        if self.risk_level_timestamp is None:
+            logger.info("First time detecting risk level, will send alert if needed")
+            return True
+            
+        # Check if we've already alerted for this transition
+        if self.last_alerted_timestamp is not None:
+            # If the risk level was set AFTER the last alert, this is a new transition
+            if self.risk_level_timestamp > self.last_alerted_timestamp:
+                logger.info(f"New transition detected after last alert at {self.last_alerted_timestamp.isoformat()}")
+                return True
+            else:
+                logger.info(f"Already alerted for this transition at {self.last_alerted_timestamp.isoformat()}")
+                return False
+        
+        # Haven't alerted yet for this transition
+        return True
+    
+    def update_risk_level(self, risk_level: str) -> None:
+        """Update the stored risk level with timestamp.
+        
+        Args:
+            risk_level: The new risk level
+        """
+        current_time = datetime.now(TIMEZONE)
+        
+        # Only update timestamp if risk level changes
+        if risk_level != self.previous_risk_level:
+            logger.info(f"Risk level changed from {self.previous_risk_level} to {risk_level}")
+            self.risk_level_timestamp = current_time
+            self.previous_risk_level = risk_level
+            # Save to disk immediately to ensure persistence
+            self._save_cache_to_disk()
+        
+    def record_alert_sent(self) -> None:
+        """Record that an alert was sent for the current risk transition."""
+        self.last_alerted_timestamp = datetime.now(TIMEZONE)
+        # Save to disk immediately to prevent duplicate alerts
+        self._save_cache_to_disk()
+        
     def ensure_complete_weather_data(self, weather_data: Dict[str, Any], use_default_if_missing: bool = False) -> Dict[str, Any]:
         """Ensure all required weather fields have values, filling in missing ones from cache
         
