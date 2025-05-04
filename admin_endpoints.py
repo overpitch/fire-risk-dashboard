@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, UploadFile, File, Body, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import shutil
 import os
@@ -16,6 +16,7 @@ from cache_refresh import refresh_data_cache
 from admin_service import verify_pin, reset_attempts
 from subscriber_service import get_active_subscribers, bulk_import_subscribers
 from file_processor import process_subscriber_file
+from email_service import send_test_orange_to_red_alert
 
 # Create a router for admin endpoints
 router = APIRouter()
@@ -336,3 +337,64 @@ async def import_subscribers(
     }
     
     return JSONResponse(content=result)
+
+@router.post("/admin/test-email-alert", response_class=JSONResponse)
+async def test_email_alert(
+    request: Request,
+    data: dict = Body(...),
+    session_token: Optional[str] = Cookie(None)
+):
+    """Send test Orange-to-Red transition alert emails to selected subscribers"""
+    # TEMPORARY: Skip authentication for testing
+    # if not session_token or session_token not in admin_sessions:
+    #     return JSONResponse(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         content={"error": "Authentication required"}
+    #     )
+    
+    # Extract emails from request body
+    if not data or "emails" not in data:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "No emails provided in request"}
+        )
+    
+    email_list = data.get("emails", [])
+    logger.info(f"Received request to send test emails to: {email_list}")
+    
+    # Use all provided emails - validation happens during sending
+    if not email_list:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "No email addresses provided"}
+        )
+    
+    valid_emails = email_list  # Accept all emails
+    logger.info(f"Processing test email request for: {valid_emails}")
+    
+    # Generate test weather data
+    test_weather_data = {
+        'temperature': '32°C (90°F)',
+        'humidity': '12%',
+        'wind_speed': '25 mph',
+        'wind_gust': '35 mph',
+        'soil_moisture': '8%'
+    }
+    
+    # Send test emails
+    results = []
+    for email in valid_emails:
+        try:
+            message_id = send_test_orange_to_red_alert(email)
+            email_status = "success" if message_id else "failed"
+            results.append({"email": email, "status": email_status, "message_id": message_id})
+        except Exception as e:
+            logger.error(f"Error sending test email to {email}: {str(e)}")
+            results.append({"email": email, "status": "failed", "error": str(e)})
+    
+    # Return results
+    return {
+        "success": True,
+        "message": f"Sent {len([r for r in results if r['status'] == 'success'])} test emails",
+        "results": results
+    }

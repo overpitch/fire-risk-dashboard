@@ -179,6 +179,36 @@
                 </div>
             </div>
             
+            <!-- Email Alert Testing Section -->
+            <div class="card mb-4">
+                <div class="card-header">Email Alert Testing</div>
+                <div class="card-body">
+                    <h5 class="card-title">Test Orange-to-Red Alert Emails</h5>
+                    <p class="card-text">Send test emails to simulate a fire risk transition from Orange to Red level.</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Test emails will only be sent to verified addresses in AWS SES sandbox mode.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Select Recipients:</h6>
+                        <div id="verifiedEmails" class="mt-2">
+                            <!-- Verified emails will be populated here -->
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Loading verified emails...</span>
+                        </div>
+                    </div>
+                    
+                    <button id="sendTestEmailsBtn" class="btn btn-warning">
+                        Send Test Emails
+                    </button>
+                    
+                    <div id="emailTestResults" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+            
             <!-- System Information -->
             <div class="card mb-4">
                 <div class="card-header">System Information</div>
@@ -297,6 +327,9 @@
             
             // Add event listener for adding single email
             document.getElementById('addSingleEmailBtn').addEventListener('click', addSingleSubscriber);
+            
+            // Initialize email testing section
+            initializeEmailTesting();
         }
         
         // Test Mode functions
@@ -581,6 +614,171 @@
             
             // In a real implementation, this would save to your backend
             feedbackDiv.innerHTML = '<div class="alert alert-info">Adding single subscribers will be implemented in the next task.</div>';
+        }
+        
+        // Email testing functions
+        async function loadSubscribersForEmails() {
+            const verifiedEmailsDiv = document.getElementById('verifiedEmails');
+            
+            try {
+                // Show loading state
+                verifiedEmailsDiv.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Loading subscribers...</span>
+                    </div>
+                `;
+                
+                // Fetch subscribers from the backend
+                const response = await fetch('/admin/subscribers', {
+                    credentials: 'include' // Include session cookies
+                });
+                
+                // Parse the response
+                const data = await response.json();
+                
+                // Check for errors
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `Server error: ${response.status}`);
+                }
+                
+                const subscribers = data.subscribers || [];
+                
+                // Display the subscribers as checkboxes
+                if (subscribers.length === 0) {
+                    verifiedEmailsDiv.innerHTML = '<p class="text-muted">No subscribers found. Add subscribers first to send test emails.</p>';
+                } else {
+                    let html = '<div class="mt-2">';
+                    
+                    subscribers.forEach(email => {
+                        html += `
+                            <div class="form-check">
+                                <input class="form-check-input verified-email-checkbox" type="checkbox" value="${email}" id="email-${email.replace('@', '-at-')}">
+                                <label class="form-check-label" for="email-${email.replace('@', '-at-')}">
+                                    ${email}
+                                </label>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    verifiedEmailsDiv.innerHTML = html;
+                    console.log("Loaded subscribers for emails:", subscribers.length);
+                }
+            } catch (error) {
+                console.error('Error loading subscribers for emails:', error);
+                verifiedEmailsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error loading subscribers: ${error.message || 'Unknown error'}</p>
+                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadSubscribersForEmails()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        async function sendTestEmails() {
+            const resultDiv = document.getElementById('emailTestResults');
+            const sendButton = document.getElementById('sendTestEmailsBtn');
+            
+            // Get selected emails
+            const selectedEmails = [];
+            document.querySelectorAll('.verified-email-checkbox:checked').forEach(checkbox => {
+                selectedEmails.push(checkbox.value);
+            });
+            
+            if (selectedEmails.length === 0) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please select at least one email recipient.</div>';
+                resultDiv.style.display = 'block';
+                return;
+            }
+            
+            // Disable button and show loading state
+            sendButton.disabled = true;
+            resultDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Sending test emails...</span>
+                    </div>
+                </div>
+            `;
+            resultDiv.style.display = 'block';
+            
+            try {
+                console.log('Sending test emails to:', selectedEmails);
+                
+                // Send request to backend
+                const response = await fetch('/admin/test-email-alert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ emails: selectedEmails }),
+                    credentials: 'include'
+                });
+                
+                // Parse response
+                const result = await response.json();
+                
+                // Display result
+                if (response.ok && result.success) {
+                    let html = `
+                        <div class="alert alert-success">
+                            <h6>Test Emails Sent</h6>
+                            <p>${result.message}</p>
+                            <hr>
+                            <h6>Details:</h6>
+                            <ul>
+                    `;
+                    
+                    result.results.forEach(item => {
+                        const statusClass = item.status === 'success' ? 'text-success' : 'text-danger';
+                        const statusText = item.status === 'success' ? 'Success' : 'Failed';
+                        const errorInfo = item.error ? `: ${item.error}` : '';
+                        
+                        html += `
+                            <li>
+                                <strong>${item.email}</strong>: 
+                                <span class="${statusClass}">${statusText}${errorInfo}</span>
+                            </li>
+                        `;
+                    });
+                    
+                    html += `
+                            </ul>
+                        </div>
+                    `;
+                    
+                    resultDiv.innerHTML = html;
+                } else {
+                    // Show error message
+                    const errorMessage = result.error || 'Unknown error occurred';
+                    resultDiv.innerHTML = `<div class="alert alert-danger">Failed to send test emails: ${errorMessage}</div>`;
+                }
+            } catch (error) {
+                console.error('Error sending test emails:', error);
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error: ${error.message || 'Could not complete the operation'}</p>
+                    </div>`;
+            } finally {
+                // Re-enable button
+                sendButton.disabled = false;
+            }
+        }
+        
+        // Initialize email testing when admin content loads
+        function initializeEmailTesting() {
+            // Ensure DOM is fully loaded before populating
+            setTimeout(() => {
+                loadSubscribersForEmails();
+                document.getElementById('sendTestEmailsBtn').addEventListener('click', sendTestEmails);
+                console.log("Email testing initialized");
+            }, 100);
         }
         
         // System status functions
