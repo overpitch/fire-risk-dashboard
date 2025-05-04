@@ -126,6 +126,15 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
             # Calculate fire risk based on the latest weather data
             risk, explanation = calculate_fire_risk(latest_weather)
             
+            # --- Wind Data Check ---
+            # Specifically verify wind data is properly refreshed and not stuck in cached mode
+            if data_cache.cached_fields["wind_speed"] or data_cache.cached_fields["wind_gust"]:
+                logger.warning("Wind data marked as cached after processing new data - this should not happen!")
+                # Reset the wind cached flags to ensure data refreshes properly
+                data_cache.cached_fields["wind_speed"] = False
+                data_cache.cached_fields["wind_gust"] = False
+                logger.info("Reset wind data cached flags to ensure fresh data")
+            
             # --- Email Alert Logic ---
             # Check if we should send an alert for this risk level
             if data_cache.should_send_alert_for_transition(risk):

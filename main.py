@@ -19,8 +19,21 @@ async def lifespan(app):
     
     # Try to fetch initial data, but don't block startup if it fails
     try:
-        await refresh_data_cache()
-        logger.info("✅ Initial data cache populated successfully")
+        # Force a complete refresh of the cache with force=True
+        await refresh_data_cache(force=True)
+        
+        # Check specifically that wind data isn't cached after refresh
+        if data_cache.cached_fields['wind_speed'] or data_cache.cached_fields['wind_gust']:
+            logger.warning("⚠️ Wind data still marked as cached after initial refresh, forcing second refresh...")
+            await refresh_data_cache(force=True)
+            
+            # Log the final status of wind data
+            if data_cache.cached_fields['wind_speed'] or data_cache.cached_fields['wind_gust']:
+                logger.error("❌ Wind data still marked as cached after second refresh attempt")
+            else:
+                logger.info("✅ Wind data refreshed successfully after second attempt")
+        else:
+            logger.info("✅ Initial data cache populated successfully with fresh wind data")
     except Exception as e:
         logger.error(f"❌ Failed to populate initial data cache: {str(e)}")
         logger.info("Application will continue startup and retry data fetch on first request")
