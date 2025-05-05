@@ -12,15 +12,17 @@
     <style>
         /* Custom toggle colors for Test Mode */
         .form-check-input.normal-mode {
-            background-color: #198754; /* Bootstrap green */
+            background-color: #198754;
+            /* Bootstrap green */
             border-color: #198754;
         }
 
         .form-check-input.test-mode {
-            background-color: #dc3545; /* Bootstrap red */
+            background-color: #dc3545;
+            /* Bootstrap red */
             border-color: #dc3545;
         }
-        
+
         /* PIN input styling */
         .pin-digit {
             width: 50px;
@@ -29,18 +31,18 @@
             text-align: center;
             margin: 0 5px;
         }
-        
+
         .pin-display {
             letter-spacing: 5px;
             font-family: monospace;
             font-size: 24px;
         }
-        
+
         .numpad {
             max-width: 300px;
             margin: 0 auto;
         }
-        
+
         .numpad-btn {
             width: 70px;
             height: 70px;
@@ -73,10 +75,10 @@
             <div class="card-header">Admin Access Required</div>
             <div class="card-body">
                 <p>Please enter the Admin PIN to access the portal.</p>
-                
+
                 <div class="mb-3 text-center">
                     <div class="pin-display p-2 border rounded mb-3" id="pinDisplay">****</div>
-                    
+
                     <div class="numpad">
                         <div class="d-flex justify-content-center mb-2">
                             <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('1')">1</button>
@@ -100,7 +102,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="pinError" class="alert alert-danger mt-3" style="display: none;">
                     Invalid PIN. Please try again.
                 </div>
@@ -116,8 +118,9 @@
                 <div class="card-header">System Settings</div>
                 <div class="card-body">
                     <h5 class="card-title">Test Mode</h5>
-                    <p class="card-text">Toggle between normal operation and test mode. Test mode uses cached data to simulate a system with limited connectivity.</p>
-                    
+                    <p class="card-text">Toggle between normal operation and test mode. Test mode uses cached data to
+                        simulate a system with limited connectivity.</p>
+
                     <div class="form-check form-switch d-flex align-items-center mb-3">
                         <span class="me-3" style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
                         <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle"
@@ -137,23 +140,27 @@
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">Email Subscribers</h5>
-                    <p class="card-text">Manage email addresses that will receive notifications when weather conditions warrant alerts.</p>
-                    
+                    <p class="card-text">Manage email addresses that will receive notifications when weather conditions
+                        warrant alerts.</p>
+
                     <!-- Import Subscribers -->
                     <div class="mb-4">
                         <h6>Import Subscribers</h6>
-                        <p>Upload a CSV or XLSX file containing email addresses. The system will look for a column with "email" in the header, or use the first column if no header is found.</p>
+                        <p>Upload a CSV or XLSX file containing email addresses. The system will look for a column with
+                            "email" in the header, or use the first column if no header is found.</p>
                         <div class="alert alert-warning">
-                            <strong>Warning:</strong> Importing a new subscriber list will replace all existing subscribers.
+                            <strong>Warning:</strong> Importing a new subscriber list will replace all existing
+                            subscribers.
                         </div>
                         <div class="mb-3">
                             <label for="subscriberFile" class="form-label">Select File</label>
                             <input class="form-control" type="file" id="subscriberFile" accept=".csv, .xlsx, .xls">
                         </div>
-                        <button id="importButton" class="btn btn-primary" onclick="importSubscribers()">Import List</button>
+                        <button id="importButton" class="btn btn-primary" onclick="importSubscribers()">Import
+                            List</button>
                         <div id="importFeedback" class="mt-2"></div>
                     </div>
-                    
+
                     <!-- Active Subscribers List -->
                     <div class="mt-4">
                         <h6>Active Subscribers</h6>
@@ -168,14 +175,15 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Email Alert Testing Section -->
             <div class="card mb-4">
                 <div class="card-header">Email Alert Testing</div>
                 <div class="card-body">
                     <h5 class="card-title">Test Orange-to-Red Alert Emails</h5>
-                    <p class="card-text">Send test emails to simulate a fire risk transition from Orange to Red level.</p>
-                    
+                    <p class="card-text">Send test emails to simulate a fire risk transition from Orange to Red level.
+                    </p>
+
                     <div class="mb-3">
                         <h6>Select Recipients:</h6>
                         <div id="verifiedEmails" class="mt-2">
@@ -186,64 +194,41 @@
                             <span class="ms-2">Loading verified emails...</span>
                         </div>
                     </div>
-                    
+
                     <button id="sendTestEmailsBtn" class="btn btn-warning">
                         Send Test Emails
                     </button>
-                    
+
                     <div id="emailTestResults" class="mt-3" style="display: none;"></div>
                 </div>
             </div>
-            
-            <!-- System Information -->
-            <div class="card mb-4">
-                <div class="card-header">System Information</div>
-                <div class="card-body">
-                    <h5 class="card-title">System Status</h5>
-                    <div id="systemStatus" class="mb-3">
-                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
-                            <span>Server Status:</span>
-                            <span><span class="badge bg-success">Online</span></span>
-                        </div>
-                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
-                            <span>API Connectivity:</span>
-                            <span><span class="badge bg-success">Connected</span></span>
-                        </div>
-                        <div class="d-flex justify-content-between border-bottom mb-2 pb-2">
-                            <span>Last Data Update:</span>
-                            <span id="lastDataUpdate">Checking...</span>
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-outline-secondary" id="refreshSystemStatus">Refresh Status</button>
-                </div>
-            </div>
+
+            <!-- System Information card removed - redundant information -->
         </div>
     </div> <!-- Close container -->
 
     <script>
         // PIN handling
         let currentPin = '';
-        const correctPin = '1446'; // Hard-coded for now, will be made admin-resettable later
-        
+
         function addPinDigit(digit) {
             if (currentPin.length < 4) {
                 currentPin += digit;
                 updatePinDisplay();
-                
+
                 // Auto-submit if we have 4 digits
                 if (currentPin.length === 4) {
                     setTimeout(submitPin, 300); // Small delay for better UX
                 }
             }
         }
-        
+
         function clearPin() {
             currentPin = '';
             updatePinDisplay();
             document.getElementById('pinError').style.display = 'none';
         }
-        
+
         function updatePinDisplay() {
             let displayText = '';
             for (let i = 0; i < 4; i++) {
@@ -255,66 +240,98 @@
             }
             document.getElementById('pinDisplay').textContent = displayText;
         }
-        
-        function submitPin() {
-            if (currentPin === correctPin) {
-                // PIN is correct
-                document.getElementById('pinPrompt').style.display = 'none';
-                document.getElementById('adminContent').style.display = 'block';
-                
-                // Initialize admin content
-                initializeAdminContent();
-            } else {
-                // PIN is incorrect
+
+        async function submitPin() {
+            try {
+                // Disable the numpad while validating
+                disableNumpad(true);
+
+                // Show loading state
+                document.getElementById('pinDisplay').textContent = "Verifying...";
+
+                // Send PIN to server for validation
+                const response = await fetch('/admin/validate-pin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pin: currentPin }),
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (result.valid) {
+                    // Set the session cookie
+                    document.cookie = `session_token=${result.session_token}; path=/; max-age=3600`;
+
+                    // PIN is correct
+                    document.getElementById('pinPrompt').style.display = 'none';
+                    document.getElementById('adminContent').style.display = 'block';
+
+                    // Initialize admin content
+                    initializeAdminContent();
+                } else {
+                    // PIN is incorrect
+                    document.getElementById('pinError').style.display = 'block';
+                    document.getElementById('pinError').textContent = result.error || 'Invalid PIN. Please try again.';
+
+                    // Clear the PIN after a brief delay
+                    setTimeout(clearPin, 500);
+
+                    // Add security delay to prevent brute force
+                    disableNumpad(1500);
+                }
+            } catch (error) {
+                console.error('Error validating PIN:', error);
                 document.getElementById('pinError').style.display = 'block';
-                
-                // Clear the PIN after a brief delay
-                setTimeout(clearPin, 500);
-                
-                // Add security delay to prevent brute force
-                disableNumpad(1500);
+                document.getElementById('pinError').textContent = 'Server error. Please try again.';
+
+                // Enable the numpad again
+                disableNumpad(false);
             }
         }
-        
-        function disableNumpad(duration) {
+
+        function disableNumpad(disable) {
             const buttons = document.querySelectorAll('.numpad-btn');
-            buttons.forEach(btn => btn.disabled = true);
-            
-            setTimeout(() => {
-                buttons.forEach(btn => btn.disabled = false);
-            }, duration);
+
+            if (typeof disable === 'number') {
+                // If a number is passed, disable for that duration
+                buttons.forEach(btn => btn.disabled = true);
+
+                setTimeout(() => {
+                    buttons.forEach(btn => btn.disabled = false);
+                }, disable);
+            } else {
+                // Otherwise, just set the disabled state directly
+                buttons.forEach(btn => btn.disabled = disable);
+            }
         }
-        
+
         // Initialize admin content
         function initializeAdminContent() {
             // Initialize the test mode toggle
             const testModeToggle = document.getElementById('testModeToggle');
-            
+
             // Get current test mode status
             fetchTestModeStatus().then(isTestMode => {
                 testModeToggle.checked = isTestMode;
                 updateTestModeUI(isTestMode);
             });
-            
+
             // Add event listener for toggle changes
-            testModeToggle.addEventListener('change', function() {
+            testModeToggle.addEventListener('change', function () {
                 const isEnabled = this.checked;
                 toggleTestMode(isEnabled);
             });
-            
+
             // Load subscriber list
             loadSubscribers();
-            
-            // Initialize system status
-            updateSystemStatus();
-            
-            // Add event listener for system status refresh
-            document.getElementById('refreshSystemStatus').addEventListener('click', updateSystemStatus);
             
             // Initialize email testing section
             initializeEmailTesting();
         }
-        
+
         // Test Mode functions
         async function fetchTestModeStatus() {
             try {
@@ -329,61 +346,61 @@
                 return false; // Default to normal mode on error
             }
         }
-        
+
         async function toggleTestMode(enable) {
             try {
                 // Disable toggle while request is in progress
                 const toggle = document.getElementById('testModeToggle');
                 toggle.disabled = true;
-                
+
                 const response = await fetch('/toggle-test-mode?enable=' + enable, {
                     credentials: 'include' // Include session cookies
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
+
                 // Show response message
                 const responseDiv = document.getElementById('testModeResponse');
                 responseDiv.innerHTML = data.message;
                 responseDiv.className = 'alert ' + (data.status === 'success' ? 'alert-success' : 'alert-danger');
                 responseDiv.style.display = 'block';
-                
+
                 // Update UI
                 updateTestModeUI(enable);
-                
+
                 // Re-enable toggle
                 toggle.disabled = false;
-                
+
                 // Hide message after delay
                 setTimeout(() => {
                     responseDiv.style.display = 'none';
                 }, 5000);
-                
+
             } catch (error) {
                 console.error('Error toggling test mode:', error);
-                
+
                 // Show error
                 const responseDiv = document.getElementById('testModeResponse');
                 responseDiv.innerHTML = 'Error: Failed to toggle test mode. Please try again.';
                 responseDiv.className = 'alert alert-danger';
                 responseDiv.style.display = 'block';
-                
+
                 // Reset toggle to original state
                 document.getElementById('testModeToggle').checked = !enable;
                 updateTestModeUI(!enable);
-                
+
                 // Re-enable toggle
                 document.getElementById('testModeToggle').disabled = false;
             }
         }
-        
+
         function updateTestModeUI(isTestMode) {
             const toggle = document.getElementById('testModeToggle');
             const status = document.getElementById('testModeStatus');
-            
+
             if (isTestMode) {
                 toggle.classList.remove('normal-mode');
                 toggle.classList.add('test-mode');
@@ -394,12 +411,12 @@
                 status.innerHTML = 'Current mode: <span class="badge bg-success">NORMAL</span>';
             }
         }
-        
+
         // Subscriber management functions
         async function loadSubscribers() {
             try {
                 const subscriberList = document.getElementById('subscriberList');
-                
+
                 // Show loading state
                 subscriberList.innerHTML = `
                     <div class="text-center">
@@ -409,34 +426,34 @@
                         <p>Loading subscribers...</p>
                     </div>
                 `;
-                
+
                 // Log when fetching subscribers starts
                 console.log('Fetching subscribers...');
-                
+
                 // Fetch subscribers from the backend
                 const response = await fetch('/admin/subscribers', {
                     credentials: 'include' // Include session cookies
                 });
-                
+
                 console.log('Response status:', response.status);
-                
+
                 // Parse the response first
                 const data = await response.json();
                 console.log('Response data:', data);
-                
+
                 // Check for server-reported errors
                 if (!response.ok) {
                     const errorMessage = data.error || `Server error: ${response.status}`;
                     throw new Error(errorMessage);
                 }
-                
+
                 // Check if the response has an error field (our custom error format)
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                
+
                 const subscribers = data.subscribers || [];
-                
+
                 // Display the subscribers
                 if (subscribers.length === 0) {
                     subscriberList.innerHTML = '<p class="text-muted">No subscribers found. Import a list to add subscribers.</p>';
@@ -452,7 +469,7 @@
                                 </thead>
                                 <tbody>
                     `;
-                    
+
                     subscribers.forEach((email, index) => {
                         html += `
                             <tr>
@@ -461,20 +478,20 @@
                             </tr>
                         `;
                     });
-                    
+
                     html += `
                                 </tbody>
                             </table>
                         </div>
                         <p class="text-muted">Total: ${subscribers.length} subscribers</p>
                     `;
-                    
+
                     subscriberList.innerHTML = html;
                 }
-                
+
             } catch (error) {
                 console.error('Error loading subscribers:', error);
-                document.getElementById('subscriberList').innerHTML = 
+                document.getElementById('subscriberList').innerHTML =
                     `<div class="alert alert-danger">
                         <h6>Failed to load subscribers</h6>
                         <p>${error.message || 'Unknown error. Please try again later.'}</p>
@@ -482,18 +499,18 @@
                      </div>`;
             }
         }
-        
+
         async function importSubscribers() {
             const fileInput = document.getElementById('subscriberFile');
             const feedbackDiv = document.getElementById('importFeedback');
             const importButton = document.getElementById('importButton');
             const subscriberList = document.getElementById('subscriberList');
-            
+
             if (!fileInput.files || fileInput.files.length === 0) {
                 feedbackDiv.innerHTML = '<div class="alert alert-warning">Please select a file to import.</div>';
                 return;
             }
-            
+
             // Disable button and show loading state
             importButton.disabled = true;
             feedbackDiv.innerHTML = `
@@ -506,7 +523,7 @@
                     </div>
                 </div>
             `;
-            
+
             // Show loading state in the subscriber list area too
             subscriberList.innerHTML = `
                 <div class="text-center">
@@ -516,22 +533,22 @@
                     <p>Importing subscribers, please wait...</p>
                 </div>
             `;
-            
+
             try {
                 // Create form data for the file upload
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
-                
+
                 // Send the file to the server
                 const response = await fetch('/admin/import-subscribers', {
                     method: 'POST',
                     body: formData,
                     credentials: 'include' // Include session cookies
                 });
-                
+
                 // Parse the response
                 const result = await response.json();
-                
+
                 // Handle success or error
                 if (response.ok && result.status === 'success') {
                     feedbackDiv.innerHTML = `
@@ -546,10 +563,10 @@
                             </ul>
                         </div>
                     `;
-                    
+
                     // Clear the file input
                     fileInput.value = '';
-                    
+
                     // Add a small delay before refreshing the subscriber list to ensure
                     // the database transaction is fully complete
                     setTimeout(() => {
@@ -559,7 +576,7 @@
                     // Show error message
                     const errorMessage = result.error || 'Unknown error occurred during import';
                     feedbackDiv.innerHTML = `<div class="alert alert-danger">Import failed: ${errorMessage}</div>`;
-                    
+
                     // Refresh subscriber list to show original state
                     loadSubscribers();
                 }
@@ -570,7 +587,7 @@
                         <p>Error uploading file: ${error.message || 'Could not complete the import operation'}</p>
                         <button class="btn btn-sm btn-outline-danger mt-2" onclick="importSubscribers()">Retry</button>
                     </div>`;
-                
+
                 // Refresh subscriber list to show original state
                 loadSubscribers();
             } finally {
@@ -578,11 +595,11 @@
                 importButton.disabled = false;
             }
         }
-        
+
         // Email testing functions
         async function loadSubscribersForEmails() {
             const verifiedEmailsDiv = document.getElementById('verifiedEmails');
-            
+
             try {
                 // Show loading state
                 verifiedEmailsDiv.innerHTML = `
@@ -593,28 +610,28 @@
                         <span>Loading subscribers...</span>
                     </div>
                 `;
-                
+
                 // Fetch subscribers from the backend
                 const response = await fetch('/admin/subscribers', {
                     credentials: 'include' // Include session cookies
                 });
-                
+
                 // Parse the response
                 const data = await response.json();
-                
+
                 // Check for errors
                 if (!response.ok || data.error) {
                     throw new Error(data.error || `Server error: ${response.status}`);
                 }
-                
+
                 const subscribers = data.subscribers || [];
-                
+
                 // Display the subscribers as checkboxes
                 if (subscribers.length === 0) {
                     verifiedEmailsDiv.innerHTML = '<p class="text-muted">No subscribers found. Add subscribers first to send test emails.</p>';
                 } else {
                     let html = '<div class="mt-2">';
-                    
+
                     subscribers.forEach(email => {
                         html += `
                             <div class="form-check">
@@ -625,7 +642,7 @@
                             </div>
                         `;
                     });
-                    
+
                     html += '</div>';
                     verifiedEmailsDiv.innerHTML = html;
                     console.log("Loaded subscribers for emails:", subscribers.length);
@@ -640,23 +657,23 @@
                 `;
             }
         }
-        
+
         async function sendTestEmails() {
             const resultDiv = document.getElementById('emailTestResults');
             const sendButton = document.getElementById('sendTestEmailsBtn');
-            
+
             // Get selected emails
             const selectedEmails = [];
             document.querySelectorAll('.verified-email-checkbox:checked').forEach(checkbox => {
                 selectedEmails.push(checkbox.value);
             });
-            
+
             if (selectedEmails.length === 0) {
                 resultDiv.innerHTML = '<div class="alert alert-warning">Please select at least one email recipient.</div>';
                 resultDiv.style.display = 'block';
                 return;
             }
-            
+
             // Disable button and show loading state
             sendButton.disabled = true;
             resultDiv.innerHTML = `
@@ -670,10 +687,10 @@
                 </div>
             `;
             resultDiv.style.display = 'block';
-            
+
             try {
                 console.log('Sending test emails to:', selectedEmails);
-                
+
                 // Send request to backend
                 const response = await fetch('/admin/test-email-alert', {
                     method: 'POST',
@@ -683,10 +700,10 @@
                     body: JSON.stringify({ emails: selectedEmails }),
                     credentials: 'include'
                 });
-                
+
                 // Parse response
                 const result = await response.json();
-                
+
                 // Display result
                 if (response.ok && result.success) {
                     let html = `
@@ -697,12 +714,12 @@
                             <h6>Details:</h6>
                             <ul>
                     `;
-                    
+
                     result.results.forEach(item => {
                         const statusClass = item.status === 'success' ? 'text-success' : 'text-danger';
                         const statusText = item.status === 'success' ? 'Success' : 'Failed';
                         const errorInfo = item.error ? `: ${item.error}` : '';
-                        
+
                         html += `
                             <li>
                                 <strong>${item.email}</strong>: 
@@ -710,12 +727,12 @@
                             </li>
                         `;
                     });
-                    
+
                     html += `
                             </ul>
                         </div>
                     `;
-                    
+
                     resultDiv.innerHTML = html;
                 } else {
                     // Show error message
@@ -733,7 +750,7 @@
                 sendButton.disabled = false;
             }
         }
-        
+
         // Initialize email testing when admin content loads
         function initializeEmailTesting() {
             // Ensure DOM is fully loaded before populating
@@ -743,16 +760,8 @@
                 console.log("Email testing initialized");
             }, 100);
         }
-        
-        // System status functions
-        async function updateSystemStatus() {
-            const lastUpdateSpan = document.getElementById('lastDataUpdate');
-            
-            // In a real implementation, this would fetch from your backend
-            // For now, just show current time
-            const now = new Date();
-            lastUpdateSpan.textContent = now.toLocaleString();
-        }
+
+        // System status functions removed along with System Information card
     </script>
 </body>
 

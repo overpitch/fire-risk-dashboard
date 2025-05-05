@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, UploadFile, File, Body, status
+from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, UploadFile, File, Body, status, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import shutil
 import os
@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 import pathlib
 import os
 import time
-from typing import Optional, List
+from typing import Optional, List, Dict
 import secrets
 import json
 
@@ -337,6 +337,45 @@ async def import_subscribers(
     }
     
     return JSONResponse(content=result)
+
+@router.post("/admin/validate-pin", response_class=JSONResponse)
+async def validate_pin_api(request: Request, data: Dict[str, str] = Body(...)):
+    """Validate admin PIN via API for the admin interface"""
+    client_ip = request.client.host
+    pin = data.get("pin", "")
+    
+    if not pin:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"valid": False, "error": "No PIN provided"}
+        )
+    
+    # Verify the PIN
+    is_valid, error_message = verify_pin(pin, client_ip)
+    
+    if is_valid:
+        # Generate a session token
+        session_token = generate_session_token()
+        admin_sessions[session_token] = {
+            "ip": client_ip,
+            "created_at": time.time()
+        }
+        
+        # Return success with the session token
+        return JSONResponse(
+            content={
+                "valid": True,
+                "session_token": session_token
+            }
+        )
+    else:
+        # Return failure with error message
+        return JSONResponse(
+            content={
+                "valid": False,
+                "error": error_message
+            }
+        )
 
 @router.post("/admin/test-email-alert", response_class=JSONResponse)
 async def test_email_alert(
