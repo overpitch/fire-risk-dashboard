@@ -154,16 +154,6 @@
                         <div id="importFeedback" class="mt-2"></div>
                     </div>
                     
-                    <!-- Add Single Subscriber -->
-                    <div class="mb-4">
-                        <h6>Add Single Subscriber</h6>
-                        <div class="input-group mb-3">
-                            <input type="email" class="form-control" id="singleEmail" placeholder="email@example.com">
-                            <button class="btn btn-outline-primary" type="button" id="addSingleEmailBtn">Add</button>
-                        </div>
-                        <div id="singleEmailFeedback"></div>
-                    </div>
-                    
                     <!-- Active Subscribers List -->
                     <div class="mt-4">
                         <h6>Active Subscribers</h6>
@@ -320,9 +310,6 @@
             
             // Add event listener for system status refresh
             document.getElementById('refreshSystemStatus').addEventListener('click', updateSystemStatus);
-            
-            // Add event listener for adding single email
-            document.getElementById('addSingleEmailBtn').addEventListener('click', addSingleSubscriber);
             
             // Initialize email testing section
             initializeEmailTesting();
@@ -590,26 +577,6 @@
                 // Re-enable the import button
                 importButton.disabled = false;
             }
-        }
-        
-        async function addSingleSubscriber() {
-            const emailInput = document.getElementById('singleEmail');
-            const feedbackDiv = document.getElementById('singleEmailFeedback');
-            
-            if (!emailInput.value) {
-                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please enter an email address.</div>';
-                return;
-            }
-            
-            // Validate email
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(emailInput.value)) {
-                feedbackDiv.innerHTML = '<div class="alert alert-danger">Please enter a valid email address.</div>';
-                return;
-            }
-            
-            // In a real implementation, this would save to your backend
-            feedbackDiv.innerHTML = '<div class="alert alert-info">Adding single subscribers will be implemented in the next task.</div>';
         }
         
         // Email testing functions
