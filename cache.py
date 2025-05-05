@@ -79,17 +79,19 @@ class DataCache:
                 "fire_risk_data": None,
                 "timestamp": current_time,
             }
-            # Track which fields are currently using cached data
+            # Initialize cache fields flags - mark as NOT cached to force API data fetch
             self.cached_fields: Dict[str, bool] = {
-                "temperature": True,  # Start with all fields using default values
-                "humidity": True,
-                "wind_speed": True,
-                "soil_moisture": True,
-                "wind_gust": True
+                "temperature": False,  # Initialize without using cached data
+                "humidity": False,
+                "wind_speed": False,
+                "soil_moisture": False,
+                "wind_gust": False
             }
-            # Flag to indicate if we're currently using any cached data
-            self.using_cached_data: bool = True  # Start with using defaults but mark as "default values"
-            self.using_default_values: bool = True  # Flag to indicate using defaults vs true cached values
+            # IMPORTANT: Set to FALSE by default - do not start in test mode
+            self.using_cached_data: bool = False  # Start in normal mode, not test mode
+            self.using_default_values: bool = True  # Still track that we're using defaults
+            
+            logger.info("⚠️ New deployment detected - starting in NORMAL mode (not test mode)")
         else:
             # Disk cache was loaded successfully, cached_fields and using_cached_data 
             # will be already set by _load_cache_from_disk
@@ -298,8 +300,12 @@ class DataCache:
             if "last_alerted_timestamp" in disk_cache and disk_cache["last_alerted_timestamp"]:
                 self.last_alerted_timestamp = datetime.fromisoformat(disk_cache["last_alerted_timestamp"])
             
-            # Check if the cache data is valid - if we have populated values, initialize as not using cached
-            # Otherwise, initialize as using cached data (the same as for a fresh cache)
+            # Always initialize in normal mode, regardless of disk cache state
+            # This ensures the system doesn't start in test mode by default
+            self.cached_fields = {field: False for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
+            self.using_cached_data = False  # ALWAYS start in normal mode
+            
+            # Log startup state
             has_valid_data = False
             if "fields" in self.last_valid_data:
                 for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]:
@@ -309,14 +315,9 @@ class DataCache:
                         break
             
             if has_valid_data:
-                # Initialize the cached fields with not using cached data yet
-                # This allows the refresh process to attempt API calls even with disk cache available
-                self.cached_fields = {field: False for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
-                self.using_cached_data = False  # Start with not using cached data
+                logger.info("Valid data found in disk cache, but still starting in NORMAL mode")
             else:
-                # If no valid data found, initialize same as fresh cache
-                self.cached_fields = {field: True for field in ["temperature", "humidity", "wind_speed", "soil_moisture", "wind_gust"]}
-                self.using_cached_data = True  # Start with using defaults as there's no valid data
+                logger.info("No valid data in disk cache, starting in NORMAL mode with default values")
             
             logger.info(f"Successfully loaded cache from disk: {self.cache_file}")
             return True, disk_cache
