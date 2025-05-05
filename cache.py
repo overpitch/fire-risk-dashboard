@@ -121,6 +121,10 @@ class DataCache:
         # Create timezone-aware datetime for Pacific timezone
         current_time = datetime.now(TIMEZONE)
         
+        # Save the current cached fields state before updating
+        cached_fields_state = self.cached_fields.copy()
+        using_cached_data_state = self.using_cached_data
+        
         with self._lock:
             self.synoptic_data = synoptic_data
             self.wunderground_data = None  # No longer used
@@ -154,9 +158,41 @@ class DataCache:
             self.last_updated = current_time
             self.last_update_success = True
             
-            # Restore the cached_fields and using_cached_data state # REMOVED
-            # self.cached_fields = cached_fields_state # REMOVED
-            # self.using_cached_data = using_cached_data_state # REMOVED
+            # MODIFIED CACHE STATE HANDLING:
+            # First, check wind data - ensure it's correctly marked as cached/non-cached
+            if "weather" in fire_risk_data:
+                weather = fire_risk_data.get("weather", {})
+                
+                # Check if wind_speed is present in the fresh data
+                if weather.get("wind_speed") is not None:
+                    cached_fields_state["wind_speed"] = False
+                else:
+                    # If wind_speed is None, it should be marked as cached
+                    cached_fields_state["wind_speed"] = True
+                    
+                # Check if wind_gust is present in the fresh data
+                if weather.get("wind_gust") is not None:
+                    # Check if the wind_gust is actually from cache
+                    wind_gust_stations = weather.get("wind_gust_stations", {})
+                    for station in wind_gust_stations.values():
+                        if station.get("is_cached", False):
+                            cached_fields_state["wind_gust"] = True
+                            break
+                    else:
+                        # If no station is cached, mark as not cached
+                        cached_fields_state["wind_gust"] = False
+                else:
+                    # If wind_gust is None, it should be marked as cached
+                    cached_fields_state["wind_gust"] = True
+            
+            # Now restore the cached_fields and using_cached_data state
+            self.cached_fields = cached_fields_state
+            # Recalculate using_cached_data based on actual field states
+            self.using_cached_data = any(self.cached_fields.values())
+            
+            # Log cache state for monitoring
+            logger.info(f"Cache state after update: using_cached_data={self.using_cached_data}")
+            logger.info(f"Cached fields: {', '.join([f for f, v in self.cached_fields.items() if v])}")
             
             # Store the full response data for backwards compatibility
             # Always update timestamp and store the current values (even when they are None)
@@ -421,11 +457,22 @@ class DataCache:
             response_field_name in self.fire_risk_data["weather"] and
             self.fire_risk_data["weather"][response_field_name] is not None):
             
-            # Reset cached flag for this field since we're using direct value
-            self.cached_fields[field_name] = False
+            # Check if the value is from cache (for wind_gust specifically)
+            is_cached = False
+            if field_name == "wind_gust" and "wind_gust_stations" in self.fire_risk_data["weather"]:
+                # Check if any station has cached data
+                for station_data in self.fire_risk_data["weather"]["wind_gust_stations"].values():
+                    if station_data.get("is_cached", False):
+                        is_cached = True
+                        break
             
-            # Check if any field is still using cached data
-            self.using_cached_data = any(self.cached_fields.values())
+            # Only update the cached flag if it's not a cached value
+            if not is_cached:
+                # Reset cached flag for this field since we're using direct value
+                self.cached_fields[field_name] = False
+                
+                # Check if any field is still using cached data
+                self.using_cached_data = any(self.cached_fields.values())
             
             return self.fire_risk_data["weather"][response_field_name]
         

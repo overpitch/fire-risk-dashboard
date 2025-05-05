@@ -1,110 +1,130 @@
-# Wind Data Issue: Static Data Fix
+k# Wind Data Issue Fix
 
-## Problem Description
+## Issue Summary
 
-The UI in production was showing static wind data values for station 629PG (PG&E Sand Shed):
-- UI showing wind speed of ~2 mph and wind gusts of ~5 mph
-- Actual real-world values were wind speed of ~5 mph and gusts of ~16 mph
+The fire risk dashboard was showing stale wind data in production (Render) environment, even though the code was the same as in the development environment. Specifically:
 
-## Root Cause Analysis
+1. In production, the wind data (and other data types) were marked as "(6 minutes old)"
+2. Wind speed and wind gust values were incorrect or stale
+3. The issue appeared after the latest code push to production
 
-1. **Caching Issue**: The application was using cached wind data instead of refreshing it from the Synoptic API.
-   - Only wind_speed and wind_gust fields were marked as using cached data
-   - Other weather metrics (temperature, humidity, soil_moisture) were refreshing correctly
+## Root Cause
 
-2. **Potential Data Conversion Issue**: There appeared to be a potential issue with how the wind data values are converted from m/s to mph in the UI.
-   - Values in the cache are stored in m/s (the API's native unit)
-   - The UI should convert these to mph for display (multiply by 2.237)
-   - There may have been an inconsistency in this conversion process
-
-## Solution Implemented
-
-We implemented a more streamlined solution that integrates directly into the application's startup and refresh processes:
-
-### 1. Enhanced Application Startup
-
-Modified the `lifespan` function in `main.py` to ensure wind data is properly refreshed at application startup:
+After investigation, we found that the cache system was not properly preserving the state of which fields were using cached data during cache updates. This was due to a code change where the following lines were commented out in the `update_cache()` method in `cache.py`:
 
 ```python
-@asynccontextmanager
-async def lifespan(app):
-    """Lifespan context manager for application startup and shutdown."""
-    # Startup event
-    logger.info("🚀 Application startup: Initializing data cache...")
-    
-    # Try to fetch initial data, but don't block startup if it fails
-    try:
-        # Force a complete refresh of the cache with force=True
-        await refresh_data_cache(force=True)
-        
-        # Check specifically that wind data isn't cached after refresh
-        if data_cache.cached_fields['wind_speed'] or data_cache.cached_fields['wind_gust']:
-            logger.warning("⚠️ Wind data still marked as cached after initial refresh, forcing second refresh...")
-            await refresh_data_cache(force=True)
-            
-            # Log the final status of wind data
-            if data_cache.cached_fields['wind_speed'] or data_cache.cached_fields['wind_gust']:
-                logger.error("❌ Wind data still marked as cached after second refresh attempt")
-            else:
-                logger.info("✅ Wind data refreshed successfully after second attempt")
-        else:
-            logger.info("✅ Initial data cache populated successfully with fresh wind data")
-    except Exception as e:
-        logger.error(f"❌ Failed to populate initial data cache: {str(e)}")
-        logger.info("Application will continue startup and retry data fetch on first request")
-    
-    # Yield control back to FastAPI during application lifetime
-    yield
-    
-    # Shutdown event (if needed in the future)
-    logger.info("🛑 Application shutting down...")
+# Restore the cached_fields and using_cached_data state # REMOVED
+# self.cached_fields = cached_fields_state # REMOVED
+# self.using_cached_data = using_cached_data_state # REMOVED
 ```
 
-This ensures fresh wind data on every application restart in both development and production environments.
+Without these lines, the system wasn't properly tracking which fields were using cached values, resulting in:
 
-### 2. Improved Cache Refresh Logic
+1. The system thinking it had fresh data when it didn't
+2. No indication in the UI that data was stale
+3. Failure to refresh data when needed
 
-Added a wind data check in `cache_refresh.py` to ensure wind data is never incorrectly marked as cached during regular refreshes:
+## Solution
 
-```python
-# --- Wind Data Check ---
-# Specifically verify wind data is properly refreshed and not stuck in cached mode
-if data_cache.cached_fields["wind_speed"] or data_cache.cached_fields["wind_gust"]:
-    logger.warning("Wind data marked as cached after processing new data - this should not happen!")
-    # Reset the wind cached flags to ensure data refreshes properly
-    data_cache.cached_fields["wind_speed"] = False
-    data_cache.cached_fields["wind_gust"] = False
-    logger.info("Reset wind data cached flags to ensure fresh data")
-```
+After careful analysis, we found that the original problem stemmed from commented-out code that was responsible for tracking cached fields. However, we needed a more sophisticated solution than simply restoring the code, as there appeared to be reasons it was commented out in the first place.
 
-This additional check guarantees that even if there is an issue with the wind data refresh process, the system will automatically correct it and ensure fresh data is used.
+Our solution involved three main improvements:
 
-## Testing
+1. Improved state tracking in the `update_cache()` method:
+   ```python
+   # Save the current cached fields state before updating
+   cached_fields_state = self.cached_fields.copy()
+   using_cached_data_state = self.using_cached_data
+   
+   # ... later in the method ...
+   
+   # MODIFIED CACHE STATE HANDLING:
+   # First, check wind data - ensure it's correctly marked as cached/non-cached
+   if "weather" in fire_risk_data:
+       weather = fire_risk_data.get("weather", {})
+       
+       # Check if wind_speed is present in the fresh data
+       if weather.get("wind_speed") is not None:
+           cached_fields_state["wind_speed"] = False
+       else:
+           # If wind_speed is None, it should be marked as cached
+           cached_fields_state["wind_speed"] = True
+           
+       # Check if wind_gust is present in the fresh data
+       if weather.get("wind_gust") is not None:
+           # Check if the wind_gust is actually from cache
+           wind_gust_stations = weather.get("wind_gust_stations", {})
+           for station in wind_gust_stations.values():
+               if station.get("is_cached", False):
+                   cached_fields_state["wind_gust"] = True
+                   break
+           else:
+               # If no station is cached, mark as not cached
+               cached_fields_state["wind_gust"] = False
+       else:
+           # If wind_gust is None, it should be marked as cached
+           cached_fields_state["wind_gust"] = True
+   
+   # Now restore the cached_fields and using_cached_data state
+   self.cached_fields = cached_fields_state
+   # Recalculate using_cached_data based on actual field states
+   self.using_cached_data = any(self.cached_fields.values())
+   ```
 
-You can verify the current wind data from the API by running:
-```python
-python check_wind_data.py
-```
+2. Enhancing the `get_field_value()` method to better handle cached wind_gust data:
+   ```python
+   # Check if the value is from cache (for wind_gust specifically)
+   is_cached = False
+   if field_name == "wind_gust" and "wind_gust_stations" in self.fire_risk_data["weather"]:
+       # Check if any station has cached data
+       for station_data in self.fire_risk_data["weather"]["wind_gust_stations"].values():
+           if station_data.get("is_cached", False):
+               is_cached = True
+               break
+   
+   # Only update the cached flag if it's not a cached value
+   if not is_cached:
+       # Reset cached flag for this field since we're using direct value
+       self.cached_fields[field_name] = False
+       
+       # Check if any field is still using cached data
+       self.using_cached_data = any(self.cached_fields.values())
+   ```
 
-This will fetch the latest data from the Synoptic API for station 629PG and display:
-- Current wind speed (in m/s and mph)
-- Current wind gust (in m/s and mph)
-- Timestamps for when these measurements were taken
+3. Adding detailed logging to monitor cache state:
+   ```python
+   # Log cache state for monitoring
+   logger.info(f"Cache state after update: using_cached_data={self.using_cached_data}")
+   logger.info(f"Cached fields: {', '.join([f for f, v in self.cached_fields.items() if v])}")
+   ```
 
-## Possible Long-term Improvements
+## Verification
 
-1. **Enhance Caching Logic**: Review the caching mechanism to ensure all fields refresh properly.
+Two verification scripts were created to test the fix:
 
-2. **Improve Error Handling**: Add more robust error handling for API failures that specifically identifies when wind data fails to update.
+1. `test_cache_fix.py` - A simple test that simulates updating the cache with missing wind data, then complete data, then missing data again.
+2. `verify_fixed_wind_data.py` - A more comprehensive test that fetches real data from the Synoptic API and verifies the whole workflow.
 
-3. **Data Consistency Checks**: Implement checks to compare cached values with new API values to detect when data hasn't changed for an abnormal period.
+Both tests confirmed that:
+- The cache system now correctly tracks which fields are using cached data
+- When data is missing from the API, the system properly falls back to cached values
+- The cache state is properly preserved during updates
 
-4. **Monitoring**: Add monitoring specifically for wind data staleness to alert when the issue reoccurs.
+## Deployment Notes
 
-5. **Unit Conversion Standardization**: Ensure consistent unit conversion throughout the application (m/s to mph).
+When deploying this fix to production:
 
-## References
+1. Ensure the fix is applied to the `cache.py` file
+2. Restart the application to ensure the changes take effect
+3. Monitor the logs for any "Cache state after update" entries to verify the fix is working
+4. Check the dashboard UI to confirm that wind data is updating correctly
+5. If data is still stale, check if the API is returning valid data
 
-- Station ID: 629PG (PG&E Sand Shed)
-- Synoptic API documentation
-- Cache implementation in `cache.py` and `cache_refresh.py`
+## Future Considerations
+
+To prevent similar issues in the future:
+
+1. Add automated tests that verify cache behavior
+2. Consider adding more explicit UI indicators when data is stale
+3. Implement a health check endpoint that verifies all data sources are working
+4. Add monitoring alerts for when data sources have been stale for too long
