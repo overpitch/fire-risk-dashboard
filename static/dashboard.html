@@ -187,6 +187,18 @@
                         }
 
                         data = await response.json();
+                        
+                        // Enhanced debugging for refresh operation
+                        console.log(`RESPONSE DEBUG: Cache info:`, data.cache_info);
+                        console.log(`RESPONSE DEBUG: Is data from cache?`, data.cache_info?.using_cached_data);
+                        console.log(`RESPONSE DEBUG: Which fields are cached?`, data.weather?.cached_fields);
+                        
+                        // Check if waitForFresh was requested but we still got cached data
+                        if (waitForFresh && data.cache_info && data.cache_info.using_cached_data) {
+                            console.warn(`⚠️ Requested fresh data (waitForFresh=true) but received cached data!`);
+                            throw new Error('Requested fresh data but received cached data');
+                        }
+                        
                         success = true;
                         
                         // Log wind gust data specifically to debug

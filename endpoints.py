@@ -105,7 +105,11 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     # If we specifically timed out while waiting for fresh data, override the flag in the response
     if timed_out_waiting_for_fresh:
         result["cache_info"]["using_cached_data"] = True
-        logger.debug("Overriding cache_info.using_cached_data to True due to wait_for_fresh timeout.")
+        result["cache_info"]["wait_for_fresh_timed_out"] = True  # Add explicit flag indicating timeout
+        
+        # Log detailed information about the timeout for debugging
+        logger.warning(f"⚠️ wait_for_fresh request timed out - returning cached data with timeout flag")
+        logger.info(f"Cached fields state at timeout: {data_cache.cached_fields}")
 
     # Add threshold values from config to the response
     from config import THRESH_TEMP, THRESH_HUMID, THRESH_WIND, THRESH_GUSTS, THRESH_SOIL_MOIST
