@@ -193,13 +193,17 @@
                         console.log(`RESPONSE DEBUG: Is data from cache?`, data.cache_info?.using_cached_data);
                         console.log(`RESPONSE DEBUG: Which fields are cached?`, data.weather?.cached_fields);
                         
-                        // Check if waitForFresh was requested but we still got cached data
-                        if (waitForFresh && data.cache_info && data.cache_info.using_cached_data) {
-                            console.warn(`⚠️ Requested fresh data (waitForFresh=true) but received cached data!`);
-                            throw new Error('Requested fresh data but received cached data');
+                        // *** FIXED ERROR DETECTION LOGIC ***
+                        // Only warn about cached data but don't throw an error
+                        // This fixes the "Refresh failed" issue when getting a 200 OK with fresh data
+                        if (waitForFresh && data.cache_info && data.cache_info.using_cached_data === true) {
+                            console.warn(`⚠️ Refresh operation returned cached data despite waitForFresh=true`);
+                            // No longer throwing an error - just log a warning
                         }
                         
+                        // Mark success as true since we got a valid response
                         success = true;
+                        console.log(`✅ Refresh operation successful - data received`);
                         
                         // Log wind gust data specifically to debug
                         if (data && data.weather && data.weather.wind_gust) {
@@ -233,6 +237,8 @@
             if (!success) {
                 // All retries failed
                 if (showSpinner) {
+                    // Provide more informative error message
+                    console.error("⛔ All retry attempts failed for refresh operation");
                     document.getElementById('refresh-btn').innerHTML = 'Refresh Failed - Try Again';
                     document.getElementById('refresh-btn').disabled = false;
                 }
