@@ -178,6 +178,8 @@ def combine_weather_data(
 ) -> Dict[str, Any]:
     """Get weather data from Synoptic API.
     
+    from config import logger  # Import here to avoid circular import
+    
     Args:
         synoptic_data: The response from the Synoptic API
         cached_data: Optional cached data to use for stations with missing data
@@ -199,12 +201,17 @@ def combine_weather_data(
         }
     }
     
+    # Log the current state of wind data before falling back to cache
+    logger.info(f"⚡ Wind gust from API: {wind_gust} (None means missing)")
+    
     # If we don't have current wind gust data, check the cache
     if wind_gust is None and cached_data:
         try:
             # Check if we have cached wind gust data
             cached_wind_gust = cached_data.get("fields", {}).get("wind_gust", {}).get("value")
             cached_timestamp = cached_data.get("fields", {}).get("wind_gust", {}).get("timestamp")
+            
+            logger.info(f"⚡ Cached wind gust data available: {cached_wind_gust}, timestamp: {cached_timestamp}")
             
             # Only use cached data if it's less than 1 hour old
             if cached_wind_gust is not None and cached_timestamp:
@@ -219,8 +226,13 @@ def combine_weather_data(
                         wind_gust_stations[WIND_STATION_ID]["is_cached"] = True
                         wind_gust_stations[WIND_STATION_ID]["timestamp"] = cached_timestamp
                         
-                        logger.info(f"Using cached wind gust data: {wind_gust} mph " +
+                        logger.info(f"⚡ Using cached wind gust data: {wind_gust} mph " +
                                    f"({format_age_string(current_time, cached_timestamp)} old)")
+                        
+                        # Explicitly set the cached_fields flag for wind_gust
+                        if cached_fields:
+                            cached_fields["wind_gust"] = True
+                            logger.info(f"⚡ Setting cached_fields['wind_gust'] = True")
                     else:
                         logger.warning(f"Cached wind gust data is too old " +
                                       f"({format_age_string(current_time, cached_timestamp)}), not using")
@@ -259,7 +271,9 @@ def combine_weather_data(
         }
     
     # Check if wind gust station is using cached data
-    cached_fields["wind_gust"] = wind_gust_stations[WIND_STATION_ID].get("is_cached", False)
+    is_cached = wind_gust_stations[WIND_STATION_ID].get("is_cached", False)
+    cached_fields["wind_gust"] = is_cached
+    logger.info(f"⚡ Wind gust data is{' not' if not is_cached else ''} using cache. Value: {wind_gust}")
     
     # Create the combined weather data dictionary
     latest_weather = {

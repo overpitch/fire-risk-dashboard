@@ -44,28 +44,52 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
     
     # Handle stale data
     if is_stale:
-        # If requested to wait for fresh data or if data is critically stale
-        if wait_for_fresh or data_cache.is_critically_stale():
-            logger.info("Waiting for fresh data...")
-            
-            # If no refresh is in progress, start one
-            if not refresh_in_progress:
-                # Reset the update event and start a refresh
-                data_cache.reset_update_event()
-                await refresh_data_cache(background_tasks, force=True)
-            
-            # Wait for the update to complete with timeout
-            success = await data_cache.wait_for_update()
+            # If requested to wait for fresh data or if data is critically stale
+            if wait_for_fresh or data_cache.is_critically_stale():
+                logger.info(f"Waiting for fresh data... (wait_for_fresh={wait_for_fresh}, critically_stale={data_cache.is_critically_stale()})")
+                
+                # If no refresh is in progress, start one
+                if not refresh_in_progress:
+                    logger.info("No refresh in progress, initiating a forced refresh")
+                    # Reset the update event and start a refresh
+                    data_cache.reset_update_event()
+                    refresh_started = await refresh_data_cache(background_tasks, force=True)
+                    logger.info(f"Forced refresh started: {refresh_started}")
+                else:
+                    logger.info("Refresh already in progress, waiting for it to complete")
+                
+                # Log cached field status before waiting
+                logger.info(f"Cached fields before wait: {data_cache.cached_fields}")
+                
+                # Wait for the update to complete with timeout
+                logger.info("Waiting for update event with timeout...")
+                success = await data_cache.wait_for_update()
+                logger.info(f"Wait for update completed with success={success}")
 
-            timed_out_waiting_for_fresh = False # Flag to track timeout specifically in wait_for_fresh path
-            if not success:
-                logger.warning("Timeout waiting for fresh data, returning potentially stale data")
-                timed_out_waiting_for_fresh = True # Set the flag
-        else:
-            # Schedule background refresh if not already in progress
-            if not refresh_in_progress:
-                logger.info("Cache is stale. Scheduling background refresh.")
-                background_tasks.add_task(refresh_data_cache, background_tasks)
+                # Log cached field status after waiting
+                logger.info(f"Cached fields after wait: {data_cache.cached_fields}")
+                
+                # Check specifically for wind gust data
+                if "wind_gust" in data_cache.cached_fields:
+                    logger.info(f"Wind gust data is using cache: {data_cache.cached_fields['wind_gust']}")
+                    
+                    # If from last_valid_data, log the value and timestamp
+                    if data_cache.cached_fields['wind_gust'] and "fields" in data_cache.last_valid_data:
+                        wind_field = data_cache.last_valid_data["fields"].get("wind_gust", {})
+                        wind_value = wind_field.get("value")
+                        wind_timestamp = wind_field.get("timestamp")
+                        logger.info(f"Cached wind gust value: {wind_value}, timestamp: {wind_timestamp}")
+
+                timed_out_waiting_for_fresh = False # Flag to track timeout specifically in wait_for_fresh path
+                if not success:
+                    logger.warning("⚠️ Timeout waiting for fresh data, returning potentially stale data")
+                    logger.warning("This will trigger 'Refresh failed' in the UI")
+                    timed_out_waiting_for_fresh = True # Set the flag
+            else:
+                # Schedule background refresh if not already in progress
+                if not refresh_in_progress:
+                    logger.info("Cache is stale. Scheduling background refresh.")
+                    background_tasks.add_task(refresh_data_cache, background_tasks)
     
     # If we get here, we have some data to return (potentially stale)
     # Add cache information to the response

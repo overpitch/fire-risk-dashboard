@@ -130,7 +130,7 @@
             refreshInterval: 300000, // 5 minutes
             maxRetries: 3,
             retryDelay: 2000, // 2 seconds
-            waitForFreshTimeout: 15000 // 15 seconds
+            waitForFreshTimeout: 30000 // 30 seconds (increased to match server-side timeout)
         };
 
         async function fetchWithTimeout(url, options, timeout) {
@@ -173,15 +173,39 @@
                         settings.waitForFreshTimeout :
                         10000; // 10 seconds for normal requests
 
-                    const response = await fetchWithTimeout(apiUrl, {}, timeout);
+                    console.log(`Fetching from ${apiUrl} with timeout ${timeout}ms, waitForFresh=${waitForFresh}`);
+                    const fetchStartTime = new Date().getTime();
+                    
+                    try {
+                        const response = await fetchWithTimeout(apiUrl, {}, timeout);
+                        const fetchEndTime = new Date().getTime();
+                        console.log(`Fetch completed in ${fetchEndTime - fetchStartTime}ms with status: ${response.status}`);
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error ${response.status}`);
+                        if (!response.ok) {
+                            console.error(`HTTP error ${response.status}: ${response.statusText}`);
+                            throw new Error(`HTTP error ${response.status}`);
+                        }
+
+                        data = await response.json();
+                        success = true;
+                        
+                        // Log wind gust data specifically to debug
+                        if (data && data.weather && data.weather.wind_gust) {
+                            console.log(`Received wind_gust: ${data.weather.wind_gust}`);
+                            
+                            // Check if it's from cache
+                            const isFromCache = data.cache_info && data.cache_info.using_cached_data && 
+                                              data.weather.cached_fields && 
+                                              data.weather.cached_fields.wind_gust === true;
+                            console.log(`Wind gust data from cache: ${isFromCache}`);
+                        } else {
+                            console.warn('No wind_gust data in response or it\'s null');
+                        }
+                    } catch (error) {
+                        const fetchEndTime = new Date().getTime();
+                        console.error(`Fetch failed after ${fetchEndTime - fetchStartTime}ms: ${error.message}`);
+                        throw error;
                     }
-
-                    data = await response.json();
-                    success = true;
-
                 } catch (error) {
                     retries++;
                     console.error(`Error fetching data (attempt ${retries}/${settings.maxRetries}):`, error);

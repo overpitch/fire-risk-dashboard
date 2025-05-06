@@ -33,7 +33,7 @@ class DataCache:
         self.last_update_success: bool = False
         self.max_retries: int = 5  # Increased from 3 to 5
         self.retry_delay: int = 5  # seconds
-        self.update_timeout: int = 15  # seconds - max time to wait for a complete refresh
+        self.update_timeout: int = 30  # seconds - increased from 15s to give more time for refresh
         self.background_refresh_interval: int = 10  # minutes
         self.data_timeout_threshold: int = 30  # minutes - max age before data is considered too old
         self.refresh_task_active: bool = False
@@ -251,13 +251,31 @@ class DataCache:
                 
                 logger.info(f"Stored valid data for future fallback use at {current_time}")
             
-            # Set the event to signal update completion
+            # Signal that the update is complete by setting the event
             try:
-                loop = asyncio.get_event_loop()
-                if not loop.is_closed():
-                    loop.call_soon_threadsafe(self._update_complete_event.set)
+                logger.info("✅ Setting update_complete_event to signal refresh completion")
+                
+                # Try to get the current event loop
+                try:
+                    loop = asyncio.get_event_loop()
+                    if not loop.is_closed():
+                        logger.info("✅ Using call_soon_threadsafe to set event")
+                        loop.call_soon_threadsafe(self._update_complete_event.set)
+                    else:
+                        logger.warning("⚠️ Loop is closed, setting event directly")
+                        self._update_complete_event.set()
+                except RuntimeError:
+                    # If there's no event loop, set the event directly
+                    logger.warning("⚠️ No event loop, setting event directly")
+                    self._update_complete_event.set()
             except Exception as e:
-                logger.error(f"Error signaling update completion: {e}")
+                logger.error(f"⚠️ Error signaling update completion: {e}")
+                # Last resort attempt to set the event
+                try:
+                    self._update_complete_event.set()
+                    logger.info("✅ Set event directly after error")
+                except Exception as e2:
+                    logger.error(f"⚠️ Failed even direct event setting: {e2}")
         
         # Log cache update
         logger.info(f"Cache updated at {self.last_updated}")
@@ -424,11 +442,36 @@ class DataCache:
         """Wait for the current update to complete, with an optional timeout"""
         if timeout is None:
             timeout = self.update_timeout
+        
+        # Verify the event is properly initialized
+        if self._update_complete_event is None:
+            logger.error("⚠️ Update event is None, creating a new one")
+            self._update_complete_event = asyncio.Event()
+        
+        logger.info(f"⏱️ Waiting for update to complete with timeout of {timeout}s...")
+        
+        # Check if the event is already set (meaning update is already complete)
+        if self._update_complete_event.is_set():
+            logger.info("✅ Update event was already set, returning immediately")
+            return True
+            
         try:
+            # Wait for the event to be set with a timeout
             await asyncio.wait_for(self._update_complete_event.wait(), timeout=timeout)
+            logger.info("✅ Update completed successfully within timeout")
             return True
         except asyncio.TimeoutError:
-            logger.warning(f"Timeout waiting for data update after {timeout} seconds")
+            logger.warning(f"⚠️ Timeout waiting for data update after {timeout} seconds")
+            
+            # Log the current cache state to help diagnose the issue
+            logger.warning(f"⚠️ Current cached_fields state: {self.cached_fields}")
+            logger.warning(f"⚠️ Update in progress: {self.update_in_progress}")
+            
+            # Check cache age to see if data is critically stale
+            if self.last_updated:
+                age_minutes = (datetime.now(TIMEZONE) - self.last_updated).total_seconds() / 60
+                logger.warning(f"⚠️ Cache age: {age_minutes:.1f} minutes")
+            
             return False
     
     def get_field_value(self, field_name: str, use_default_if_missing: bool = False) -> Any:
