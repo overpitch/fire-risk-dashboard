@@ -2,7 +2,9 @@ import requests
 import json
 import logging
 import os
-from typing import Dict, Any, Optional
+import re
+import time
+from typing import Dict, Any, Optional, Tuple
 
 from config import (
     SYNOPTIC_API_KEY, SYNOPTIC_BASE_URL,
@@ -37,6 +39,9 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
     
     Args:
         request_params: Optional dictionary of request parameters (headers, proxies, etc)
+    
+    Returns:
+        A validated API token or None if unable to obtain a valid token
     """
     if not SYNOPTIC_API_KEY:
         logger.error("🚨 API KEY NOT FOUND! Environment variable is missing.")
@@ -59,14 +64,20 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
 
         token = token_data.get("TOKEN")
         if token:
-            logger.info(f"✅ Successfully received API token from Synoptic API")
+            # Validate the token format - should be an alphanumeric string 
+            # typically 32-64 characters long
+            if validate_token_format(token):
+                logger.info(f"✅ Successfully received API token from Synoptic API")
+                return token
+            else:
+                logger.error(f"🚨 Received malformed token from API: {token[:10]}...")
+                return None
         else:
             logger.error("🚨 Token was empty or missing in response.")
             # Check if there's an error message in the response
             if "error" in token_data:
                 logger.error(f"🚨 API error message: {token_data['error']}")
-
-        return token
+            return None
 
     except requests.exceptions.RequestException as e:
         logger.error(f"🚨 Error fetching API token: {e}")
@@ -79,7 +90,44 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
                 logger.error(f"🚨 API error response text: {e.response.text[:200]}")
         return None
 
-def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int = 2) -> Optional[Dict[str, Any]]:
+def validate_token_format(token: str) -> bool:
+    """
+    Validate that a token appears to be in the correct format.
+    
+    Args:
+        token: The token string to validate
+        
+    Returns:
+        True if the token appears valid, False otherwise
+    """
+    # Synoptic tokens are typically alphanumeric strings of 32-64 characters
+    if not token:
+        return False
+    
+    # Check that the token matches the expected pattern (alphanumeric, reasonable length)
+    token_pattern = re.compile(r'^[a-zA-Z0-9]{24,64}$')
+    return bool(token_pattern.match(token))
+
+def calculate_backoff_time(retry_count: int, base_delay: float = 1.0) -> float:
+    """
+    Calculate the exponential backoff time for retries.
+    
+    Args:
+        retry_count: The current retry attempt number (0-based)
+        base_delay: The base delay in seconds
+        
+    Returns:
+        Delay time in seconds
+    """
+    # Exponential backoff with a small random factor for jitter
+    import random
+    max_delay = 30  # Cap the delay at 30 seconds
+    delay = min(base_delay * (2 ** retry_count), max_delay)
+    # Add a small random jitter (±10%)
+    jitter = delay * 0.1
+    return delay + random.uniform(-jitter, jitter)
+
+def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int = 4) -> Optional[Dict[str, Any]]:
     """Get weather data using the temporary token with production environment simulation.
     
     Args:
@@ -95,7 +143,15 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
     
     if not token:
         logger.error("🚨 Could not obtain API token, using fallback data if available")
-        return load_fallback_data()
+        if retry_count < max_retries:
+            # Apply exponential backoff before retrying
+            backoff_time = calculate_backoff_time(retry_count)
+            logger.info(f"🕒 Backing off for {backoff_time:.2f} seconds before retry {retry_count + 1}/{max_retries}")
+            time.sleep(backoff_time)
+            
+            # Try again with a fresh token
+            return get_weather_data(location_ids, retry_count + 1, max_retries)
+        return load_fallback_data() if not IS_PRODUCTION else None
 
     try:
         # Construct the URL
@@ -159,6 +215,21 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
                 
                 # If we haven't exceeded max retries, get a fresh token and try again
                 if retry_count < max_retries:
+                    # Apply exponential backoff before retrying
+                    backoff_time = calculate_backoff_time(retry_count)
+                    logger.info(f"🕒 Backing off for {backoff_time:.2f} seconds before retry {retry_count + 1}/{max_retries}")
+                    time.sleep(backoff_time)
+                    
+                    # Check if the error specifically mentions "Invalid token"
+                    invalid_token_error = False
+                    try:
+                        error_message = response.json().get("SUMMARY", {}).get("RESPONSE_MESSAGE", "")
+                        if "Invalid token" in error_message:
+                            invalid_token_error = True
+                            logger.warning(f"🔑 API reports invalid token format: {error_message}")
+                    except:
+                        pass
+                    
                     logger.info(f"🔄 Retrying with a fresh token (attempt {retry_count + 1}/{max_retries})")
                     return get_weather_data(location_ids, retry_count + 1, max_retries)
                 else:
