@@ -66,17 +66,23 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
                 console.log(`RESPONSE DEBUG: Is data from cache?`, data.cache_info?.using_cached_data);
                 console.log(`RESPONSE DEBUG: Which fields are cached?`, data.weather?.cached_fields);
                 
-                // *** FIXED ERROR DETECTION LOGIC ***
-                // Only warn about cached data but don't throw an error
-                // This fixes the "Refresh failed" issue when getting a 200 OK with fresh data
-                if (waitForFresh && data.cache_info && data.cache_info.using_cached_data === true) {
-                    console.warn(`⚠️ Refresh operation returned cached data despite waitForFresh=true`);
-                    // No longer throwing an error - just log a warning
-                }
-                
-                // Mark success as true since we got a valid response
+                // Set success as true FIRST since we got a valid response
                 success = true;
                 console.log(`✅ Refresh operation successful - data received`);
+                
+                // Enhanced logging to debug the refresh issue
+                console.log(`DEBUG: Response data structure:`, JSON.stringify(data, null, 2));
+                console.log(`DEBUG: cache_info.using_cached_data type:`, 
+                           data.cache_info ? typeof data.cache_info.using_cached_data : 'undefined');
+                console.log(`DEBUG: cache_info.using_cached_data value:`, 
+                           data.cache_info ? data.cache_info.using_cached_data : 'undefined');
+                
+                // Only log a warning if we get cached data when we requested fresh data
+                // Using non-strict equality check to handle both boolean and string "true"
+                if (waitForFresh && data.cache_info && data.cache_info.using_cached_data == true) {
+                    console.warn(`⚠️ Refresh operation returned cached data despite waitForFresh=true`);
+                    // Just log a warning - DO NOT throw an error anymore
+                }
                 
                 // Log wind gust data specifically to debug
                 if (data && data.weather && data.weather.wind_gust) {
@@ -116,8 +122,19 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
         return false;
     }
 
+    // Reset refresh button state first - this must happen regardless of anything else
+    if (showSpinner) {
+        try {
+            document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
+            document.getElementById('refresh-btn').disabled = false;
+        } catch (btnError) {
+            console.error("Error resetting refresh button:", btnError);
+            // Even if this fails, we continue to try updating the UI
+        }
+    }
+    
     try {
-        // Update the UI with the fetched data
+        // Then update the UI with the fetched data
         const riskDiv = document.getElementById('fire-risk');
         const weatherDetails = document.getElementById('weather-details');
         const timestampDiv = document.getElementById('timestamp');
@@ -125,6 +142,8 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
         const dataStatusBtn = document.getElementById('data-status-btn'); // New button
         const dataStatusModalBody = document.getElementById('dataStatusModalBody'); // Modal body
 
+        console.log("Updating UI with fetched data - risk level:", data.risk);
+        
         // Update fire risk text (simplified)
         riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
 
@@ -565,14 +584,72 @@ function initializeTooltips() {
     });
 }
 
-// Handle manual refresh button click - uses waitForFresh=true to ensure we get fresh data
-function manualRefresh() {
-    // Pass true for both showSpinner and waitForFresh
-    fetchFireRisk(true, true).then(success => {
-        if (success !== false) {
-            initializeTooltips();
+// Reset refresh button regardless of success/failure
+function resetRefreshButton(showFailure = false) {
+    try {
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            if (showFailure) {
+                refreshBtn.innerHTML = 'Refresh Failed - Try Again';
+            } else {
+                refreshBtn.innerHTML = 'Refresh Data';
+            }
+            refreshBtn.disabled = false;
         }
-    });
+    } catch (error) {
+        console.error("Critical error resetting refresh button:", error);
+        // At this point, there's nothing more we can do
+    }
+}
+
+// Completely separate manual refresh implementation to avoid any issues with the main fetchFireRisk
+async function manualRefresh() {
+    try {
+        // Set button to loading state
+        const refreshBtn = document.getElementById('refresh-btn');
+        refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+        refreshBtn.disabled = true;
+        
+        console.log("Manual refresh initiated - direct implementation");
+        
+        try {
+            // Simple fetch with minimal error handling
+            const response = await fetch('/fire-risk?wait_for_fresh=true', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log("Manual refresh successful - received data");
+            
+            // Reset button first
+            refreshBtn.innerHTML = 'Refresh Data';
+            refreshBtn.disabled = false;
+            
+            // Update the page by reloading it - simplest and most reliable approach
+            window.location.reload();
+            
+            return true;
+        } catch (fetchError) {
+            console.error("Error during manual refresh fetch:", fetchError);
+            refreshBtn.innerHTML = 'Refresh Failed - Try Again';
+            refreshBtn.disabled = false;
+            return false;
+        }
+    } catch (error) {
+        console.error("Critical error in manualRefresh:", error);
+        try {
+            document.getElementById('refresh-btn').innerHTML = 'Refresh Failed - Try Again';
+            document.getElementById('refresh-btn').disabled = false;
+        } catch (e) {
+            // Nothing more we can do if this fails
+        }
+        return false;
+    }
 }
 
 // Test Mode Toggle Functionality
