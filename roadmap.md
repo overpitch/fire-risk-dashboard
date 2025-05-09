@@ -7,6 +7,8 @@
 - **Phase 3**: 🔄 Testing strategy implementation (Partially completed)
 - **Phase 4**: 🔄 Documentation improvements (Partially completed)
 - **Phase 4.5**: 🔄 Cache System Simplification (In progress - URGENT)
+- **Phase 4.6**: 🔄 Frontend Refactoring (In progress - See [dashboard-refactoring-plan.md](dashboard-refactoring-plan.md))
+- **Phase 4.7**: 🔄 Refresh Button Bug Fix (Paused - Will resume after refactoring)
 - **Phase 5**: ⏱️ Performance optimizations (Not started)
 - **Phase 6**: ⏱️ Deployment improvements (Not started)
 - **Phase 7**: 🔄 Admin Interface & Security Enhancements (Phase 1 completed)
