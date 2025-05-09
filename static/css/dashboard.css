@@ -1,0 +1,110 @@
+/* Attribution styles moved to external CSS file */
+.data-source {
+    margin-bottom: 0.5rem;
+}
+
+.info-icon {
+    cursor: pointer;
+    color: #0d6efd;
+    font-weight: bold;
+    padding: 0 5px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+}
+
+.info-icon:hover {
+    text-decoration: none;
+    color: #0a58ca;
+}
+
+.unavailable {
+    background-color: #ffff99;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-style: italic;
+}
+
+.cache-info {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.cache-fresh {
+    color: #198754;
+}
+
+.cache-stale {
+    color: #fd7e14;
+}
+
+/* Custom toggle colors for Test Mode */
+.form-check-input.normal-mode {
+    background-color: #198754;
+    /* Bootstrap green */
+    border-color: #198754;
+}
+
+.form-check-input.test-mode {
+    background-color: #dc3545;
+    /* Bootstrap red */
+    border-color: #dc3545;
+}
+
+#refresh-btn {
+    margin-left: 10px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+}
+
+#data-status-btn {
+    margin-left: 10px;
+    padding: 3px 10px;
+    font-size: 0.9rem;
+}
+
+/* Style for cached data display (REMOVED - Handled by modal now) */
+/* .cached-data-banner {
+    background-color: #fff3cd;
+    border: 2px dashed #ffc107;
+    border-left: 10px solid #ffc107;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: #856404;
+} */
+/* .cached-data-content {
+    background-color: #fff8e6;
+    border: 1px solid #ffeeba;
+    padding: 15px;
+} */
+/* Wind gust tooltip styles removed to standardize with other tooltips */
+
+.weather-value-label {
+    display: inline-block;
+    /* Allows setting width */
+    min-width: 250px;
+    /* Increased from 230px to accommodate the longest label */
+    /* Optional: margin-right: 5px; */
+}
+
+.threshold-info {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.85rem;
+    color: #6c757d;
+    border-left: 1px solid #ddd;
+    padding-left: 10px;
+    width: 100px;
+    text-align: right;
+}
+
+.data-age {
+    font-size: 0.8rem;
+    color: #fd7e14;
+    font-style: italic;
+    display: block;
+    margin-top: 2px;
+    margin-left: 12px;
+    /* Indent slightly */
+}
