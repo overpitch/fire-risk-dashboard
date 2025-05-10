@@ -494,36 +494,50 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
                             <span style="color: ${tempExceeds ? 'red' : 'black'}">Temperature: ${tempFahrenheit}</span>
                         </span>
                         <span class="threshold-info">Thresholds: >${THRESH_TEMP}°F</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                        <span class="simple-tooltip">
+                            <span class="info-icon">ⓘ</span>
+                            <span class="tooltip-text">Sierra City<br>From: Synoptic Data</span>
+                        </span>
                     </li>
                     <li style="color: ${humidExceeds ? 'red' : 'black'}">
                         <span class="weather-value-label">
                             <span style="color: ${humidExceeds ? 'red' : 'black'}">Humidity: ${humidity}</span>
                         </span>
                         <span class="threshold-info"><${THRESH_HUMID}%</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Sierra City<br>From: Synoptic Data">ⓘ</span>
+                        <span class="simple-tooltip">
+                            <span class="info-icon">ⓘ</span>
+                            <span class="tooltip-text">Sierra City<br>From: Synoptic Data</span>
+                        </span>
                     </li>
                     <li style="color: ${windExceeds ? 'red' : 'black'}">
                         <span class="weather-value-label">
                             <span style="color: ${windExceeds ? 'red' : 'black'}">Average Winds: ${windSpeed}</span>
                         </span>
                         <span class="threshold-info">>${THRESH_WIND} mph</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="PG&E Sand Shed<br>From: Synoptic Data">ⓘ</span>
+                        <span class="simple-tooltip">
+                            <span class="info-icon">ⓘ</span>
+                            <span class="tooltip-text">PG&E Sand Shed<br>From: Synoptic Data</span>
+                        </span>
                     </li>
                     <li style="color: ${gustExceeds ? 'red' : 'black'}">
                         <span class="weather-value-label">
                             <span style="color: ${gustExceeds ? 'red' : 'black'}">Wind Gust: ${windGust}</span>
                         </span>
                         <span class="threshold-info">>${THRESH_GUSTS} mph</span>
-                        <span class="info-icon wind-gust-info" data-bs-toggle="tooltip" data-bs-html="true" 
-                              title="PG&E Sand Shed<br>From: Synoptic Data">ⓘ</span>
+                        <span class="simple-tooltip">
+                            <span class="info-icon">ⓘ</span>
+                            <span class="tooltip-text">PG&E Sand Shed<br>From: Synoptic Data</span>
+                        </span>
                     </li>
                     <li style="color: ${soilExceeds ? 'red' : 'black'}">
                         <span class="weather-value-label">
                             <span style="color: ${soilExceeds ? 'red' : 'black'}">Soil Moisture (15cm depth): ${soilMoisture}</span>
                         </span>
                         <span class="threshold-info"><${THRESH_SOIL_MOIST}%</span>
-                        <span class="info-icon" data-bs-toggle="tooltip" data-bs-html="true" title="Downieville<br>From: Synoptic Data">ⓘ</span>
+                        <span class="simple-tooltip">
+                            <span class="info-icon">ⓘ</span>
+                            <span class="tooltip-text">Downieville<br>From: Synoptic Data</span>
+                        </span>
                     </li>
                 </ul>
             </div>`;
@@ -575,13 +589,119 @@ function buildWindGustTooltip(stationsData) {
     return "PG&E Sand Shed<br>From: Synoptic Data";
 }
 
-// Initialize tooltips
+// Completely custom tooltip implementation
 function initializeTooltips() {
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        // Use standard tooltip for all elements including wind gust
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    console.log("Setting up custom tooltip implementation");
+    
+    try {
+        // First completely remove Bootstrap tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            try {
+                const tooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+                if (tooltip) {
+                    tooltip.dispose();
+                }
+            } catch (e) {
+                console.error("Error disposing tooltip:", e);
+            }
+            
+            // Remove Bootstrap tooltip attributes
+            tooltipTriggerEl.removeAttribute('data-bs-toggle');
+            
+            // Get the title content
+            const title = tooltipTriggerEl.getAttribute('title') || 
+                          tooltipTriggerEl.getAttribute('data-bs-original-title') || 
+                          "Station Information";
+            
+            // Store title for later use but remove it to prevent default browser tooltip
+            tooltipTriggerEl.dataset.tooltipContent = title;
+            tooltipTriggerEl.removeAttribute('title');
+            tooltipTriggerEl.removeAttribute('data-bs-original-title');
+        });
+        
+        // Remove any existing custom tooltips
+        const existingTooltips = document.querySelectorAll('.custom-tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        // Create a custom tooltip element and add to the DOM
+        const customTooltip = document.createElement('div');
+        customTooltip.className = 'custom-tooltip';
+        customTooltip.style.cssText = `
+            position: absolute;
+            z-index: 9999;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            max-width: 350px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: normal;
+            line-height: 1.6;
+            text-align: left;
+            display: none;
+        `;
+        document.body.appendChild(customTooltip);
+        
+        // Function to show tooltip
+        function showTooltip(event) {
+            const tooltipContent = event.target.dataset.tooltipContent;
+            if (!tooltipContent) return;
+            
+            // Position tooltip near the cursor
+            const x = event.clientX + 15;
+            const y = event.clientY - 20;
+            
+            // Set content and position
+            customTooltip.innerHTML = tooltipContent;
+            customTooltip.style.left = `${x}px`;
+            customTooltip.style.top = `${y}px`;
+            
+            // Show tooltip
+            customTooltip.style.display = 'block';
+            setTimeout(() => {
+                customTooltip.style.opacity = '1';
+            }, 10);
+        }
+        
+        // Function to hide tooltip
+        function hideTooltip() {
+            customTooltip.style.opacity = '0';
+            setTimeout(() => {
+                customTooltip.style.display = 'none';
+            }, 200);
+        }
+        
+        // Function to update tooltip position on mouse move
+        function moveTooltip(event) {
+            const x = event.clientX + 15;
+            const y = event.clientY - 20;
+            customTooltip.style.left = `${x}px`;
+            customTooltip.style.top = `${y}px`;
+        }
+        
+        // Add event listeners to info icons
+        document.querySelectorAll('.info-icon').forEach(icon => {
+            icon.style.cursor = 'pointer';
+            
+            // Use mouseenter instead of mouseover for better behavior
+            icon.addEventListener('mouseenter', showTooltip);
+            icon.addEventListener('mouseleave', hideTooltip);
+            icon.addEventListener('mousemove', moveTooltip);
+            
+            // Also handle focus/blur for accessibility
+            icon.addEventListener('focus', showTooltip);
+            icon.addEventListener('blur', hideTooltip);
+        });
+        
+        console.log("Custom tooltip implementation complete");
+    } catch (e) {
+        console.error("Critical error in custom tooltip implementation:", e);
+    }
 }
 
 // Reset refresh button regardless of success/failure
