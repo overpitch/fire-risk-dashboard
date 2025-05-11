@@ -25,9 +25,11 @@ async function fetchWithTimeout(url, options, timeout) {
 
 async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
     // Show loading state if requested (for manual refresh)
-    if (showSpinner) {
-        document.getElementById('refresh-btn').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
-        document.getElementById('refresh-btn').disabled = true;
+    // Check if refresh button exists (only on admin page now)
+    const refreshBtn = document.getElementById('refresh-btn') || document.getElementById('admin-refresh-btn');
+    if (showSpinner && refreshBtn) {
+        refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+        refreshBtn.disabled = true;
     }
 
     let retries = 0;
@@ -137,10 +139,21 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
         // Then update the UI with the fetched data
         const riskDiv = document.getElementById('fire-risk');
         const weatherDetails = document.getElementById('weather-details');
-        const timestampDiv = document.getElementById('timestamp');
         const cacheInfoDiv = document.getElementById('cache-info');
-        const dataStatusBtn = document.getElementById('data-status-btn'); // New button
-        const dataStatusModalBody = document.getElementById('dataStatusModalBody'); // Modal body
+        
+        // These elements might not exist on the main dashboard anymore
+        const dataStatusBtn = document.getElementById('data-status-btn') || document.getElementById('admin-data-status-btn');
+        const dataStatusModalBody = document.getElementById('dataStatusModalBody');
+        
+        // We completely removed the timestampDiv reference since it's not in dashboard.html anymore
+        
+        console.log("DOM elements found:", {
+            riskDiv: !!riskDiv,
+            weatherDetails: !!weatherDetails,
+            cacheInfoDiv: !!cacheInfoDiv,
+            dataStatusBtn: !!dataStatusBtn,
+            dataStatusModalBody: !!dataStatusModalBody
+        });
 
         console.log("Updating UI with fetched data - risk level:", data.risk);
         
@@ -182,16 +195,19 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             // Update data status button based on staleness (over 1 hour old)
             const dataIsStale = hasStaleData();
 
-            if (!dataIsStale) {
-                dataStatusBtn.textContent = 'Fresh Data';
-                dataStatusBtn.classList.remove('btn-warning');
-                dataStatusBtn.classList.add('btn-success');
-            } else {
-                dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
-                dataStatusBtn.classList.remove('btn-success');
-                dataStatusBtn.classList.add('btn-warning');
+            // Only update data status button if it exists (it's no longer on the main page)
+            if (dataStatusBtn) {
+                if (!dataIsStale) {
+                    dataStatusBtn.textContent = 'Fresh Data';
+                    dataStatusBtn.classList.remove('btn-warning');
+                    dataStatusBtn.classList.add('btn-success');
+                } else {
+                    dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
+                    dataStatusBtn.classList.remove('btn-success');
+                    dataStatusBtn.classList.add('btn-warning');
+                }
+                dataStatusBtn.disabled = false; // Enable button once data loads
             }
-            dataStatusBtn.disabled = false; // Enable button once data loads
 
             // Update Modal Content based on backend data
             let modalHTML = '';
@@ -249,10 +265,13 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
                 timeOnly: `${lastUpdated.toLocaleTimeString()} ${timeZoneAbbr}`
             };
 
-            cacheInfoDiv.innerHTML = `
-                <span class="cache-info">
-                   Last updated: ${window.serverTimestamp.timeOnly}${statusText}
-                </span>`;
+            // This is the main timestamp display that needs to show on dashboard.html
+            if (cacheInfoDiv) {
+                cacheInfoDiv.innerHTML = `
+                    <span class="cache-info">
+                       Last updated: ${window.serverTimestamp.formatted}${statusText}
+                    </span>`;
+            }
         } else {
             cacheInfoDiv.innerHTML = `<span class="cache-info">Last updated: Unavailable</span>`; // Fallback
         }
@@ -544,9 +563,8 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
 
         weatherDetails.innerHTML = detailsHTML;
 
-        // Update timestamp and re-enable refresh button if it was used
-        // Instead of creating a new timestamp here, use the server timestamp we saved above
-        timestampDiv.innerText = `Last updated: ${window.serverTimestamp.formatted}`;
+        // Timestamp is now only displayed via cacheInfoDiv
+        // timestampDiv has been removed from the dashboard
 
         if (showSpinner) {
             document.getElementById('refresh-btn').innerHTML = 'Refresh Data';
@@ -860,4 +878,19 @@ function setupRefresh() {
     }, settings.refreshInterval);
 }
 
-window.onload = setupRefresh;
+// Different initialization based on which page we're on
+window.onload = function() {
+    console.log("Page loaded - determining which page we're on...");
+    
+    // Check if we're on the main dashboard or admin page
+    const isAdminPage = window.location.pathname.includes('/admin');
+    
+    if (isAdminPage) {
+        console.log("Admin page detected - no automatic refresh needed");
+        // Admin page initialization is handled by initializeAdminContent() in admin.html
+        // Don't call fetchFireRisk automatically - it will be called when needed
+    } else {
+        console.log("Main dashboard detected - setting up auto-refresh");
+        setupRefresh();
+    }
+};
