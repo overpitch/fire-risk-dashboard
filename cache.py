@@ -546,6 +546,7 @@ class DataCache:
         """Determine if an alert should be sent based on current and previous risk levels.
         
         This method handles the case where a transition may have occurred during server downtime.
+        It also limits alerts to once per calendar day.
         
         Args:
             current_risk: The current risk level ("Red" or "Orange")
@@ -570,10 +571,18 @@ class DataCache:
             
         # Check if we've already alerted for this transition
         if self.last_alerted_timestamp is not None:
-            # If the risk level was set AFTER the last alert, this is a new transition
+            # If the risk level was set AFTER the last alert, this could be a new transition
             if self.risk_level_timestamp > self.last_alerted_timestamp:
-                logger.info(f"New transition detected after last alert at {self.last_alerted_timestamp.isoformat()}")
-                return True
+                # Check if we've already sent an alert today
+                current_date = current_time.date()
+                last_alert_date = self.last_alerted_timestamp.date()
+                
+                if current_date == last_alert_date:
+                    logger.info(f"Already sent an Orange-to-Red alert today ({current_date}). Limiting to once per calendar day.")
+                    return False
+                else:
+                    logger.info(f"New transition detected on a new calendar day. Last alert was on {last_alert_date}, today is {current_date}")
+                    return True
             else:
                 logger.info(f"Already alerted for this transition at {self.last_alerted_timestamp.isoformat()}")
                 return False
