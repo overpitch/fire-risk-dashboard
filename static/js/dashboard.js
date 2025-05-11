@@ -200,19 +200,23 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             // Update data status button based on staleness (over 1 hour old)
             const dataIsStale = hasStaleData();
 
-            // Only update data status button if it exists (it's no longer on the main page)
-            // Added null check to prevent errors when the button doesn't exist
-            if (dataStatusBtn !== null) {
-                if (!dataIsStale) {
-                    dataStatusBtn.textContent = 'Fresh Data';
-                    dataStatusBtn.classList.remove('btn-warning');
-                    dataStatusBtn.classList.add('btn-success');
-                } else {
-                    dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
-                    dataStatusBtn.classList.remove('btn-success');
-                    dataStatusBtn.classList.add('btn-warning');
+            try {
+                // Only update data status button if it exists (it's no longer on the main page)
+                if (dataStatusBtn !== null) {
+                    if (!dataIsStale) {
+                        dataStatusBtn.textContent = 'Fresh Data';
+                        dataStatusBtn.classList.remove('btn-warning');
+                        dataStatusBtn.classList.add('btn-success');
+                    } else {
+                        dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
+                        dataStatusBtn.classList.remove('btn-success');
+                        dataStatusBtn.classList.add('btn-warning');
+                    }
+                    dataStatusBtn.disabled = false; // Enable button once data loads
                 }
-                dataStatusBtn.disabled = false; // Enable button once data loads
+            } catch (error) {
+                console.error("Error updating data status button:", error);
+                // Continue execution even if this fails - don't let it break the whole function
             }
 
             // Update Modal Content based on backend data
@@ -587,21 +591,26 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
         }
 
         // Update the wind gust tooltip with station data
-        if (data.weather.wind_gust_stations) {
-            const tooltipContent = buildWindGustTooltip(data.weather.wind_gust_stations);
-            const windGustTooltip = document.querySelector('.wind-gust-info');
-            if (windGustTooltip) {
-                // Update the tooltip content
-                const tooltip = bootstrap.Tooltip.getInstance(windGustTooltip);
-                if (tooltip) {
-                    tooltip.dispose(); // Remove existing tooltip
+        try {
+            if (data.weather.wind_gust_stations) {
+                const tooltipContent = buildWindGustTooltip(data.weather.wind_gust_stations);
+                const windGustTooltip = document.querySelector('.wind-gust-info');
+                if (windGustTooltip) {
+                    // Update the tooltip content
+                    const tooltip = bootstrap.Tooltip.getInstance(windGustTooltip);
+                    if (tooltip) {
+                        tooltip.dispose(); // Remove existing tooltip
+                    }
+                    windGustTooltip.setAttribute('title', tooltipContent);
+                    // Reinitialize the tooltip with standard styling to match other tooltips
+                    new bootstrap.Tooltip(windGustTooltip, {
+                        html: true
+                    });
                 }
-                windGustTooltip.setAttribute('title', tooltipContent);
-                // Reinitialize the tooltip with standard styling to match other tooltips
-                new bootstrap.Tooltip(windGustTooltip, {
-                    html: true
-                });
             }
+        } catch (error) {
+            console.error("Error updating wind gust tooltip:", error);
+            // Continue execution even if this fails
         }
 
         return true; // Signal success
