@@ -157,8 +157,13 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
 
         console.log("Updating UI with fetched data - risk level:", data.risk);
         
-        // Update fire risk text (simplified)
-        riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+        // Add null checks for all DOM elements
+        if (riskDiv !== null) {
+            // Update fire risk text (simplified)
+            riskDiv.innerText = `Fire Risk: ${data.risk} - ${data.explanation}`;
+        } else {
+            console.error("Error: fire-risk element not found in the DOM");
+        }
 
         // Update cache information
         if (data.cache_info) {
@@ -196,7 +201,8 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             const dataIsStale = hasStaleData();
 
             // Only update data status button if it exists (it's no longer on the main page)
-            if (dataStatusBtn) {
+            // Added null check to prevent errors when the button doesn't exist
+            if (dataStatusBtn !== null) {
                 if (!dataIsStale) {
                     dataStatusBtn.textContent = 'Fresh Data';
                     dataStatusBtn.classList.remove('btn-warning');
@@ -210,24 +216,26 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             }
 
             // Update Modal Content based on backend data
-            let modalHTML = '';
-            if (data.modal_content) {
-                if (data.modal_content.note) {
-                    modalHTML += `<div class="alert alert-info p-2 small"><strong>NOTE:</strong> ${data.modal_content.note}</div>`;
+            if (dataStatusModalBody !== null) {
+                let modalHTML = '';
+                if (data.modal_content) {
+                    if (data.modal_content.note) {
+                        modalHTML += `<div class="alert alert-info p-2 small"><strong>NOTE:</strong> ${data.modal_content.note}</div>`;
+                    }
+                    if (data.modal_content.warning_title && data.modal_content.warning_issues && data.modal_content.warning_issues.length > 0) {
+                        modalHTML += `<div class="alert alert-warning p-2 small">
+                            <strong>${data.modal_content.warning_title}</strong><br>
+                            <ul class="mb-0">
+                                ${data.modal_content.warning_issues.map(issue => `<li>${issue}</li>`).join('')}
+                            </ul>
+                        </div>`;
+                    }
                 }
-                if (data.modal_content.warning_title && data.modal_content.warning_issues && data.modal_content.warning_issues.length > 0) {
-                    modalHTML += `<div class="alert alert-warning p-2 small">
-                        <strong>${data.modal_content.warning_title}</strong><br>
-                        <ul class="mb-0">
-                            ${data.modal_content.warning_issues.map(issue => `<li>${issue}</li>`).join('')}
-                        </ul>
-                    </div>`;
+                if (!modalHTML) {
+                    modalHTML = '<p>Data is current and no quality issues detected.</p>'; // Default message
                 }
+                dataStatusModalBody.innerHTML = modalHTML;
             }
-            if (!modalHTML) {
-                modalHTML = '<p>Data is current and no quality issues detected.</p>'; // Default message
-            }
-            dataStatusModalBody.innerHTML = modalHTML;
 
 
             // Update Cache Info Div (Timestamp only)
@@ -266,31 +274,33 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             };
 
             // This is the main timestamp display that needs to show on dashboard.html
-            if (cacheInfoDiv) {
+            if (cacheInfoDiv !== null) {
                 cacheInfoDiv.innerHTML = `
                     <span class="cache-info">
                        Last updated: ${window.serverTimestamp.formatted}${statusText}
                     </span>`;
             }
-        } else {
+        } else if (cacheInfoDiv !== null) {
             cacheInfoDiv.innerHTML = `<span class="cache-info">Last updated: Unavailable</span>`; // Fallback
         }
 
-        // Set appropriate background color based on risk level
-        const riskLevel = data.risk;
-        let bgClass = 'bg-secondary';  // Default for unknown/error risk
-        let customStyle = '';
+        // Set appropriate background color based on risk level only if riskDiv exists
+        if (riskDiv !== null) {
+            const riskLevel = data.risk;
+            let bgClass = 'bg-secondary';  // Default for unknown/error risk
+            let customStyle = '';
 
-        if (riskLevel === 'Red') {
-            bgClass = 'text-white'; // Text color for Red risk
-            customStyle = 'background-color: #FF0000;'; // Red hex color
-        } else if (riskLevel === 'Orange') {
-            bgClass = 'text-dark'; // Text color for Orange risk
-            customStyle = 'background-color: #FFA500;'; // Orange hex color
+            if (riskLevel === 'Red') {
+                bgClass = 'text-white'; // Text color for Red risk
+                customStyle = 'background-color: #FF0000;'; // Red hex color
+            } else if (riskLevel === 'Orange') {
+                bgClass = 'text-dark'; // Text color for Orange risk
+                customStyle = 'background-color: #FFA500;'; // Orange hex color
+            }
+            // Always set background color based on risk level now
+            riskDiv.className = `alert ${bgClass} p-3`;
+            riskDiv.style = customStyle; // Apply custom hex color
         }
-        // Always set background color based on risk level now
-        riskDiv.className = `alert ${bgClass} p-3`;
-        riskDiv.style = customStyle; // Apply custom hex color
 
         // Update weather details
         // Convert temperature from Celsius to Fahrenheit using the formula F = (C * 9/5) + 32
@@ -561,7 +571,12 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
                 </ul>
             </div>`;
 
-        weatherDetails.innerHTML = detailsHTML;
+        // Update weather details with null check
+        if (weatherDetails !== null) {
+            weatherDetails.innerHTML = detailsHTML;
+        } else {
+            console.error("Error: weather-details element not found in the DOM");
+        }
 
         // Timestamp is now only displayed via cacheInfoDiv
         // timestampDiv has been removed from the dashboard
