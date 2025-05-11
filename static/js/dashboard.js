@@ -136,13 +136,14 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
     }
     
     try {
-        // Then update the UI with the fetched data
+        // Then update the UI with the fetched data - strictly check for required elements
+        // Get only the elements we know exist on the main dashboard
         const riskDiv = document.getElementById('fire-risk');
         const weatherDetails = document.getElementById('weather-details');
         const cacheInfoDiv = document.getElementById('cache-info');
         
-        // These elements might not exist on the main dashboard anymore
-        const dataStatusBtn = document.getElementById('data-status-btn') || document.getElementById('admin-data-status-btn');
+        // Do not look for elements that don't exist on main dashboard
+        // If we need to add them back later for admin page, we can do it in a separate function
         const dataStatusModalBody = document.getElementById('dataStatusModalBody');
         
         // We completely removed the timestampDiv reference since it's not in dashboard.html anymore
@@ -151,7 +152,6 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
             riskDiv: !!riskDiv,
             weatherDetails: !!weatherDetails,
             cacheInfoDiv: !!cacheInfoDiv,
-            dataStatusBtn: !!dataStatusBtn,
             dataStatusModalBody: !!dataStatusModalBody
         });
 
@@ -197,27 +197,11 @@ async function fetchFireRisk(showSpinner = false, waitForFresh = false) {
                 return false; // No stale data found
             };
 
-            // Update data status button based on staleness (over 1 hour old)
+            // Removed dataStatusBtn code that was causing errors in production
+            // This functionality is only needed on the admin page
             const dataIsStale = hasStaleData();
-
-            try {
-                // Only update data status button if it exists (it's no longer on the main page)
-                if (dataStatusBtn !== null) {
-                    if (!dataIsStale) {
-                        dataStatusBtn.textContent = 'Fresh Data';
-                        dataStatusBtn.classList.remove('btn-warning');
-                        dataStatusBtn.classList.add('btn-success');
-                    } else {
-                        dataStatusBtn.textContent = 'Older Data'; // Changed from "Stale Data" to "Older Data"
-                        dataStatusBtn.classList.remove('btn-success');
-                        dataStatusBtn.classList.add('btn-warning');
-                    }
-                    dataStatusBtn.disabled = false; // Enable button once data loads
-                }
-            } catch (error) {
-                console.error("Error updating data status button:", error);
-                // Continue execution even if this fails - don't let it break the whole function
-            }
+            
+            // We completely removed dataStatusBtn reference since it's not in dashboard.html and was causing errors
 
             // Update Modal Content based on backend data
             if (dataStatusModalBody !== null) {
