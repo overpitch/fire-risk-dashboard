@@ -151,7 +151,16 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             
             # Try again with a fresh token
             return get_weather_data(location_ids, retry_count + 1, max_retries)
-        return load_fallback_data() if not IS_PRODUCTION else None
+        
+        # Always try to use fallback data in any environment when API fails
+        fallback_data = load_fallback_data()
+        if fallback_data:
+            logger.info("📋 Using fallback data after token acquisition failure")
+            return fallback_data
+        
+        # If no fallback data is available, return None
+        logger.error("🚨 No fallback data available after token acquisition failure")
+        return None
 
     try:
         # Construct the URL
@@ -182,26 +191,27 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             if response.status_code == 403:
                 logger.warning("🚨 Permission denied (403 Forbidden) - account access restricted")
                 
-                # If we're in a development environment, use cached fallback data
-                if not IS_PRODUCTION:
-                    logger.info("🏠 Development environment detected - using fallback data")
-                    return load_fallback_data()
-                else:
-                    # In production, this should work - log the error and retry once
-                    logger.error("🚨 403 Forbidden error in production - unexpected!")
-                    try:
-                        error_data = response.json()
-                        logger.error(f"🚨 API error details: {json.dumps(error_data)}")
-                    except:
-                        logger.error(f"🚨 API error response text: {response.text[:200]}")
+                # Always try to use cached fallback data, regardless of environment
+                fallback_data = load_fallback_data()
+                if fallback_data:
+                    logger.info("📋 Using fallback data after 403 error")
+                    return fallback_data
                     
-                    # Retry once in production on 403 error
-                    if retry_count < 1:
-                        logger.info(f"🔄 Retrying once for 403 error in production")
-                        return get_weather_data(location_ids, retry_count + 1, max_retries)
-                    else:
-                        logger.error(f"❌ Repeated 403 error in production - check account settings")
-                        return None
+                # If no fallback data, log and retry once in production
+                logger.error("🚨 403 Forbidden error - unexpected!")
+                try:
+                    error_data = response.json()
+                    logger.error(f"🚨 API error details: {json.dumps(error_data)}")
+                except:
+                    logger.error(f"🚨 API error response text: {response.text[:200]}")
+                
+                # Retry once in production on 403 error
+                if retry_count < 1:
+                    logger.info(f"🔄 Retrying once for 403 error in production")
+                    return get_weather_data(location_ids, retry_count + 1, max_retries)
+                else:
+                    logger.error(f"❌ Repeated 403 error in production - check account settings")
+                    return None
             
             # Handle other errors
             elif response.status_code == 401:
@@ -234,7 +244,14 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
                     return get_weather_data(location_ids, retry_count + 1, max_retries)
                 else:
                     logger.error(f"❌ Exceeded maximum retries ({max_retries}) for 401 errors")
-                    return load_fallback_data() if not IS_PRODUCTION else None
+                    # Always try to use fallback data, regardless of environment
+                    fallback_data = load_fallback_data()
+                    if fallback_data:
+                        logger.info("📋 Using fallback data after maximum 401 retry attempts")
+                        return fallback_data
+                    
+                    logger.error("🚨 No fallback data available after maximum 401 retry attempts")
+                    return None
             
             response.raise_for_status()
             data = response.json()
@@ -245,14 +262,18 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
                 if DEBUG_API_RESPONSES:
                     logger.debug(f"🔍 Response keys available: {list(data.keys())}")
                     
-                # Return fallback data in development
-                if not IS_PRODUCTION:
-                    return load_fallback_data()
+                # Always try to use fallback data regardless of environment
+                fallback_data = load_fallback_data()
+                if fallback_data:
+                    logger.info("📋 Using fallback data after missing STATION field")
+                    return fallback_data
+                
+                logger.error("🚨 No fallback data available after missing STATION field")
                 return None
             
             # If successful, cache this data for future fallback
-            if not IS_PRODUCTION:
-                save_fallback_data(data)
+            # Always save fallback data regardless of environment
+            save_fallback_data(data)
             
             logger.info(f"✅ Successfully received data from Synoptic API")
             
@@ -270,10 +291,22 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             
         except requests.exceptions.Timeout:
             logger.error("🚨 Request timed out - API endpoint not responding in a timely manner")
-            return load_fallback_data() if not IS_PRODUCTION else None
+            # Always try to use fallback data regardless of environment
+            fallback_data = load_fallback_data()
+            if fallback_data:
+                logger.info("📋 Using fallback data after timeout error")
+                return fallback_data
+            logger.error("🚨 No fallback data available after timeout error")
+            return None
         except requests.exceptions.ConnectionError:
             logger.error("🚨 Connection error - Unable to connect to API endpoint")
-            return load_fallback_data() if not IS_PRODUCTION else None
+            # Always try to use fallback data regardless of environment
+            fallback_data = load_fallback_data()
+            if fallback_data:
+                logger.info("📋 Using fallback data after connection error")
+                return fallback_data
+            logger.error("🚨 No fallback data available after connection error")
+            return None
         
     except requests.exceptions.RequestException as e:
         logger.error(f"Exception during API request: {str(e)}")
@@ -284,7 +317,13 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             except:
                 logger.error(f"🚨 API error status code: {e.response.status_code}")
                 logger.error(f"🚨 API error response text: {e.response.text[:200]}")
-        return load_fallback_data() if not IS_PRODUCTION else None
+        # Always try to use fallback data regardless of environment
+        fallback_data = load_fallback_data()
+        if fallback_data:
+            logger.info("📋 Using fallback data after general request exception")
+            return fallback_data
+        logger.error("🚨 No fallback data available after general request exception")
+        return None
 
 def create_data_directory():
     """Create data directory if it doesn't exist"""
@@ -364,7 +403,13 @@ def get_synoptic_data() -> Optional[Dict[str, Any]]:
                 logger.debug(f"🚨 API Status: {data.get('status')}")
             logger.debug(f"🚨 Response sample: {json.dumps(data, default=str)[:500]}...")
         
-        # Return None to trigger cache fallback
+        # Try to use fallback data instead
+        fallback_data = load_fallback_data()
+        if fallback_data:
+            logger.info("📋 Using fallback data in get_synoptic_data after missing STATION field")
+            return fallback_data
+            
+        logger.error("🚨 No fallback data available in get_synoptic_data after missing STATION field")
         return None
     
     # Log if we're using fallback data

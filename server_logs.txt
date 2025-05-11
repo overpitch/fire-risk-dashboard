@@ -1,0 +1,32 @@
+2025-05-11 06:58:50,741 - config - INFO - Using thresholds: TEMP=75.0°F, HUMID=15.0%, WIND=10.0mph, GUSTS=15.0mph, SOIL=10.0%
+2025-05-11 06:58:50,741 - config - INFO - Valid data found in disk cache, but still starting in NORMAL mode
+2025-05-11 06:58:50,741 - config - INFO - Successfully loaded cache from disk: data/weather_cache.json
+2025-05-11 06:58:50,825 - config - INFO - Checked/Created 'subscribers' table successfully.
+2025-05-11 06:58:50,962 - config - INFO - Development endpoints enabled
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /openapi.json
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /docs
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /docs/oauth2-redirect
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /redoc
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /static
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /fire-risk
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /toggle-test-mode
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/logout
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/subscribers
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/test-mode-status
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /api/test-mode-status
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /toggle-test-mode
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/import-subscribers
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/validate-pin
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /admin/test-email-alert
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/check-env
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/test-api
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/test-synoptic-auth
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/test-cache-system
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/force-cached-mode
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/reset-cached-mode
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/test-partial-failure
+2025-05-11 06:58:50,963 - config - INFO - Registered route: /dev/debug-info
+Loaded .env file for local development.
