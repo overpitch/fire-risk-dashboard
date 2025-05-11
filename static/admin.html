@@ -22,24 +22,60 @@
             /* Bootstrap red */
             border-color: #dc3545;
         }
-        
+
+        /* Custom accordion styles */
+        .accordion-button::after {
+            margin-left: 0;
+            margin-right: 0.5rem;
+            order: -1;
+            content: '+';
+            background-image: none !important;
+            transform: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            font-family: system-ui;
+        }
+
+        .accordion-button:not(.collapsed)::after {
+            content: '–';
+            transform: none !important;
+            background-image: none !important;
+        }
+
+        .accordion-button {
+            display: flex;
+            align-items: center;
+            padding-left: 1rem;
+        }
+
+        /* Add scrollbar when content is too long */
+        .container {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+
         /* Cache information styling for admin page */
         .cache-info {
             font-size: 0.85rem;
             color: #6c757d;
             margin-bottom: 0.5rem;
         }
-        
+
         .cache-info .status-fresh {
             color: #198754;
             font-weight: bold;
         }
-        
+
         .cache-info .status-stale {
             color: #fd7e14;
             font-weight: bold;
         }
-        
+
         .cache-info .status-error {
             color: #dc3545;
             font-weight: bold;
@@ -136,68 +172,36 @@
             <h2 class="mb-4">Admin Dashboard</h2>
 
             <div class="accordion" id="adminAccordion">
-                <!-- System Settings Section -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingSystemSettings">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapseSystemSettings" aria-expanded="true" 
-                                aria-controls="collapseSystemSettings">
-                            System Settings
-                        </button>
-                    </h2>
-                    <div id="collapseSystemSettings" class="accordion-collapse collapse show" 
-                         aria-labelledby="headingSystemSettings" data-bs-parent="#adminAccordion">
-                        <div class="accordion-body">
-                            <h5>Test Mode</h5>
-                            <p>Toggle between normal operation and test mode. Test mode uses cached data to
-                               simulate a system with limited connectivity.</p>
-
-                            <div class="form-check form-switch d-flex align-items-center mb-3">
-                                <span class="me-3" style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
-                                <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle"
-                                    style="cursor: pointer; margin-left: 0;">
-                                <label class="form-check-label ms-2" for="testModeToggle"
-                                    style="font-size: 0.9rem;">Test</label>
-                            </div>
-                            <p id="testModeStatus">Current mode: <span class="badge bg-success">NORMAL</span></p>
-                            <div id="testModeResponse" class="alert" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data Management Section (New) -->
+                <!-- Data Management Section -->
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingDataManagement">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapseDataManagement" aria-expanded="false" 
-                                aria-controls="collapseDataManagement">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseDataManagement" aria-expanded="true"
+                            aria-controls="collapseDataManagement">
                             Data Management
                         </button>
                     </h2>
-                    <div id="collapseDataManagement" class="accordion-collapse collapse" 
-                         aria-labelledby="headingDataManagement" data-bs-parent="#adminAccordion">
+                    <div id="collapseDataManagement" class="accordion-collapse collapse show"
+                        aria-labelledby="headingDataManagement">
                         <div class="accordion-body">
-                            <h5>Real-time Data Status</h5>
-                            <p>View current data status and manually refresh data from all sources.</p>
-                            
+                            <h5>Current Data Status:</h5>
+
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-3">
-                                    <span>Current Status:</span>
-                                    <button id="data-status-btn" class="btn btn-sm btn-secondary ms-3" data-bs-toggle="modal"
-                                        data-bs-target="#dataStatusModal" disabled>Data Status</button>
+                                    <button id="data-status-btn" class="btn btn-sm btn-secondary"
+                                        data-bs-toggle="modal" data-bs-target="#dataStatusModal">Data
+                                        Status</button>
                                 </div>
-                                
+
                                 <div id="admin-cache-info" class="cache-info mb-3">Last updated: Loading...</div>
-                                
-                                <div class="btn-group mb-3">
-                                    <button id="admin-refresh-btn" class="btn btn-primary me-2" onclick="adminManualRefresh()">
+
+                                <div class="mb-3">
+                                    <button id="admin-refresh-btn" class="btn btn-primary"
+                                        onclick="adminManualRefresh()">
                                         Refresh Data
                                     </button>
-                                    <button id="admin-update-status-btn" class="btn btn-outline-secondary" onclick="updateDataStatus()">
-                                        Update Status Display
-                                    </button>
                                 </div>
-                                
+
                                 <p class="text-muted mt-2">
                                     This will retrieve fresh data from all data sources and update the dashboard.
                                 </p>
@@ -209,14 +213,14 @@
                 <!-- Subscriber Management Section -->
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingSubscribers">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapseSubscribers" aria-expanded="false" 
-                                aria-controls="collapseSubscribers">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseSubscribers" aria-expanded="false"
+                            aria-controls="collapseSubscribers">
                             Subscriber List Management
                         </button>
                     </h2>
-                    <div id="collapseSubscribers" class="accordion-collapse collapse" 
-                         aria-labelledby="headingSubscribers" data-bs-parent="#adminAccordion">
+                    <div id="collapseSubscribers" class="accordion-collapse collapse"
+                        aria-labelledby="headingSubscribers">
                         <div class="accordion-body">
                             <h5>Email Subscribers</h5>
                             <p>Manage email addresses that will receive notifications when weather conditions
@@ -225,7 +229,8 @@
                             <!-- Import Subscribers -->
                             <div class="mb-4">
                                 <h6>Import Subscribers</h6>
-                                <p>Upload a CSV or XLSX file containing email addresses. The system will look for a column with
+                                <p>Upload a CSV or XLSX file containing email addresses. The system will look for a
+                                    column with
                                     "email" in the header, or use the first column if no header is found.</p>
                                 <div class="alert alert-warning">
                                     <strong>Warning:</strong> Importing a new subscriber list will replace all existing
@@ -233,7 +238,8 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="subscriberFile" class="form-label">Select File</label>
-                                    <input class="form-control" type="file" id="subscriberFile" accept=".csv, .xlsx, .xls">
+                                    <input class="form-control" type="file" id="subscriberFile"
+                                        accept=".csv, .xlsx, .xls">
                                 </div>
                                 <button id="importButton" class="btn btn-primary" onclick="importSubscribers()">Import
                                     List</button>
@@ -256,18 +262,35 @@
                     </div>
                 </div>
 
-                <!-- Email Alert Testing Section -->
+                <!-- Testing Section (combines System Settings and Email Alert Testing) -->
                 <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingEmailTesting">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapseEmailTesting" aria-expanded="false" 
-                                aria-controls="collapseEmailTesting">
-                            Email Alert Testing
+                    <h2 class="accordion-header" id="headingTesting">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseTesting" aria-expanded="false" aria-controls="collapseTesting">
+                            Testing
                         </button>
                     </h2>
-                    <div id="collapseEmailTesting" class="accordion-collapse collapse" 
-                         aria-labelledby="headingEmailTesting" data-bs-parent="#adminAccordion">
+                    <div id="collapseTesting" class="accordion-collapse collapse" aria-labelledby="headingTesting">
                         <div class="accordion-body">
+                            <!-- System Settings Content -->
+                            <h5>Test Mode</h5>
+                            <p>Toggle between normal operation and test mode. Test mode uses cached data to
+                                simulate a system with limited connectivity.</p>
+
+                            <div class="form-check form-switch d-flex align-items-center mb-3">
+                                <span class="me-3"
+                                    style="font-size: 0.9rem; min-width: 60px; text-align: right;">Normal</span>
+                                <input class="form-check-input normal-mode" type="checkbox" id="testModeToggle"
+                                    style="cursor: pointer; margin-left: 0;">
+                                <label class="form-check-label ms-2" for="testModeToggle"
+                                    style="font-size: 0.9rem;">Test</label>
+                            </div>
+                            <p id="testModeStatus">Current mode: <span class="badge bg-success">NORMAL</span></p>
+                            <div id="testModeResponse" class="alert" style="display: none;"></div>
+
+                            <hr>
+
+                            <!-- Email Alert Testing Content -->
                             <h5>Test Orange-to-Red Alert Emails</h5>
                             <p>Send test emails to simulate a fire risk transition from Orange to Red level.</p>
 
@@ -293,7 +316,7 @@
             </div>
         </div>
     </div> <!-- Close container -->
-    
+
     <!-- Data Status Modal -->
     <div class="modal fade" id="dataStatusModal" tabindex="-1" aria-labelledby="dataStatusModalLabel"
         aria-hidden="true">
@@ -417,6 +440,9 @@
 
         // Initialize admin content
         function initializeAdminContent() {
+            // Initialize admin dashboard sections
+            console.log("Initializing all admin sections...");
+
             // Initialize the test mode toggle
             const testModeToggle = document.getElementById('testModeToggle');
 
@@ -434,9 +460,12 @@
 
             // Load subscriber list
             loadSubscribers();
-            
+
             // Initialize email testing section
             initializeEmailTesting();
+
+            // Initialize data management section
+            updateDataStatus();
         }
 
         // Test Mode functions
@@ -860,12 +889,10 @@
 
         // Initialize email testing when admin content loads
         function initializeEmailTesting() {
-            // Ensure DOM is fully loaded before populating
-            setTimeout(() => {
-                loadSubscribersForEmails();
-                document.getElementById('sendTestEmailsBtn').addEventListener('click', sendTestEmails);
-                console.log("Email testing initialized");
-            }, 100);
+            // Load subscribers immediately
+            loadSubscribersForEmails();
+            document.getElementById('sendTestEmailsBtn').addEventListener('click', sendTestEmails);
+            console.log("Email testing initialized");
         }
 
         // Data Management functions
@@ -873,24 +900,24 @@
             try {
                 const statusBtn = document.getElementById('data-status-btn');
                 const cacheInfoDiv = document.getElementById('admin-cache-info');
-                
+
                 // Fetch the current data status
                 const response = await fetch('/fire-risk', {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
+
                 // Update cache information
                 if (data.cache_info) {
                     // Parse the ISO string with timezone info
                     const lastUpdated = new Date(data.cache_info.last_updated);
-                    
+
                     // Check if any data is older than 1 hour (stale)
                     const hasStaleData = () => {
                         if (!data.weather.cached_fields || !data.weather.cached_fields.timestamp) {
@@ -928,7 +955,7 @@
                         statusBtn.classList.add('btn-warning');
                     }
                     statusBtn.disabled = false; // Enable button once data loads
-                    
+
                     // Format timestamp for display
                     const timeZoneAbbr = (() => {
                         // Get timezone offset
@@ -959,7 +986,7 @@
                     statusBtn.classList.remove('btn-success', 'btn-warning');
                     statusBtn.classList.add('btn-secondary');
                 }
-                
+
                 // Update Data Status Modal content
                 const dataStatusModalBody = document.getElementById('dataStatusModalBody');
                 let modalHTML = '';
@@ -980,12 +1007,12 @@
                     modalHTML = '<p>Data is current and no quality issues detected.</p>'; // Default message
                 }
                 dataStatusModalBody.innerHTML = modalHTML;
-                
+
             } catch (error) {
                 console.error('Error updating data status:', error);
-                document.getElementById('admin-cache-info').innerHTML = 
+                document.getElementById('admin-cache-info').innerHTML =
                     `<span class="cache-info text-danger">Error retrieving data status</span>`;
-                
+
                 // Set button to error state
                 const statusBtn = document.getElementById('data-status-btn');
                 statusBtn.textContent = 'Status Error';
@@ -994,70 +1021,70 @@
                 statusBtn.disabled = false;
             }
         }
-        
+
         async function adminManualRefresh() {
             try {
                 // Set button to loading state
                 const refreshBtn = document.getElementById('admin-refresh-btn');
                 refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
                 refreshBtn.disabled = true;
-                
+
                 console.log("Admin manual refresh initiated");
-                
+
                 try {
                     // Request fresh data
                     const response = await fetch('/fire-risk?wait_for_fresh=true', {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                     });
-                    
+
                     if (!response.ok) {
                         throw new Error(`HTTP error ${response.status}`);
                     }
-                    
+
                     // Successfully retrieved fresh data
                     console.log("Admin refresh successful - received data");
-                    
+
                     // Reset button first
                     refreshBtn.innerHTML = 'Refresh Data';
                     refreshBtn.disabled = false;
-                    
+
                     // Update the data status display
                     await updateDataStatus();
-                    
+
                     // Show success message
                     const alertDiv = document.createElement('div');
                     alertDiv.className = 'alert alert-success mt-3';
                     alertDiv.innerHTML = 'Data successfully refreshed!';
-                    
+
                     // Insert the alert after the refresh button
                     refreshBtn.parentNode.insertBefore(alertDiv, refreshBtn.nextSibling);
-                    
+
                     // Remove the alert after 5 seconds
                     setTimeout(() => {
                         alertDiv.remove();
                     }, 5000);
-                    
+
                     return true;
-                    
+
                 } catch (fetchError) {
                     console.error("Error during admin manual refresh:", fetchError);
                     refreshBtn.innerHTML = 'Refresh Failed - Try Again';
                     refreshBtn.disabled = false;
-                    
+
                     // Show error message
                     const alertDiv = document.createElement('div');
                     alertDiv.className = 'alert alert-danger mt-3';
                     alertDiv.innerHTML = `Refresh failed: ${fetchError.message}`;
-                    
+
                     // Insert the alert after the refresh button
                     refreshBtn.parentNode.insertBefore(alertDiv, refreshBtn.nextSibling);
-                    
+
                     // Remove the alert after 5 seconds
                     setTimeout(() => {
                         alertDiv.remove();
                     }, 5000);
-                    
+
                     return false;
                 }
             } catch (error) {
@@ -1071,66 +1098,45 @@
                 return false;
             }
         }
-        
-        // Update the initializeAdminContent function to also initialize data management
+
+        // Initialize admin content
         function initializeAdminContent() {
-            console.log("Initializing admin content...");
-            
+            console.log("Initializing admin dashboard...");
+
             // Initialize the test mode toggle
             const testModeToggle = document.getElementById('testModeToggle');
-
-            // Get current test mode status
             fetchTestModeStatus().then(isTestMode => {
                 testModeToggle.checked = isTestMode;
                 updateTestModeUI(isTestMode);
             });
-
-            // Add event listener for toggle changes
             testModeToggle.addEventListener('change', function () {
-                const isEnabled = this.checked;
-                toggleTestMode(isEnabled);
+                toggleTestMode(this.checked);
             });
 
             // Load subscriber list
             loadSubscribers();
-            
+
             // Initialize email testing section
             initializeEmailTesting();
-            
-            // Explicitly call updateDataStatus to initialize the data management section
-            console.log("Explicitly loading data status...");
+
+            // Initialize data management
             updateDataStatus();
-            
-            // Initialize data management section - make sure this runs explicitly
-            console.log("Initializing data management section...");
-            
-            // Add event listener to Data Management accordion to auto-update when opened
-            document.getElementById('headingDataManagement').addEventListener('click', function() {
+
+            // Add event listener for data management panel
+            document.getElementById('headingDataManagement').addEventListener('click', function () {
                 const dataAccordion = document.getElementById('collapseDataManagement');
-                // If the accordion is being opened (not already open)
                 if (!dataAccordion.classList.contains('show')) {
-                    console.log("Data Management section opened - updating status");
-                    updateDataStatus().catch(err => {
-                        console.error("Error in updateDataStatus:", err);
-                        document.getElementById('admin-cache-info').innerHTML = 
-                            `<span class="cache-info text-danger">Error loading data: ${err.message}</span>`;
-                    });
+                    updateDataStatus();
                 }
             });
             
-            // Initial call to update data status
-            try {
-                updateDataStatus().catch(err => {
-                    console.error("Error in updateDataStatus:", err);
-                    document.getElementById('admin-cache-info').innerHTML = 
-                        `<span class="cache-info text-danger">Error loading data: ${err.message}</span>`;
-                });
-                console.log("Data management initialization started");
-            } catch (error) {
-                console.error("Critical error initializing data status:", error);
-                document.getElementById('admin-cache-info').innerHTML = 
-                    `<span class="cache-info text-danger">Failed to initialize data status</span>`;
-            }
+            // Add event listener for testing panel to ensure emails load when opened
+            document.getElementById('headingTesting').addEventListener('click', function () {
+                const testingAccordion = document.getElementById('collapseTesting');
+                if (!testingAccordion.classList.contains('show')) {
+                    loadSubscribersForEmails();
+                }
+            });
         }
     </script>
 </body>
