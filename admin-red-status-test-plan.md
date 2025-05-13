@@ -141,7 +141,9 @@ The following labels in the "Testing" accordion section will be updated:
 ## 8. Phased Implementation Approach (Summary)
 
 1.  **Phase 1 (Current):** Detailed Planning & Backend Foundation Design (this document).
+    - **Status:** Completed (as of this document's creation)
 2.  **Phase 2:** Admin UI - Static Structure, Label Updates, New JS File creation.
+    - **Status:** Completed
 3.  **Phase 3:** Admin UI - Dynamic Table Rendering (in `admin_test_conditions.js`).
 4.  **Phase 4:** Admin UI - Implementing Interactivity (button actions, API calls in `admin_test_conditions.js`).
 5.  **Phase 5:** Backend Implementation - API endpoints, session logic, `fire_risk_logic.py` adaptation.
