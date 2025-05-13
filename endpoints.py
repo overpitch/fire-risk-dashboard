@@ -1,6 +1,6 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import pathlib
 from datetime import datetime
@@ -9,23 +9,36 @@ from config import logger, TIMEZONE
 from cache import data_cache
 from cache_refresh import refresh_data_cache
 from data_processing import format_age_string
+from admin_endpoints import admin_sessions # Import admin_sessions
 
 # Create a router for the main endpoints
 router = APIRouter()
 
 
 @router.get("/fire-risk")
-async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = False):
+async def fire_risk(
+    request: Request, # Add request object
+    background_tasks: BackgroundTasks, 
+    wait_for_fresh: bool = False,
+    session_token: Optional[str] = Cookie(None) # Get session_token from cookie
+):
     """API endpoint to fetch fire risk status.
     
     Args:
+        request: The FastAPI Request object.
         background_tasks: FastAPI BackgroundTasks for scheduling refreshes
         wait_for_fresh: If True, wait for fresh data instead of returning stale data
+        session_token: Admin session token from cookie.
     """
     # First-time fetch (cache empty)
     if data_cache.fire_risk_data is None:
         logger.info("Initial data fetch (cache empty)")
-        await refresh_data_cache(background_tasks)
+        # Pass session_token and admin_sessions to refresh_data_cache
+        await refresh_data_cache(
+            background_tasks, 
+            session_token=session_token, 
+            current_admin_sessions=admin_sessions
+        )
         
         # If still no data after refresh, we have a problem
         if data_cache.fire_risk_data is None:
@@ -53,7 +66,12 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                     logger.info("No refresh in progress, initiating a forced refresh")
                     # Reset the update event and start a refresh
                     data_cache.reset_update_event()
-                    refresh_started = await refresh_data_cache(background_tasks, force=True)
+                    refresh_started = await refresh_data_cache(
+                        background_tasks, 
+                        force=True,
+                        session_token=session_token,
+                        current_admin_sessions=admin_sessions
+                    )
                     logger.info(f"Forced refresh started: {refresh_started}")
                 else:
                     logger.info("Refresh already in progress, waiting for it to complete")
@@ -89,7 +107,13 @@ async def fire_risk(background_tasks: BackgroundTasks, wait_for_fresh: bool = Fa
                 # Schedule background refresh if not already in progress
                 if not refresh_in_progress:
                     logger.info("Cache is stale. Scheduling background refresh.")
-                    background_tasks.add_task(refresh_data_cache, background_tasks)
+                    # Pass session_token and admin_sessions to background task
+                    background_tasks.add_task(
+                        refresh_data_cache, 
+                        background_tasks, # This is the first arg for refresh_data_cache
+                        session_token=session_token, 
+                        current_admin_sessions=admin_sessions
+                    )
     
     # If we get here, we have some data to return (potentially stale)
     # Add cache information to the response
@@ -299,7 +323,12 @@ def home():
 
 
 @router.get("/toggle-test-mode", response_class=JSONResponse)
-async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = False):
+async def toggle_test_mode_endpoint( # Renamed to avoid conflict with admin_endpoints toggle_test_mode if routes are merged
+    request: Request, # Add request
+    background_tasks: BackgroundTasks, 
+    enable: bool = False,
+    session_token: Optional[str] = Cookie(None) # Add session_token
+):
     """Toggle test mode on or off via API
 
 
@@ -414,7 +443,12 @@ async def toggle_test_mode(background_tasks: BackgroundTasks, enable: bool = Fal
         
         # Force a refresh with fresh data
         logger.info("🔵 TEST MODE: Disabled via UI toggle")
-        refresh_success = await refresh_data_cache(background_tasks, force=True)
+        refresh_success = await refresh_data_cache(
+            background_tasks, 
+            force=True,
+            session_token=session_token, # Pass session token
+            current_admin_sessions=admin_sessions # Pass admin_sessions
+        )
         
         return JSONResponse(
             content={

@@ -1,38 +1,80 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from config import (
     THRESH_TEMP_CELSIUS, THRESH_HUMID, THRESH_WIND, 
     THRESH_GUSTS, THRESH_SOIL_MOIST, logger
 )
 
-def calculate_fire_risk(weather: Dict[str, Any]) -> Tuple[str, str]:
-    """Determines fire risk level based on weather data and environmental thresholds.
+# Mapping from session override keys to internal weather data keys
+OVERRIDE_KEY_MAP = {
+    "temperature": "air_temp",
+    "humidity": "relative_humidity",
+    "average_winds": "wind_speed", # As per admin_endpoints.py and JS
+    "wind_gust": "wind_gust",
+    "soil_moisture": "soil_moisture_15cm" # As per admin_endpoints.py and JS
+}
+
+def calculate_fire_risk(
+    weather: Dict[str, Any], 
+    manual_overrides: Optional[Dict[str, float]] = None
+) -> Tuple[str, str]:
+    """Determines fire risk level based on weather data and environmental thresholds,
+    applying manual overrides if provided.
     
     Args:
         weather: Dictionary containing weather data with keys for air_temp, 
-                relative_humidity, wind_speed, wind_gust, and soil_moisture_15cm
+                 relative_humidity, wind_speed, wind_gust, and soil_moisture_15cm.
+        manual_overrides: Optional dictionary where keys are metric names 
+                          (e.g., "temperature", "humidity") and values are the 
+                          overridden numerical values.
     
     Returns:
         Tuple of (risk_level, explanation) where risk_level is "Red" or "Orange"
     """
     try:
-        # Ensure we have valid values by providing defaults if values are None
-        air_temp = weather.get("air_temp")
-        relative_humidity = weather.get("relative_humidity")
-        wind_speed = weather.get("wind_speed")
-        wind_gust = weather.get("wind_gust")
-        soil_moisture_15cm = weather.get("soil_moisture_15cm")
+        # Get initial values from the weather data
+        air_temp_val = weather.get("air_temp")
+        relative_humidity_val = weather.get("relative_humidity")
+        wind_speed_val = weather.get("wind_speed")
+        wind_gust_val = weather.get("wind_gust")
+        soil_moisture_15cm_val = weather.get("soil_moisture_15cm")
+
+        # Log original received values
+        logger.info(f"Original weather data: temp={air_temp_val}°C, humidity={relative_humidity_val}%, "
+                    f"wind={wind_speed_val}mph, gusts={wind_gust_val}mph, soil={soil_moisture_15cm_val}%")
+
+        applied_overrides_log = []
+        if manual_overrides:
+            logger.info(f"Applying manual overrides: {manual_overrides}")
+            if "temperature" in manual_overrides and manual_overrides["temperature"] is not None:
+                air_temp_val = manual_overrides["temperature"]
+                applied_overrides_log.append(f"temp={air_temp_val}°C (override)")
+            if "humidity" in manual_overrides and manual_overrides["humidity"] is not None:
+                relative_humidity_val = manual_overrides["humidity"]
+                applied_overrides_log.append(f"humidity={relative_humidity_val}% (override)")
+            if "average_winds" in manual_overrides and manual_overrides["average_winds"] is not None:
+                wind_speed_val = manual_overrides["average_winds"]
+                applied_overrides_log.append(f"wind={wind_speed_val}mph (override)")
+            if "wind_gust" in manual_overrides and manual_overrides["wind_gust"] is not None:
+                wind_gust_val = manual_overrides["wind_gust"]
+                applied_overrides_log.append(f"gusts={wind_gust_val}mph (override)")
+            if "soil_moisture" in manual_overrides and manual_overrides["soil_moisture"] is not None:
+                soil_moisture_15cm_val = manual_overrides["soil_moisture"]
+                applied_overrides_log.append(f"soil={soil_moisture_15cm_val}% (override)")
         
-        # Log the received values for debugging
-        logger.info(f"Received weather data: temp={air_temp}°C, humidity={relative_humidity}%, "
-                    f"wind={wind_speed}mph, gusts={wind_gust}mph, soil={soil_moisture_15cm}%")
+        if applied_overrides_log:
+            logger.info(f"Values after overrides: {', '.join(applied_overrides_log)}")
         
-        # Use defaults if values are None
-        temp = float(0 if air_temp is None else air_temp)
-        humidity = float(100 if relative_humidity is None else relative_humidity)
-        wind = float(0 if wind_speed is None else wind_speed)
-        gusts = float(0 if wind_gust is None else wind_gust)
-        soil = float(100 if soil_moisture_15cm is None else soil_moisture_15cm)
+        # Use defaults if values are None (after potential overrides)
+        temp = float(0 if air_temp_val is None else air_temp_val)
+        humidity = float(100 if relative_humidity_val is None else relative_humidity_val)
+        wind = float(0 if wind_speed_val is None else wind_speed_val)
+        gusts = float(0 if wind_gust_val is None else wind_gust_val)
+        soil = float(100 if soil_moisture_15cm_val is None else soil_moisture_15cm_val)
         
+        # Log the final values used for calculation
+        logger.info(f"Calculating risk with: temp={temp}°C, humidity={humidity}%, "
+                    f"wind={wind}mph, gusts={gusts}mph, soil={soil}%")
+
         # Check if all thresholds are exceeded
         temp_exceeded = temp > THRESH_TEMP_CELSIUS
         humidity_exceeded = humidity < THRESH_HUMID

@@ -1,7 +1,7 @@
 const METRICS_CONFIG = [
     { id: 'temperature', displayName: 'Temperature', unit: '°F', thresholdKey: 'temp', comparison: '>', currentValueKey: 'air_temp', apiKey: 'temperature' },
     { id: 'humidity', displayName: 'Humidity', unit: '%', thresholdKey: 'humid', comparison: '<', currentValueKey: 'relative_humidity', apiKey: 'humidity' },
-    { id: 'avg_wind_speed', displayName: 'Average Winds', unit: 'mph', thresholdKey: 'wind', comparison: '>', currentValueKey: 'wind_speed', apiKey: 'wind_speed' },
+    { id: 'avg_wind_speed', displayName: 'Average Winds', unit: 'mph', thresholdKey: 'wind', comparison: '>', currentValueKey: 'wind_speed', apiKey: 'average_winds' },
     { id: 'wind_gust', displayName: 'Wind Gust', unit: 'mph', thresholdKey: 'gusts', comparison: '>', currentValueKey: 'wind_gust', apiKey: 'wind_gust' },
     { id: 'soil_moisture_15cm', displayName: 'Soil Moisture (15cm depth)', unit: '%', thresholdKey: 'soil_moist', comparison: '<', currentValueKey: 'soil_moisture_15cm', apiKey: 'soil_moisture' }
 ];

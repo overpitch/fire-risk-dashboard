@@ -10,19 +10,28 @@ from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache
+# Import admin_sessions to check type, though not strictly necessary for Optional[Dict]
+# from admin_endpoints import admin_sessions # Not needed if we just pass it as Dict
 # Import the specific alert function and subscriber function
 from email_service import send_orange_to_red_alert
 from subscriber_service import get_active_subscribers
 
-async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None, force: bool = False) -> bool:
+async def refresh_data_cache(
+    background_tasks: Optional[BackgroundTasks] = None, 
+    force: bool = False,
+    session_token: Optional[str] = None,            # New parameter
+    current_admin_sessions: Optional[Dict] = None   # New parameter
+) -> bool:
     """Refresh the data cache by fetching new data from APIs.
     
     Args:
-        background_tasks: Optional BackgroundTasks for scheduling future refreshes
-        force: Force refresh even if an update is already in progress
+        background_tasks: Optional BackgroundTasks for scheduling future refreshes.
+        force: Force refresh even if an update is already in progress.
+        session_token: Optional admin session token.
+        current_admin_sessions: Optional dictionary of current admin sessions.
     
     Returns:
-        bool: True if refresh was successful, False otherwise
+        bool: True if refresh was successful, False otherwise.
     """
     # Reset the update complete event before starting a new update
     data_cache.reset_update_event()
@@ -125,7 +134,14 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
                         })
             
             # Calculate fire risk based on the latest weather data
-            risk, explanation = calculate_fire_risk(latest_weather)
+            manual_overrides = None
+            if session_token and current_admin_sessions and session_token in current_admin_sessions:
+                admin_session_data = current_admin_sessions[session_token]
+                manual_overrides = admin_session_data.get('manual_weather_overrides')
+                if manual_overrides:
+                    logger.info(f"Cache Refresh: Applying admin overrides for session {session_token[:8]}...: {manual_overrides}")
+            
+            risk, explanation = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
             
             # --- Wind Data Check ---
             # Log wind data state to diagnose refresh issues
@@ -355,17 +371,34 @@ async def refresh_data_cache(background_tasks: Optional[BackgroundTasks] = None,
     # This should be outside the 'if not success' block's try/except, but still within the main function scope
     if background_tasks and not data_cache.refresh_task_active:
         # Schedule the next refresh based on the configured interval
-        background_tasks.add_task(schedule_next_refresh, data_cache.background_refresh_interval)
+        # Pass along session_token and current_admin_sessions if they were provided to this refresh cycle
+        # However, for a background scheduled task, it's unlikely/undesirable to persist a specific user's session overrides.
+        # So, for scheduled tasks, we'll call refresh_data_cache without these specific user session overrides.
+        # If a user is actively making a request that triggers a refresh, their overrides will be used for *that* refresh.
+        background_tasks.add_task(schedule_next_refresh, data_cache.background_refresh_interval, None, None) # Pass None for session specific args
         data_cache.refresh_task_active = True
 
     return success
 
-async def schedule_next_refresh(minutes: int):
+async def schedule_next_refresh(
+    minutes: int, 
+    session_token: Optional[str] = None, # Added for consistency, but likely None for scheduled
+    current_admin_sessions: Optional[Dict] = None # Added for consistency, but likely None for scheduled
+):
     """Schedule the next refresh after a delay."""
     try:
         logger.info(f"Scheduling next background refresh in {minutes} minutes")
         await asyncio.sleep(minutes * 60)
-        await refresh_data_cache()
+        # When calling refresh_data_cache for a scheduled task,
+        # we typically don't want to apply a specific admin's overrides.
+        # So, we call it without session_token and current_admin_sessions,
+        # or explicitly pass None if the signature requires them.
+        await refresh_data_cache(
+            background_tasks=None, # No further background tasks to spawn from here in this model
+            force=False, 
+            session_token=session_token, # Will be None for typical scheduled calls
+            current_admin_sessions=current_admin_sessions # Will be None for typical scheduled calls
+        )
     except Exception as e:
         logger.error(f"Error in scheduled refresh: {e}")
     finally:
