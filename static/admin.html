@@ -262,6 +262,57 @@
                     </div>
                 </div>
 
+                <!-- Send Email to Subscribers Section -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSendEmail">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseSendEmail" aria-expanded="false"
+                            aria-controls="collapseSendEmail">
+                            Send email to subscribers
+                        </button>
+                    </h2>
+                    <div id="collapseSendEmail" class="accordion-collapse collapse"
+                        aria-labelledby="headingSendEmail">
+                        <div class="accordion-body">
+                            <h5>Compose and Send Email</h5>
+                            <p>Draft an email message and send it to selected subscribers.</p>
+
+                            <div class="mb-3">
+                                <label for="emailSubject" class="form-label">Subject</label>
+                                <input type="text" class="form-control" id="emailSubject" placeholder="Enter email subject">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="emailContent" class="form-label">Content</label>
+                                <textarea class="form-control" id="emailContent" rows="5" placeholder="Enter email content (HTML is supported)"></textarea>
+                            </div>
+
+                            <h6>Select Recipients:</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="masterEmailCheckbox">
+                                <label class="form-check-label" for="masterEmailCheckbox">
+                                    Select/Deselect All
+                                </label>
+                            </div>
+                            <div id="subscriberCheckboxes" class="border rounded p-3 mb-3" style="max-height: 200px; overflow-y: auto;">
+                                <!-- Subscriber checkboxes will be populated here by JavaScript -->
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading subscribers...</span>
+                                    </div>
+                                    <p>Loading subscribers...</p>
+                                </div>
+                            </div>
+
+                            <button id="sendCustomEmailBtn" class="btn btn-success">
+                                Send Email
+                            </button>
+
+                            <div id="sendEmailFeedback" class="mt-3" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Testing Section (combines System Settings and Email Alert Testing) -->
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="headingTesting">
@@ -340,6 +391,26 @@
             </div>
         </div>
     </div> <!-- Close container -->
+
+    <!-- Send Email Confirmation Modal -->
+    <div class="modal fade" id="sendEmailConfirmModal" tabindex="-1" aria-labelledby="sendEmailConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sendEmailConfirmModalLabel">Confirm Email Send</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="sendEmailConfirmModalBody">
+                    <!-- Content will be populated by JavaScript -->
+                    Are you sure you want to send this email?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="confirmSendEmailBtn">Yes, Send Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Data Status Modal -->
     <div class="modal fade" id="dataStatusModal" tabindex="-1" aria-labelledby="dataStatusModalLabel"
@@ -460,36 +531,6 @@
                 // Otherwise, just set the disabled state directly
                 buttons.forEach(btn => btn.disabled = disable);
             }
-        }
-
-        // Initialize admin content
-        function initializeAdminContent() {
-            // Initialize admin dashboard sections
-            console.log("Initializing all admin sections...");
-
-            // Initialize the test mode toggle
-            const testModeToggle = document.getElementById('testModeToggle');
-
-            // Get current test mode status
-            fetchTestModeStatus().then(isTestMode => {
-                testModeToggle.checked = isTestMode;
-                updateTestModeUI(isTestMode);
-            });
-
-            // Add event listener for toggle changes
-            testModeToggle.addEventListener('change', function () {
-                const isEnabled = this.checked;
-                toggleTestMode(isEnabled);
-            });
-
-            // Load subscriber list
-            loadSubscribers();
-
-            // Initialize email testing section
-            initializeEmailTesting();
-
-            // Initialize data management section
-            updateDataStatus();
         }
 
         // Test Mode functions
@@ -1143,6 +1184,9 @@
             // Initialize email testing section
             initializeEmailTesting();
 
+            // Initialize custom email sending section
+            initializeCustomEmailSection(); 
+
             // Initialize data management
             updateDataStatus();
 
@@ -1158,10 +1202,301 @@
             document.getElementById('headingTesting').addEventListener('click', function () {
                 const testingAccordion = document.getElementById('collapseTesting');
                 if (!testingAccordion.classList.contains('show')) {
-                    loadSubscribersForEmails();
+                    loadSubscribersForEmails(); // For the test orange-to-red emails
+                }
+            });
+
+            // Add event listener for the new Send Email panel
+            document.getElementById('headingSendEmail').addEventListener('click', function() {
+                const sendEmailAccordion = document.getElementById('collapseSendEmail');
+                if (!sendEmailAccordion.classList.contains('show')) {
+                    loadSubscribersForCustomEmail(); // For the new custom email section
                 }
             });
         }
+
+
+        // Custom Email Sending Functions
+        // ---------------------------------
+
+        let sendEmailConfirmModalInstance = null;
+
+        function initializeCustomEmailSection() {
+            console.log("DEBUG: initializeCustomEmailSection called");
+            loadSubscribersForCustomEmail();
+            initializeMasterEmailCheckbox();
+
+            const sendBtn = document.getElementById('sendCustomEmailBtn');
+            if (sendBtn) {
+                sendBtn.addEventListener('click', handleSendCustomEmailAttempt);
+                console.log("DEBUG: Event listener attached to sendCustomEmailBtn");
+            } else {
+                console.error("DEBUG: sendCustomEmailBtn not found!");
+            }
+
+            // Initialize the modal instance
+            const modalElement = document.getElementById('sendEmailConfirmModal');
+            if (modalElement) {
+                sendEmailConfirmModalInstance = new bootstrap.Modal(modalElement);
+                console.log("DEBUG: sendEmailConfirmModalInstance initialized");
+            } else {
+                console.error("DEBUG: sendEmailConfirmModal modalElement not found!");
+            }
+            
+            // Attach event listener to the actual confirm button inside the modal
+            const confirmSendBtn = document.getElementById('confirmSendEmailBtn');
+            if (confirmSendBtn) {
+                confirmSendBtn.addEventListener('click', performSendCustomEmail);
+                console.log("DEBUG: Event listener attached to confirmSendEmailBtn");
+            } else {
+                console.error("DEBUG: confirmSendEmailBtn not found!");
+            }
+        }
+
+        async function loadSubscribersForCustomEmail() {
+            const subscriberCheckboxesDiv = document.getElementById('subscriberCheckboxes');
+            try {
+                subscriberCheckboxesDiv.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Loading subscribers...</span>
+                    </div>`;
+
+                const response = await fetch('/admin/subscribers', { credentials: 'include' });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `Server error: ${response.status}`);
+                }
+
+                const subscribers = data.subscribers || [];
+                if (subscribers.length === 0) {
+                    subscriberCheckboxesDiv.innerHTML = '<p class="text-muted">No subscribers found. Import a list to add subscribers.</p>';
+                    document.getElementById('masterEmailCheckbox').disabled = true;
+                } else {
+                    let html = '';
+                    subscribers.forEach((email, index) => {
+                        const emailId = `custom-email-${index}`;
+                        html += `
+                            <div class="form-check">
+                                <input class="form-check-input custom-email-recipient-checkbox" type="checkbox" value="${email}" id="${emailId}">
+                                <label class="form-check-label" for="${emailId}">${email}</label>
+                            </div>`;
+                    });
+                    subscriberCheckboxesDiv.innerHTML = html;
+                    document.getElementById('masterEmailCheckbox').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error loading subscribers for custom email:', error);
+                subscriberCheckboxesDiv.innerHTML = `<div class="alert alert-danger"><p>Error loading subscribers: ${error.message || 'Unknown error'}</p><button class="btn btn-sm btn-outline-danger mt-2" onclick="loadSubscribersForCustomEmail()">Retry</button></div>`;
+                document.getElementById('masterEmailCheckbox').disabled = true;
+            }
+        }
+
+        function initializeMasterEmailCheckbox() {
+            console.log("DEBUG: initializeMasterEmailCheckbox called");
+            const masterCheckbox = document.getElementById('masterEmailCheckbox');
+            const subscriberCheckboxesDiv = document.getElementById('subscriberCheckboxes');
+
+            if (!masterCheckbox) {
+                console.error("DEBUG: masterEmailCheckbox not found!");
+                return;
+            }
+            if (!subscriberCheckboxesDiv) {
+                console.error("DEBUG: subscriberCheckboxesDiv not found!");
+                return;
+            }
+
+            masterCheckbox.addEventListener('change', function () {
+                console.log("DEBUG: masterEmailCheckbox changed. State:", this.checked);
+                const recipientCheckboxes = subscriberCheckboxesDiv.querySelectorAll('.custom-email-recipient-checkbox');
+                console.log("DEBUG: Found recipientCheckboxes count:", recipientCheckboxes.length);
+                recipientCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                this.indeterminate = false; 
+            });
+
+            subscriberCheckboxesDiv.addEventListener('change', function (event) {
+                console.log("DEBUG: subscriberCheckboxesDiv change event triggered by:", event.target);
+                if (event.target.classList.contains('custom-email-recipient-checkbox')) {
+                    const recipientCheckboxes = subscriberCheckboxesDiv.querySelectorAll('.custom-email-recipient-checkbox');
+                    const allChecked = Array.from(recipientCheckboxes).every(checkbox => checkbox.checked);
+                    const noneChecked = Array.from(recipientCheckboxes).every(checkbox => !checkbox.checked);
+
+                    if (allChecked) {
+                        masterCheckbox.checked = true;
+                        masterCheckbox.indeterminate = false;
+                    } else if (noneChecked) {
+                        masterCheckbox.checked = false;
+                        masterCheckbox.indeterminate = false;
+                    } else {
+                        masterCheckbox.indeterminate = true;
+                    }
+                }
+            });
+        }
+
+        function handleSendCustomEmailAttempt() {
+            console.log("DEBUG: handleSendCustomEmailAttempt called");
+            const subject = document.getElementById('emailSubject').value.trim();
+            const content = document.getElementById('emailContent').value.trim();
+            const selectedEmails = Array.from(document.querySelectorAll('.custom-email-recipient-checkbox:checked')).map(cb => cb.value);
+            const feedbackDiv = document.getElementById('sendEmailFeedback');
+
+            console.log("DEBUG: Subject:", subject, "Content empty:", content === "", "Selected emails:", selectedEmails.length);
+
+            feedbackDiv.style.display = 'none';
+            feedbackDiv.className = 'mt-3'; // Reset classes
+
+            if (!subject) {
+                console.log("DEBUG: Subject validation failed.");
+                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please enter an email subject.</div>';
+                feedbackDiv.style.display = 'block';
+                return;
+            }
+            if (!content) {
+                console.log("DEBUG: Content validation failed.");
+                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please enter email content.</div>';
+                feedbackDiv.style.display = 'block';
+                return;
+            }
+            if (selectedEmails.length === 0) {
+                console.log("DEBUG: Selected emails validation failed.");
+                feedbackDiv.innerHTML = '<div class="alert alert-warning">Please select at least one recipient.</div>';
+                feedbackDiv.style.display = 'block';
+                return;
+            }
+
+            console.log("DEBUG: All validations passed. Preparing to show modal.");
+            // Populate and show confirmation modal
+            const modalBody = document.getElementById('sendEmailConfirmModalBody');
+            modalBody.innerHTML = `
+                <p>You are about to send an email with the subject:</p>
+                <p><strong>${subject}</strong></p>
+                <p>To <strong>${selectedEmails.length}</strong> subscriber(s).</p>
+                <p>Are you sure you want to proceed?</p>
+            `;
+            if (sendEmailConfirmModalInstance) {
+                console.log("DEBUG: Showing confirmation modal.");
+                sendEmailConfirmModalInstance.show();
+            } else {
+                console.error("DEBUG: Confirmation modal instance (sendEmailConfirmModalInstance) not found in handleSendCustomEmailAttempt!");
+                // Fallback if modal somehow isn't initialized, though it should be.
+                if(confirm(`Send email with subject "${subject}" to ${selectedEmails.length} subscribers?`)) {
+                    performSendCustomEmail(); // This might not work as expected if modal instance is the issue
+                }
+            }
+        }
+
+        async function performSendCustomEmail() {
+            console.log("DEBUG: performSendCustomEmail called");
+            if (sendEmailConfirmModalInstance) {
+                sendEmailConfirmModalInstance.hide(); 
+                console.log("DEBUG: Confirmation modal hidden.");
+            } else {
+                console.warn("DEBUG: sendEmailConfirmModalInstance not found in performSendCustomEmail, cannot hide.");
+            }
+
+            const subject = document.getElementById('emailSubject').value.trim();
+            const htmlContent = document.getElementById('emailContent').value; 
+            const selectedEmails = Array.from(document.querySelectorAll('.custom-email-recipient-checkbox:checked')).map(cb => cb.value);
+            const feedbackDiv = document.getElementById('sendEmailFeedback');
+            const sendButton = document.getElementById('sendCustomEmailBtn');
+
+            console.log("DEBUG: performSendCustomEmail - Subject:", subject, "Selected emails:", selectedEmails.length);
+
+            if (!sendButton) {
+                console.error("DEBUG: sendCustomEmailBtn not found in performSendCustomEmail!");
+                return; // Cannot proceed without the button
+            }
+            sendButton.disabled = true;
+            console.log("DEBUG: Send button disabled.");
+            feedbackDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Sending email(s)...</span>
+                    </div>
+                </div>`;
+            feedbackDiv.style.display = 'block';
+            console.log("DEBUG: Feedback div set to 'Sending...'.");
+
+            const payload = {
+                subject: subject,
+                html_content: htmlContent,
+                recipients: selectedEmails
+            };
+            console.log("DEBUG: Payload for fetch:", JSON.stringify(payload));
+
+            try {
+                console.log("DEBUG: Attempting fetch to /admin/send-custom-email");
+                const response = await fetch('/admin/send-custom-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        subject: subject,
+                        html_content: htmlContent,
+                        recipients: selectedEmails
+                    }),
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    if (result.status === 'success') {
+                        feedbackDiv.innerHTML = `<div class="alert alert-success">${result.message || 'Emails sent successfully.'}</div>`;
+                        document.getElementById('emailSubject').value = '';
+                        document.getElementById('emailContent').value = '';
+                        const masterCb = document.getElementById('masterEmailCheckbox');
+                        masterCb.checked = false;
+                        masterCb.indeterminate = false;
+                        document.querySelectorAll('.custom-email-recipient-checkbox').forEach(cb => cb.checked = false);
+                    } else if (result.status === 'partial_success') {
+                        let errorDetails = '';
+                        if (result.errors && result.errors.length > 0) {
+                            errorDetails = '<ul>';
+                            result.errors.forEach(err => {
+                                errorDetails += `<li>${err.email}: ${err.error}</li>`;
+                            });
+                            errorDetails += '</ul>';
+                        }
+                        feedbackDiv.innerHTML = `
+                            <div class="alert alert-warning">
+                                <h6>Partial Success</h6>
+                                <p>${result.message || `Sent to ${result.success_count}, failed for ${result.failure_count}.`}</p>
+                                ${errorDetails}
+                            </div>`;
+                    } else {
+                        // General server-side error reported in JSON but not 'success' or 'partial_success'
+                        feedbackDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error || result.message || 'Failed to send emails due to a server issue.'}</div>`;
+                    }
+                } else {
+                    // Handle non-ok HTTP responses (e.g., 401, 400, 500)
+                    // result might contain an error message from the server
+                    const errorMessage = result.error || result.message || `Request failed with status ${response.status}`;
+                    feedbackDiv.innerHTML = `<div class="alert alert-danger">Error: ${errorMessage}</div>`;
+                }
+            } catch (error) {
+                console.error('Error sending custom email:', error);
+                feedbackDiv.innerHTML = `<div class="alert alert-danger">An unexpected error occurred: ${error.message}</div>`;
+            } finally {
+                sendButton.disabled = false;
+                feedbackDiv.style.display = 'block';
+                 // Ensure the master checkbox indeterminate state is cleared
+                const masterCheckbox = document.getElementById('masterEmailCheckbox');
+                if (masterCheckbox) masterCheckbox.indeterminate = false;
+            }
+        }
+
     </script>
 </body>
 

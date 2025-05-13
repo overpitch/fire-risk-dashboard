@@ -15,6 +15,24 @@ except Exception as e:
     print(f"Warning: Jinja2 template directory './templates' not found or error initializing: {e}")
     jinja_env = None # Fallback or handle as needed
 
+import re
+from typing import List, Tuple, Dict, Any
+
+def strip_html_tags(html_content: str) -> str:
+    """A simple function to strip HTML tags from a string."""
+    if not html_content:
+        return ""
+    # Remove HTML tags
+    text_content = re.sub(r'<[^>]+>', '', html_content)
+    # Replace common HTML entities
+    text_content = text_content.replace('&nbsp;', ' ')
+    text_content = text_content.replace('&', '&')
+    text_content = text_content.replace('<', '<')
+    text_content = text_content.replace('>', '>')
+    text_content = text_content.replace('"', '"')
+    text_content = text_content.replace('&#39;', "'")
+    return text_content.strip()
+
 # Load credentials and region from environment variables
 # Ensure these are set in your .env file locally and in Render's environment variables
 AWS_REGION = os.getenv('AWS_REGION')
@@ -174,6 +192,67 @@ def send_test_orange_to_red_alert(recipient_email):
 
     print(f"Sending test Orange to Red alert email to {recipient_email}...")
     return send_orange_to_red_alert([recipient_email], test_weather_data)
+
+async def send_custom_email_to_subscribers(
+    subject: str,
+    html_content: str,
+    recipients: List[str]
+) -> Tuple[int, int, List[Dict[str, Any]]]:
+    """
+    Sends a custom email to a list of subscribers.
+
+    Args:
+        subject (str): The subject of the email.
+        html_content (str): The HTML content of the email.
+        recipients (List[str]): A list of email addresses to send to.
+
+    Returns:
+        Tuple[int, int, List[Dict[str, Any]]]: 
+            - success_count (int): Number of emails sent successfully.
+            - failure_count (int): Number of emails that failed to send.
+            - errors (List[Dict[str, Any]]): List of dicts with {'email': recipient, 'error': error_message} for failures.
+    """
+    sender = "advisory@scfireweather.org"  # Or a more general sender if preferred
+    text_content = strip_html_tags(html_content)
+
+    success_count = 0
+    failure_count = 0
+    errors_list = []
+
+    if not ses_client:
+        print("Error: SES client not initialized. Cannot send custom emails.")
+        # Return failure for all recipients if SES client is not available
+        for recipient in recipients:
+            errors_list.append({"email": recipient, "error": "SES client not initialized."})
+        return 0, len(recipients), errors_list
+
+    for recipient in recipients:
+        try:
+            # Call the existing send_email function for each recipient
+            # send_email expects a list of recipients, so we pass a list with one item
+            message_id = send_email(
+                sender=sender,
+                recipients=[recipient], 
+                subject=subject,
+                body_text=text_content,
+                body_html=html_content
+            )
+            if message_id:
+                success_count += 1
+                print(f"Custom email sent successfully to {recipient}. Message ID: {message_id}")
+            else:
+                failure_count += 1
+                # The send_email function prints its own errors, but we can add a generic one here
+                error_msg = "Failed to send email (see logs for details from send_email function)."
+                errors_list.append({"email": recipient, "error": error_msg})
+                print(f"Failed to send custom email to {recipient}.")
+        except Exception as e:
+            failure_count += 1
+            error_msg = f"Unexpected error sending to {recipient}: {str(e)}"
+            errors_list.append({"email": recipient, "error": error_msg})
+            print(error_msg)
+            
+    return success_count, failure_count, errors_list
 
 
 if __name__ == '__main__':

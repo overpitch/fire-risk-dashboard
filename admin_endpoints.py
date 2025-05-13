@@ -6,9 +6,10 @@ from fastapi.templating import Jinja2Templates
 import pathlib
 import os
 import time
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import secrets
 import json
+from pydantic import BaseModel, EmailStr
 
 from config import logger
 from cache import data_cache
@@ -16,10 +17,17 @@ from cache_refresh import refresh_data_cache
 from admin_service import verify_pin, reset_attempts
 from subscriber_service import get_active_subscribers, bulk_import_subscribers
 from file_processor import process_subscriber_file
-from email_service import send_test_orange_to_red_alert
+from email_service import send_test_orange_to_red_alert, send_custom_email_to_subscribers # Added new import
 
 # Create a router for admin endpoints
 router = APIRouter()
+
+# Pydantic model for sending custom email
+class CustomEmailPayload(BaseModel):
+    subject: str
+    html_content: str
+    recipients: List[EmailStr]
+
 
 # Secret tokens for authenticated admins
 # This is a simple in-memory session store
@@ -437,3 +445,77 @@ async def test_email_alert(
         "message": f"Sent {len([r for r in results if r['status'] == 'success'])} test emails",
         "results": results
     }
+
+@router.post("/admin/send-custom-email", response_class=JSONResponse)
+async def handle_send_custom_email(
+    request: Request,
+    payload: CustomEmailPayload,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Send a custom email to selected subscribers."""
+    client_ip = request.client.host
+    logger.info(f"Received request to send custom email from {client_ip}. Subject: {payload.subject}, Recipients: {len(payload.recipients)}")
+
+    # Authentication
+    if not session_token or session_token not in admin_sessions:
+        logger.warning(f"Unauthorized attempt to send custom email from {client_ip}")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"status": "error", "error": "Authentication required"}
+        )
+    
+    if not payload.recipients:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "error": "No recipients selected."}
+        )
+    if not payload.subject:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "error": "Email subject cannot be empty."}
+        )
+    if not payload.html_content: # Basic check, could be more robust
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "error": "Email content cannot be empty."}
+        )
+
+    try:
+        # Call the email service function
+        # This function is expected to handle individual send statuses if needed
+        # For now, we assume it returns a general success/failure or raises an exception
+        success_count, failure_count, errors = await send_custom_email_to_subscribers(
+            subject=payload.subject,
+            html_content=payload.html_content,
+            recipients=payload.recipients
+        )
+
+        if failure_count > 0:
+            logger.error(f"Failed to send custom email to {failure_count} recipients. Errors: {errors}")
+            # Even if some failed, we might consider it a partial success
+            # The client-side can decide how to display this
+            return JSONResponse(
+                status_code=status.HTTP_207_MULTI_STATUS, # Indicates partial success
+                content={
+                    "status": "partial_success", 
+                    "message": f"Successfully sent email to {success_count} out of {len(payload.recipients)} recipients. {failure_count} failed.",
+                    "success_count": success_count,
+                    "failure_count": failure_count,
+                    "errors": errors # List of {email: error_message}
+                }
+            )
+        
+        logger.info(f"Successfully sent custom email to {success_count} recipients.")
+        return JSONResponse(
+            content={
+                "status": "success", 
+                "message": f"Successfully sent email to {success_count} recipients."
+            }
+        )
+
+    except Exception as e:
+        logger.exception(f"Error sending custom email from {client_ip}: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"status": "error", "error": f"An unexpected error occurred: {str(e)}"}
+        )
