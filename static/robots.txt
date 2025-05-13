@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://fire-risk-dashboard.onrender.com/sitemap.xml

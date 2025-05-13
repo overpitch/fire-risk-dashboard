@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from config import IS_PRODUCTION, logger
@@ -46,6 +47,14 @@ async def lifespan(app):
 
 # Initialize the FastAPI application
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/robots.txt", include_in_schema=False)
+async def get_robots_txt():
+    return FileResponse("static/robots.txt", media_type="text/plain")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def get_sitemap_xml():
+    return FileResponse("static/sitemap.xml", media_type="application/xml")
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
