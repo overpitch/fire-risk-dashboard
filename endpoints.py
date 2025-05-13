@@ -55,11 +55,11 @@ async def fire_risk(
     # Initialize timeout flag
     timed_out_waiting_for_fresh = False
     
-    # Handle stale data
-    if is_stale:
-            # If requested to wait for fresh data or if data is critically stale
-            if wait_for_fresh or data_cache.is_critically_stale():
-                logger.info(f"Waiting for fresh data... (wait_for_fresh={wait_for_fresh}, critically_stale={data_cache.is_critically_stale()})")
+    # Handle stale data OR if wait_for_fresh is explicitly requested
+    if wait_for_fresh or is_stale: # MODIFIED: Always enter this block if wait_for_fresh is true
+            # If requested to wait for fresh data, or if data is stale (critically or normally)
+            if wait_for_fresh or data_cache.is_critically_stale() or is_stale: # Ensure logic inside still makes sense
+                logger.info(f"Condition for refresh met: wait_for_fresh={wait_for_fresh}, is_stale={is_stale}, critically_stale={data_cache.is_critically_stale()}")
                 
                 # If no refresh is in progress, start one
                 if not refresh_in_progress:

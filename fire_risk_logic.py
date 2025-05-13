@@ -46,8 +46,10 @@ def calculate_fire_risk(
         if manual_overrides:
             logger.info(f"Applying manual overrides: {manual_overrides}")
             if "temperature" in manual_overrides and manual_overrides["temperature"] is not None:
-                air_temp_val = manual_overrides["temperature"]
-                applied_overrides_log.append(f"temp={air_temp_val}°C (override)")
+                temp_override_f = manual_overrides["temperature"]
+                # Convert Fahrenheit override to Celsius for internal calculation
+                air_temp_val = (temp_override_f - 32) * 5/9
+                applied_overrides_log.append(f"temp={air_temp_val:.2f}°C (override from {temp_override_f}°F)")
             if "humidity" in manual_overrides and manual_overrides["humidity"] is not None:
                 relative_humidity_val = manual_overrides["humidity"]
                 applied_overrides_log.append(f"humidity={relative_humidity_val}% (override)")

@@ -135,11 +135,24 @@ async def refresh_data_cache(
             
             # Calculate fire risk based on the latest weather data
             manual_overrides = None
+            logger.info(f"Cache Refresh: Checking for admin overrides. session_token received: {session_token[:8] if session_token else 'None'}")
+            if current_admin_sessions:
+                logger.info(f"Cache Refresh: current_admin_sessions keys: {list(current_admin_sessions.keys())}")
+            else:
+                logger.info("Cache Refresh: current_admin_sessions is None or empty.")
+
             if session_token and current_admin_sessions and session_token in current_admin_sessions:
+                logger.info(f"Cache Refresh: session_token '{session_token[:8]}...' FOUND in current_admin_sessions.")
                 admin_session_data = current_admin_sessions[session_token]
                 manual_overrides = admin_session_data.get('manual_weather_overrides')
                 if manual_overrides:
                     logger.info(f"Cache Refresh: Applying admin overrides for session {session_token[:8]}...: {manual_overrides}")
+                else:
+                    logger.info(f"Cache Refresh: No 'manual_weather_overrides' found in session data for token {session_token[:8]}...")
+            elif session_token:
+                logger.info(f"Cache Refresh: session_token '{session_token[:8]}...' NOT FOUND in current_admin_sessions or current_admin_sessions is None.")
+            else:
+                logger.info("Cache Refresh: No session_token provided, not checking for admin overrides.")
             
             risk, explanation = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
             

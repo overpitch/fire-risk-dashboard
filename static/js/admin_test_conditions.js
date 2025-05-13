@@ -106,6 +106,7 @@ async function handleSetIndividualThreshold(event) {
 
     if (result && result.status === 'success') {
         displayFeedbackMessage(`${metricConfig.displayName} override sent. ${result.message || ''}`, 'success');
+        triggerServerRiskRecalculation(); // Trigger recalculation
     } else if (result) {
         displayFeedbackMessage(`Failed to set ${metricConfig.displayName}. ${result.message || ''}`, 'error');
         // Optionally revert UI: if (setValueCell) setValueCell.textContent = '';
@@ -147,6 +148,7 @@ async function handleSetAllThresholds() {
     const result = await callTestConditionsApi('POST', allOverridesPayload);
     if (result && result.status === 'success') {
         displayFeedbackMessage(`All metric overrides sent. ${result.message || ''}`, 'success');
+        triggerServerRiskRecalculation(); // Trigger recalculation
     } else if (result) {
         displayFeedbackMessage(`Failed to set all overrides. ${result.message || ''}`, 'error');
         // Optionally revert all UI changes
@@ -164,8 +166,28 @@ async function handleClearAll() {
     const result = await callTestConditionsApi('DELETE');
     if (result && result.status === 'success') {
         displayFeedbackMessage(`All overrides cleared. ${result.message || ''}`, 'success');
+        triggerServerRiskRecalculation(); // Trigger recalculation
     } else if (result) {
         displayFeedbackMessage(`Failed to clear overrides. ${result.message || ''}`, 'error');
+    }
+}
+
+// Function to force server-side recalculation of fire risk using current (potentially overridden) conditions
+async function triggerServerRiskRecalculation() {
+    console.log('Triggering server-side risk recalculation with wait_for_fresh=true');
+    try {
+        const response = await fetch('/fire-risk?wait_for_fresh=true', { credentials: 'include' });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: `HTTP error ${response.status}` }));
+            throw new Error(errorData.message || `Failed to trigger server risk recalculation. Status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Server risk recalculation triggered successfully. New status (if changed) is now cached.', data.risk);
+        // Optionally, display a subtle feedback that server state is updated
+        // displayFeedbackMessage('Server risk status updated.', 'info', 2000);
+    } catch (error) {
+        console.error('Error triggering server risk recalculation:', error);
+        displayFeedbackMessage(`Error updating server risk status: ${error.message}`, 'error');
     }
 }
 
