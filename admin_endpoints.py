@@ -39,6 +39,9 @@ class TestConditionsPayload(BaseModel):
     # Validator to ensure at least one field is present could be added if needed
     # For now, an empty dict is allowed by POST, which effectively does nothing.
 
+class EmailLimitSettings(BaseModel):
+    ignore_daily_limit: bool
+
 # Secret tokens for authenticated admins
 # This is a simple in-memory session store
 # In a production app, this would be replaced with a more robust solution
@@ -658,3 +661,54 @@ async def clear_test_conditions(
             content={"status": "success", "message": "No active test conditions to clear."}, # Success, as the state is achieved
             status_code=status.HTTP_200_OK
         )
+
+# --- Endpoints for Email Daily Limit Toggle ---
+
+@router.post("/admin/settings/email-limit", response_class=JSONResponse)
+async def set_email_limit_setting(
+    request: Request,
+    settings: EmailLimitSettings,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Set the 'ignore_email_daily_limit' preference for the current admin session."""
+    client_ip = request.client.host
+    if not session_token or session_token not in admin_sessions:
+        logger.warning(f"Unauthorized attempt to set email limit settings from {client_ip}")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"status": "error", "message": "Authentication required"}
+        )
+
+    admin_session_data = admin_sessions[session_token]
+    admin_session_data['ignore_email_daily_limit'] = settings.ignore_daily_limit
+    
+    logger.info(f"Admin session {session_token[:8]}... set ignore_email_daily_limit to {settings.ignore_daily_limit} by {client_ip}")
+    return JSONResponse(
+        content={"status": "success", "message": f"Email daily limit ignore set to {settings.ignore_daily_limit}."},
+        status_code=status.HTTP_200_OK
+    )
+
+@router.get("/admin/settings/email-limit-status", response_class=JSONResponse)
+async def get_email_limit_setting_status(
+    request: Request,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Get the current 'ignore_email_daily_limit' preference for the admin session."""
+    client_ip = request.client.host
+    if not session_token or session_token not in admin_sessions:
+        # For GET status, if not authenticated, perhaps return a default or less sensitive error
+        # However, this setting is admin-specific, so auth is still appropriate.
+        logger.warning(f"Unauthorized attempt to get email limit status from {client_ip}")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"status": "error", "message": "Authentication required"}
+        )
+
+    admin_session_data = admin_sessions.get(session_token, {})
+    current_status = admin_session_data.get('ignore_email_daily_limit', False) # Default to False (abiding limit)
+    
+    logger.info(f"Admin session {session_token[:8]}... retrieved ignore_email_daily_limit status: {current_status} by {client_ip}")
+    return JSONResponse(
+        content={"status": "success", "ignore_email_daily_limit": current_status},
+        status_code=status.HTTP_200_OK
+    )

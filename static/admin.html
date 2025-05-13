@@ -369,6 +369,21 @@
                             <p class="alert alert-warning">
                                 <strong>Important:</strong> Before triggering a Red status test that sends emails, ensure your subscriber list is configured with appropriate test recipients to avoid sending alerts to all real subscribers.
                             </p>
+
+                            <!-- Email Daily Limit Toggle -->
+                            <div class="mb-3 border p-3 rounded">
+                                <h6>Email Alert Settings</h6>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="ignoreEmailDailyLimitToggle">
+                                    <label class="form-check-label" for="ignoreEmailDailyLimitToggle">Ignore Daily Email Limit for Testing</label>
+                                </div>
+                                <small class="form-text text-muted">
+                                    When enabled, Orange-to-Red email alerts can be sent multiple times a day for testing purposes, bypassing the usual once-per-day limit for your admin session.
+                                </small>
+                                <div id="emailLimitToggleFeedback" class="mt-2 small"></div>
+                            </div>
+                            <!-- End Email Daily Limit Toggle -->
+
                             <div id="admin-test-conditions-table-container">
                                 <!-- Table will be rendered here by JavaScript -->
                             </div>

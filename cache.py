@@ -37,6 +37,7 @@ class DataCache:
         self.background_refresh_interval: int = 10  # minutes
         self.data_timeout_threshold: int = 30  # minutes - max age before data is considered too old
         self.refresh_task_active: bool = False
+        self.last_email_send_outcome: Optional[str] = None # To track email sending status for UI feedback
         # Lock for thread safety
         self._lock = threading.Lock()
         # Event to signal when an update is complete
@@ -282,6 +283,13 @@ class DataCache:
         
         # Save cache to disk
         self._save_cache_to_disk()
+
+    def get_and_clear_last_email_send_outcome(self) -> Optional[str]:
+        """Returns the last email send outcome and then clears it."""
+        with self._lock:
+            outcome = self.last_email_send_outcome
+            self.last_email_send_outcome = None
+            return outcome
     
     def _load_cache_from_disk(self) -> tuple[bool, Dict[str, Any]]:
         """Load cached data from disk if available.
@@ -542,17 +550,18 @@ class DataCache:
         
         return self.DEFAULT_VALUES[field_name]
     
-    def should_send_alert_for_transition(self, current_risk: str) -> bool:
+    def should_send_alert_for_transition(self, current_risk: str, ignore_daily_limit: bool = False) -> bool:
         """Determine if an alert should be sent based on current and previous risk levels.
         
         This method handles the case where a transition may have occurred during server downtime.
-        It also limits alerts to once per calendar day.
+        It also limits alerts to once per calendar day, unless ignore_daily_limit is True.
         
         Args:
-            current_risk: The current risk level ("Red" or "Orange")
+            current_risk: The current risk level ("Red" or "Orange").
+            ignore_daily_limit: If True, bypass the once-per-day check.
             
         Returns:
-            bool: True if an alert should be sent, False otherwise
+            bool: True if an alert should be sent, False otherwise.
         """
         current_time = datetime.now(TIMEZONE)
         
@@ -566,28 +575,32 @@ class DataCache:
         
         # First time detecting risk (no previous timestamp), send alert
         if self.risk_level_timestamp is None:
-            logger.info("First time detecting risk level, will send alert if needed")
+            logger.info("First time detecting risk level, will send alert if needed.")
             return True
             
         # Check if we've already alerted for this transition
         if self.last_alerted_timestamp is not None:
             # If the risk level was set AFTER the last alert, this could be a new transition
             if self.risk_level_timestamp > self.last_alerted_timestamp:
-                # Check if we've already sent an alert today
-                current_date = current_time.date()
-                last_alert_date = self.last_alerted_timestamp.date()
-                
-                if current_date == last_alert_date:
-                    logger.info(f"Already sent an Orange-to-Red alert today ({current_date}). Limiting to once per calendar day.")
-                    return False
-                else:
-                    logger.info(f"New transition detected on a new calendar day. Last alert was on {last_alert_date}, today is {current_date}")
-                    return True
-            else:
-                logger.info(f"Already alerted for this transition at {self.last_alerted_timestamp.isoformat()}")
+                if not ignore_daily_limit: # Only check daily limit if not ignoring
+                    current_date = current_time.date()
+                    last_alert_date = self.last_alerted_timestamp.date()
+                    
+                    if current_date == last_alert_date:
+                        logger.info(f"Already sent an Orange-to-Red alert today ({current_date}). Limiting to once per calendar day. (ignore_daily_limit={ignore_daily_limit})")
+                        return False
+                    else:
+                        logger.info(f"New transition detected on a new calendar day. Last alert was on {last_alert_date}, today is {current_date}. (ignore_daily_limit={ignore_daily_limit})")
+                        return True # New day, send alert
+                else: # Ignoring daily limit
+                    logger.info(f"Ignoring daily email limit for this check. New transition detected after last alert.")
+                    return True # Ignoring daily limit, new transition after last alert means send
+            else: # Risk level timestamp is not after last alerted timestamp
+                logger.info(f"Already alerted for this specific risk transition instance at {self.last_alerted_timestamp.isoformat()}. (ignore_daily_limit={ignore_daily_limit})")
                 return False
         
-        # Haven't alerted yet for this transition
+        # Haven't alerted yet for this transition (last_alerted_timestamp is None, or conditions above met)
+        logger.info(f"Conditions met to send alert (or first alert). (ignore_daily_limit={ignore_daily_limit})")
         return True
     
     def update_risk_level(self, risk_level: str) -> None:

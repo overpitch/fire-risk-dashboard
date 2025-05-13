@@ -296,6 +296,12 @@ async def fire_risk(
             "warning_issues": []
         }
 
+    # Add email send outcome to the response
+    email_outcome = data_cache.get_and_clear_last_email_send_outcome()
+    if email_outcome:
+        result["email_send_outcome"] = email_outcome
+        logger.info(f"Included email_send_outcome in /fire-risk response: {email_outcome}")
+
     return result
 
 @router.get("/", response_class=HTMLResponse)

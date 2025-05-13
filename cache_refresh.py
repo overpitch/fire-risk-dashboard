@@ -154,7 +154,16 @@ async def refresh_data_cache(
             else:
                 logger.info("Cache Refresh: No session_token provided, not checking for admin overrides.")
             
-            risk, explanation = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
+            # Capture all three return values: risk, explanation, and effective_weather_values
+            risk, explanation, effective_eval_data = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
+
+            # Determine if daily email limit should be ignored for this admin
+            ignore_email_daily_limit_pref = False
+            if session_token and current_admin_sessions and session_token in current_admin_sessions:
+                admin_session_data = current_admin_sessions[session_token]
+                ignore_email_daily_limit_pref = admin_session_data.get('ignore_email_daily_limit', False)
+                if ignore_email_daily_limit_pref:
+                    logger.info(f"Admin session {session_token[:8]}... has 'ignore_email_daily_limit' set to True.")
             
             # --- Wind Data Check ---
             # Log wind data state to diagnose refresh issues
@@ -190,9 +199,11 @@ async def refresh_data_cache(
                     latest_weather['wind_gust'] = cached_value
             
             # --- Email Alert Logic ---
-            # Check if we should send an alert for this risk level
-            if data_cache.should_send_alert_for_transition(risk):
-                logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert.")
+            email_alert_triggered_this_cycle = False
+            # Check if we should send an alert for this risk level, considering the admin's preference
+            if data_cache.should_send_alert_for_transition(risk, ignore_daily_limit=ignore_email_daily_limit_pref):
+                email_alert_triggered_this_cycle = True # Mark that we entered the alert logic path
+                logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert. (ignore_daily_limit={ignore_email_daily_limit_pref})")
                 try:
                     # 1. Get active subscribers
                     subscribers_result = get_active_subscribers()
@@ -201,22 +212,23 @@ async def refresh_data_cache(
                     if "error" in subscribers_result:
                         logger.error(f"Failed to get subscribers: {subscribers_result['error']}")
                         recipients = []
+                        data_cache.last_email_send_outcome = "failed" # Failed to get subscribers
                     else:
                         recipients = subscribers_result.get("subscribers", [])
 
                     if not recipients:
                         logger.warning("Orange-to-Red transition detected, but no active subscribers found.")
+                        if data_cache.last_email_send_outcome != "failed": # Don't overwrite a previous failure
+                            data_cache.last_email_send_outcome = "not_triggered_no_recipients"
                     else:
                         logger.info(f"Found {len(recipients)} active subscribers for the alert.")
-                        # 2. Prepare weather data in the format expected by the email function
-                        # Map API field names to more user-friendly names if needed by the template
+                        # 2. Prepare weather data using effective_eval_data for the email content
                         alert_weather_data = {
-                            'temperature': f"{latest_weather.get('air_temp', 'N/A')}°C", # Assuming Celsius for now
-                            'humidity': f"{latest_weather.get('relative_humidity', 'N/A')}%",
-                            'wind_speed': f"{latest_weather.get('wind_speed', 'N/A')} mph",
-                            'wind_gust': f"{latest_weather.get('wind_gust', 'N/A')} mph", # Include gusts if available
-                            'soil_moisture': f"{latest_weather.get('soil_moisture_15cm', 'N/A')}%" # Assuming 15cm value
-                            # Add any other relevant fields used in the email template
+                            'temperature': f"{effective_eval_data.get('temperature', 'N/A')}°F", # Now using Fahrenheit
+                            'humidity': f"{effective_eval_data.get('humidity', 'N/A')}%",
+                            'wind_speed': f"{effective_eval_data.get('wind_speed', 'N/A')} mph",
+                            'wind_gust': f"{effective_eval_data.get('wind_gust', 'N/A')} mph",
+                            'soil_moisture': f"{effective_eval_data.get('soil_moisture', 'N/A')}%"
                         }
 
                         # 3. Send the alert using the dedicated function
@@ -224,14 +236,19 @@ async def refresh_data_cache(
 
                         if message_id:
                             logger.info(f"Orange-to-Red alert email sent successfully to {len(recipients)} subscribers. Message ID: {message_id}")
-                            # Record that we sent an alert for this transition
                             data_cache.record_alert_sent()
+                            data_cache.last_email_send_outcome = "success"
                         else:
                             logger.error("Failed to send Orange-to-Red alert email (send_orange_to_red_alert returned None).")
+                            data_cache.last_email_send_outcome = "failed"
 
                 except Exception as email_err:
-                    # Catch errors during subscriber fetching or email sending
                     logger.error(f"Failed during Orange-to-Red alert process: {email_err}", exc_info=True) # Log traceback
+                    data_cache.last_email_send_outcome = "failed"
+            else: # should_send_alert_for_transition was false
+                if not email_alert_triggered_this_cycle: # Only set if we didn't even attempt to send
+                    data_cache.last_email_send_outcome = "not_triggered_conditions_met"
+
             # --- End Email Alert Logic ---
 
             # Update the risk level in the cache with timestamp
