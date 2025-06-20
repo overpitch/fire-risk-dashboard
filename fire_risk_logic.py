@@ -115,16 +115,45 @@ def calculate_fire_risk(
         gusts_exceeded = gusts_for_logic > THRESH_GUSTS
         soil_exceeded = soil_for_logic < THRESH_SOIL_MOIST
         
-        # Log threshold checks
+        # DETAILED LOGGING FOR BUG DIAGNOSIS
+        logger.info(f"🔍 FIRE RISK CALCULATION DEBUG:")
+        logger.info(f"🔍 Values used for calculation:")
+        logger.info(f"🔍   Temperature: {temp_c_for_logic}°C (threshold: >{THRESH_TEMP_CELSIUS}°C)")
+        logger.info(f"🔍   Humidity: {humidity_for_logic}% (threshold: <{THRESH_HUMID}%)")
+        logger.info(f"🔍   Wind Speed: {wind_for_logic}mph (threshold: >{THRESH_WIND}mph)")
+        logger.info(f"🔍   Wind Gusts: {gusts_for_logic}mph (threshold: >{THRESH_GUSTS}mph)")
+        logger.info(f"🔍   Soil Moisture: {soil_for_logic}% (threshold: <{THRESH_SOIL_MOIST}%)")
+        
+        logger.info(f"🔍 Individual threshold checks:")
+        logger.info(f"🔍   temp_exceeded = {temp_c_for_logic} > {THRESH_TEMP_CELSIUS} = {temp_exceeded}")
+        logger.info(f"🔍   humidity_exceeded = {humidity_for_logic} < {THRESH_HUMID} = {humidity_exceeded}")
+        logger.info(f"🔍   wind_exceeded = {wind_for_logic} > {THRESH_WIND} = {wind_exceeded}")
+        logger.info(f"🔍   gusts_exceeded = {gusts_for_logic} > {THRESH_GUSTS} = {gusts_exceeded}")
+        logger.info(f"🔍   soil_exceeded = {soil_for_logic} < {THRESH_SOIL_MOIST} = {soil_exceeded}")
+        
+        # Log the boolean AND operation step by step
+        logger.info(f"🔍 Boolean AND operation:")
+        logger.info(f"🔍   temp_exceeded AND humidity_exceeded = {temp_exceeded} AND {humidity_exceeded} = {temp_exceeded and humidity_exceeded}")
+        logger.info(f"🔍   (temp AND humidity) AND wind_exceeded = {temp_exceeded and humidity_exceeded} AND {wind_exceeded} = {(temp_exceeded and humidity_exceeded) and wind_exceeded}")
+        logger.info(f"🔍   (temp AND humidity AND wind) AND gusts_exceeded = {(temp_exceeded and humidity_exceeded) and wind_exceeded} AND {gusts_exceeded} = {((temp_exceeded and humidity_exceeded) and wind_exceeded) and gusts_exceeded}")
+        logger.info(f"🔍   (temp AND humidity AND wind AND gusts) AND soil_exceeded = {((temp_exceeded and humidity_exceeded) and wind_exceeded) and gusts_exceeded} AND {soil_exceeded} = {(((temp_exceeded and humidity_exceeded) and wind_exceeded) and gusts_exceeded) and soil_exceeded}")
+        
+        all_conditions_met = temp_exceeded and humidity_exceeded and wind_exceeded and gusts_exceeded and soil_exceeded
+        logger.info(f"🔍 FINAL RESULT: all_conditions_met = {all_conditions_met}")
+        
+        # Log threshold checks (original format for compatibility)
         logger.info(f"Threshold checks: temp={temp_exceeded}, humidity={humidity_exceeded}, "
                     f"wind={wind_exceeded}, gusts={gusts_exceeded}, soil={soil_exceeded}")
         
         risk_level = "Orange"
         explanation = "Low or Moderate Fire Risk. Exercise standard prevention practices."
 
-        if temp_exceeded and humidity_exceeded and wind_exceeded and gusts_exceeded and soil_exceeded:
+        if all_conditions_met:
             risk_level = "Red"
             explanation = "High fire risk due to high temperature, low humidity, strong winds, high wind gusts, and low soil moisture."
+            logger.info(f"🔍 SETTING RISK LEVEL TO RED!")
+        else:
+            logger.info(f"🔍 KEEPING RISK LEVEL AS ORANGE - not all conditions met")
         
         # Round temperature in effective_values for cleaner display if it's a float
         if effective_values["temperature"] is not None:

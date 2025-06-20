@@ -1,0 +1,67 @@
+{
+  "risk": "Red",
+  "explanation": "High fire risk due to high temperature, low humidity, strong winds, high wind gusts, and low soil moisture.",
+  "weather": {
+    "air_temp": 32.22222222222222,
+    "relative_humidity": 10.0,
+    "wind_speed": 20.0,
+    "soil_moisture_15cm": 5.0,
+    "wind_gust": 25.0,
+    "data_sources": {
+      "weather_station": "SEYC1",
+      "soil_moisture_station": "C3DLA",
+      "wind_gust_station": "629PG"
+    },
+    "wind_gust_stations": {
+      "629PG": {
+        "value": 8.072,
+        "is_cached": false,
+        "timestamp": "2025-06-19T16:57:37.497945-07:00"
+      }
+    },
+    "data_status": {
+      "found_stations": [
+        "SEYC1",
+        "C3DLA",
+        "629PG"
+      ],
+      "missing_stations": [],
+      "issues": []
+    },
+    "cache_timestamp": "2025-06-19T16:57:37.497973-07:00",
+    "cached_fields": {
+      "temperature": false,
+      "humidity": false,
+      "wind_speed": false,
+      "soil_moisture": false,
+      "wind_gust": false,
+      "timestamp": {}
+    }
+  },
+  "cache_info": {
+    "last_updated": "2025-06-19T16:57:37.499018-07:00",
+    "is_fresh": true,
+    "refresh_in_progress": false,
+    "using_cached_data": false,
+    "cached_fields": {
+      "temperature": false,
+      "humidity": false,
+      "wind_speed": false,
+      "soil_moisture": false,
+      "wind_gust": false
+    }
+  },
+  "thresholds": {
+    "temp": 75.0,
+    "humid": 15.0,
+    "wind": 10.0,
+    "gusts": 15.0,
+    "soil_moist": 10.0
+  },
+  "modal_content": {
+    "note": null,
+    "warning_title": null,
+    "warning_issues": []
+  },
+  "email_send_outcome": "not_triggered_conditions_met"
+}

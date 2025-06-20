@@ -157,6 +157,33 @@ async def refresh_data_cache(
             # Capture all three return values: risk, explanation, and effective_weather_values
             risk, explanation, effective_eval_data = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
 
+            # Update latest_weather with effective values when admin overrides are active
+            if manual_overrides and effective_eval_data:
+                logger.info(f"🔧 Applying admin overrides to weather data for frontend display")
+                
+                # Map effective_eval_data back to latest_weather format
+                if effective_eval_data.get('temperature') is not None:
+                    # Convert temperature from Fahrenheit back to Celsius for storage
+                    temp_f = effective_eval_data['temperature']
+                    latest_weather['air_temp'] = (temp_f - 32) * 5/9
+                    logger.info(f"🔧 Override temperature: {temp_f}°F -> {latest_weather['air_temp']:.2f}°C")
+                
+                if effective_eval_data.get('humidity') is not None:
+                    latest_weather['relative_humidity'] = effective_eval_data['humidity']
+                    logger.info(f"🔧 Override humidity: {effective_eval_data['humidity']}%")
+                
+                if effective_eval_data.get('wind_speed') is not None:
+                    latest_weather['wind_speed'] = effective_eval_data['wind_speed']
+                    logger.info(f"🔧 Override wind speed: {effective_eval_data['wind_speed']} mph")
+                
+                if effective_eval_data.get('wind_gust') is not None:
+                    latest_weather['wind_gust'] = effective_eval_data['wind_gust']
+                    logger.info(f"🔧 Override wind gust: {effective_eval_data['wind_gust']} mph")
+                
+                if effective_eval_data.get('soil_moisture') is not None:
+                    latest_weather['soil_moisture_15cm'] = effective_eval_data['soil_moisture']
+                    logger.info(f"🔧 Override soil moisture: {effective_eval_data['soil_moisture']}%")
+
             # Determine if daily email limit should be ignored for this admin
             ignore_email_daily_limit_pref = False
             if session_token and current_admin_sessions and session_token in current_admin_sessions:
@@ -200,9 +227,22 @@ async def refresh_data_cache(
             
             # --- Email Alert Logic ---
             email_alert_triggered_this_cycle = False
+            
+            # DETAILED LOGGING FOR EMAIL ALERT BUG DIAGNOSIS
+            logger.info(f"🚨 EMAIL ALERT LOGIC DEBUG:")
+            logger.info(f"🚨 Current risk level: {risk}")
+            logger.info(f"🚨 Previous risk level: {data_cache.previous_risk_level}")
+            logger.info(f"🚨 Risk level timestamp: {data_cache.risk_level_timestamp}")
+            logger.info(f"🚨 Last alerted timestamp: {data_cache.last_alerted_timestamp}")
+            logger.info(f"🚨 Ignore daily limit preference: {ignore_email_daily_limit_pref}")
+            
+            should_send_alert = data_cache.should_send_alert_for_transition(risk, ignore_daily_limit=ignore_email_daily_limit_pref)
+            logger.info(f"🚨 should_send_alert_for_transition() returned: {should_send_alert}")
+            
             # Check if we should send an alert for this risk level, considering the admin's preference
-            if data_cache.should_send_alert_for_transition(risk, ignore_daily_limit=ignore_email_daily_limit_pref):
+            if should_send_alert:
                 email_alert_triggered_this_cycle = True # Mark that we entered the alert logic path
+                logger.info(f"🚨 ENTERING EMAIL ALERT LOGIC!")
                 logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert. (ignore_daily_limit={ignore_email_daily_limit_pref})")
                 try:
                     # 1. Get active subscribers
