@@ -173,12 +173,16 @@ async def refresh_data_cache(
                     logger.info(f"🔧 Override humidity: {effective_eval_data['humidity']}%")
                 
                 if effective_eval_data.get('wind_speed') is not None:
-                    latest_weather['wind_speed'] = effective_eval_data['wind_speed']
-                    logger.info(f"🔧 Override wind speed: {effective_eval_data['wind_speed']} mph")
+                    # Convert mph back to m/s for storage (frontend will convert back to mph for display)
+                    wind_speed_ms = effective_eval_data['wind_speed'] / 2.237
+                    latest_weather['wind_speed'] = wind_speed_ms
+                    logger.info(f"🔧 Override wind speed: {effective_eval_data['wind_speed']} mph -> {wind_speed_ms:.2f} m/s")
                 
                 if effective_eval_data.get('wind_gust') is not None:
-                    latest_weather['wind_gust'] = effective_eval_data['wind_gust']
-                    logger.info(f"🔧 Override wind gust: {effective_eval_data['wind_gust']} mph")
+                    # Convert mph back to m/s for storage (frontend will convert back to mph for display)
+                    wind_gust_ms = effective_eval_data['wind_gust'] / 2.237
+                    latest_weather['wind_gust'] = wind_gust_ms
+                    logger.info(f"🔧 Override wind gust: {effective_eval_data['wind_gust']} mph -> {wind_gust_ms:.2f} m/s")
                 
                 if effective_eval_data.get('soil_moisture') is not None:
                     latest_weather['soil_moisture_15cm'] = effective_eval_data['soil_moisture']
