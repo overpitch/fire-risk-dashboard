@@ -1,5 +1,6 @@
 import requests
 import json
+from api_clients import redact_secrets
 from config import SYNOPTIC_API_KEY, SYNOPTIC_BASE_URL, WIND_STATION_ID
 
 def get_current_wind_data():
@@ -46,7 +47,7 @@ def get_current_wind_data():
         else:
             print("No station data found in response")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {redact_secrets(e)}")
 
 if __name__ == "__main__":
     get_current_wind_data()

@@ -7,6 +7,7 @@ import json
 from fastapi import APIRouter, BackgroundTasks, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
+from api_clients import redact_secrets
 from config import IS_PRODUCTION, SYNOPTIC_BASE_URL, SYNOPTIC_API_KEY, SOIL_MOISTURE_STATION_ID, WEATHER_STATION_ID, WIND_STATION_ID, logger
 from cache import data_cache
 from cache_refresh import refresh_data_cache
@@ -34,7 +35,7 @@ async def check_env():
     """
     synoptic_key = os.getenv("SYNOPTICDATA_API_KEY")
     return {
-        "SYNOPTICDATA_API_KEY": synoptic_key if synoptic_key else "MISSING"
+        "SYNOPTICDATA_API_KEY": "SET" if synoptic_key else "MISSING"
     }
 
 @router.get("/test-api")
@@ -124,7 +125,7 @@ async def test_synoptic_auth():
         return results
         
     except requests.exceptions.RequestException as e:
-        results["error"] = str(e)
+        results["error"] = redact_secrets(e)
         return results
 
 @router.get("/test-cache-system", response_class=HTMLResponse)

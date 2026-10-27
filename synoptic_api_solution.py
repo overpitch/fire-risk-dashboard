@@ -12,6 +12,8 @@ import requests
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 
+from api_clients import redact_secrets
+
 # Configurable parameters
 SYNOPTIC_API_KEY = os.getenv("SYNOPTICDATA_API_KEY")
 SYNOPTIC_BASE_URL = "https://api.synopticdata.com/v2"
@@ -107,7 +109,7 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
         return token
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching API token: {e}")
+        logger.error(f"Error fetching API token: {redact_secrets(e)}")
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_data = e.response.json()
@@ -220,7 +222,7 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             return load_fallback_data()
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Exception during API request: {str(e)}")
+        logger.error(f"Exception during API request: {redact_secrets(e)}")
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_data = e.response.json()

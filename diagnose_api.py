@@ -153,7 +153,7 @@ def test_station_data(token, station_id):
         return
     
     station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_id}&token={token}"
-    print_result("Request URL", station_url.replace(token, "REDACTED"))
+    print_result("Request URL", redact_secrets(station_url))
     
     try:
         start_time = time.time()
@@ -216,7 +216,7 @@ def main():
         all_stations = ",".join(STATION_IDS)
         print_section(f"ALL STATIONS TEST: {all_stations}")
         station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={all_stations}&token={token}"
-        print_result("Request URL", station_url.replace(token, "REDACTED"))
+        print_result("Request URL", redact_secrets(station_url))
         
         try:
             response = requests.get(station_url, timeout=10)

@@ -68,7 +68,7 @@ def test_token_acquisition():
         logger.error("❌ Failed to get API token")
         return False
     
-    logger.info(f"🔑 Got token: {token[:10]}...")
+    logger.info("🔑 Got token")
     assert validate_token_format(token), "Token should be in valid format"
     logger.info("✅ Successfully obtained and validated API token")
     return True

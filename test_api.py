@@ -159,7 +159,7 @@ def test_api_with_detailed_headers():
                 station_id = STATION_IDS[0]
                 station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_id}&token={token}"
                 
-                print(f"🌐 Request URL: {station_url.replace(token, 'REDACTED')}")
+                print(f"🌐 Request URL: {redact_secrets(station_url)}")
                 print(f"📤 Request Headers:")
                 print_dict(test_case["headers"], 2)
                 
