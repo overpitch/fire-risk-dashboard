@@ -265,10 +265,10 @@ async def test_home(client): # Added client fixture
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_toggle_test_mode_enable(mock_refresh_data_cache, client): # Added client fixture
+async def test_toggle_test_mode_enable(mock_refresh_data_cache, admin_client): # Added client fixture
     mock_refresh_data_cache.return_value = True
     with patch.object(data_cache, "last_valid_data", {"timestamp": datetime.now(timezone.utc)}):
-        response = await client.get("/toggle-test-mode?enable=true") # Use await and fixture client
+        response = await admin_client.post("/toggle-test-mode?enable=true") # Use await and fixture client
         assert response.status_code == 200
         assert response.json()["mode"] == "test"
         assert data_cache.using_cached_data is True
@@ -276,9 +276,9 @@ async def test_toggle_test_mode_enable(mock_refresh_data_cache, client): # Added
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_toggle_test_mode_disable(mock_refresh_data_cache, client): # Added client fixture
+async def test_toggle_test_mode_disable(mock_refresh_data_cache, admin_client): # Added client fixture
     mock_refresh_data_cache.return_value = True
-    response = await client.get("/toggle-test-mode?enable=false") # Use await and fixture client
+    response = await admin_client.post("/toggle-test-mode?enable=false") # Use await and fixture client
     assert response.status_code == 200
     assert response.json()["mode"] == "normal"
     assert data_cache.using_cached_data is False
@@ -286,16 +286,16 @@ async def test_toggle_test_mode_disable(mock_refresh_data_cache, client): # Adde
 
 
 @pytest.mark.asyncio
-async def test_toggle_test_mode_no_cached_data(client): # Added client fixture
+async def test_toggle_test_mode_no_cached_data(admin_client): # Added client fixture
     with patch.object(data_cache, "last_valid_data", {"timestamp": None}):
-        response = await client.get("/toggle-test-mode?enable=true") # Use await and fixture client
+        response = await admin_client.post("/toggle-test-mode?enable=true") # Use await and fixture client
         assert response.status_code == 400
         assert response.json()["message"] == "No cached data available yet. Please visit the dashboard first to populate the cache."
 
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, client):
+async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, admin_client):
     """Test that toggling test mode OFF properly resets all cached field flags."""
     mock_refresh_data_cache.return_value = True
     
@@ -314,7 +314,7 @@ async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, cl
         assert all(data_cache.cached_fields.values()), "Not all cached fields were set to True in test setup"
             
         # Now disable test mode
-        response = await client.get("/toggle-test-mode?enable=false")
+        response = await admin_client.post("/toggle-test-mode?enable=false")
             
         # Verify response
         assert response.status_code == 200

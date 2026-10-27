@@ -44,6 +44,16 @@ async def client():
     # Use httpx.AsyncClient for async testing with function scope to match event_loop fixture
     async with httpx.AsyncClient(app=app, base_url="http://test") as client:
         yield client
+
+@pytest.fixture(scope="function")
+async def admin_client(client):
+    """The test client with a valid admin session cookie."""
+    from admin_endpoints import admin_sessions
+    token = "test-admin-session-token"
+    admin_sessions[token] = {"ip": "test", "created_at": time.time()}
+    client.cookies.set("session_token", token)
+    yield client
+    admin_sessions.pop(token, None)
     
 @pytest.fixture(scope="function")
 def event_loop():

@@ -798,68 +798,6 @@ async function manualRefresh() {
     }
 }
 
-// Test Mode Toggle Functionality
-async function toggleTestMode(enable) {
-    // Update the toggle color immediately
-    const testModeToggle = document.getElementById('testModeToggle');
-    if (enable) {
-        // Switch to red for test mode
-        testModeToggle.classList.remove('normal-mode');
-        testModeToggle.classList.add('test-mode');
-    } else {
-        // Switch to green for normal mode
-        testModeToggle.classList.remove('test-mode');
-        testModeToggle.classList.add('normal-mode');
-    }
-
-    try {
-        const response = await fetch(`/toggle-test-mode?enable=${enable}`, {
-            method: 'GET'
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            // Log success message based on mode
-            if (enable) {
-                console.log('Test mode enabled. Using cached data.');
-            } else {
-                console.log('Test mode disabled. Returned to normal operation.');
-            }
-
-            // Refresh the data display to show the changes
-            fetchFireRisk(true, true).then(success => {
-                if (success !== false) {
-                    initializeTooltips();
-                }
-            });
-
-            // Don't save test mode state to localStorage anymore
-            // We want test mode to always start disabled by default
-
-            return true;
-        } else {
-            console.error(`Error toggling test mode: ${data.message}`);
-            alert(`Error: ${data.message}`);
-
-            // Reset the toggle to its previous state without triggering the change event
-            const testModeToggle = document.getElementById('testModeToggle');
-            testModeToggle.checked = !enable;
-
-            return false;
-        }
-    } catch (error) {
-        console.error('Error toggling test mode:', error);
-        alert('Error toggling test mode. See console for details.');
-
-        // Reset the toggle to its previous state without triggering the change event
-        const testModeToggle = document.getElementById('testModeToggle');
-        testModeToggle.checked = !enable;
-
-        return false;
-    }
-}
-
 // Auto-refresh functionality
 function setupRefresh() {
     // Test mode toggle has been moved to admin page

@@ -4,6 +4,7 @@ Test script to reproduce the red alert bug using admin test conditions.
 This simulates the exact scenario where all five criteria exceed thresholds.
 """
 
+import os
 import requests
 import json
 import sys
@@ -14,28 +15,32 @@ def test_admin_override_scenario():
     print("🔧 TESTING ADMIN OVERRIDE SCENARIO")
     print("=" * 50)
     
-    # First, let's validate the PIN and get a session token
+    # First, log in with ADMIN_PASSWORD and get a session token
     print("Step 1: Authenticating with admin...")
     
     try:
-        # Validate PIN (you'll need to provide the actual PIN)
-        pin_response = requests.post(
-            "http://localhost:8000/admin/validate-pin",
-            json={"pin": "1446"},  # Actual admin PIN
+        password = os.getenv("ADMIN_PASSWORD")
+        if not password:
+            print("❌ Set the ADMIN_PASSWORD environment variable to run this script")
+            return False
+
+        login_response = requests.post(
+            "http://localhost:8000/admin/validate-password",
+            json={"password": password},
             timeout=10
         )
         
-        if pin_response.status_code != 200:
-            print(f"❌ PIN validation failed: {pin_response.status_code}")
-            print("Please update the PIN in this script or use the correct one")
+        if login_response.status_code != 200:
+            print(f"❌ Login failed: {login_response.status_code}")
             return False
             
-        pin_data = pin_response.json()
-        if not pin_data.get("valid"):
-            print(f"❌ Invalid PIN: {pin_data.get('error', 'Unknown error')}")
+        login_data = login_response.json()
+        if not login_data.get("valid"):
+            print(f"❌ Invalid password: {login_data.get('error', 'Unknown error')}")
             return False
             
-        session_token = pin_data.get("session_token")
+        # The server sets the session as a cookie rather than returning it in the body
+        session_token = login_response.cookies.get("session_token")
         print(f"✅ Admin authenticated successfully")
         
         # Step 2: Set test conditions that exceed ALL thresholds

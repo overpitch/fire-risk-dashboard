@@ -80,34 +80,6 @@
             color: #dc3545;
             font-weight: bold;
         }
-
-        /* PIN input styling */
-        .pin-digit {
-            width: 50px;
-            height: 60px;
-            font-size: 24px;
-            text-align: center;
-            margin: 0 5px;
-        }
-
-        .pin-display {
-            letter-spacing: 5px;
-            font-family: monospace;
-            font-size: 24px;
-        }
-
-        .numpad {
-            max-width: 300px;
-            margin: 0 auto;
-        }
-
-        .numpad-btn {
-            width: 70px;
-            height: 70px;
-            margin: 5px;
-            font-size: 24px;
-            border-radius: 50%;
-        }
     </style>
 </head>
 
@@ -128,41 +100,20 @@
     </nav>
 
     <div class="container mt-5">
-        <!-- PIN Entry Interface -->
+        <!-- Password Entry Interface -->
         <div id="pinPrompt" class="card mb-4">
             <div class="card-header">Admin Access Required</div>
             <div class="card-body">
-                <p>Please enter the Admin PIN to access the portal.</p>
+                <p>Please enter the admin password to access the portal.</p>
 
-                <div class="mb-3 text-center">
-                    <div class="pin-display p-2 border rounded mb-3" id="pinDisplay">****</div>
-
-                    <div class="numpad">
-                        <div class="d-flex justify-content-center mb-2">
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('1')">1</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('2')">2</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('3')">3</button>
-                        </div>
-                        <div class="d-flex justify-content-center mb-2">
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('4')">4</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('5')">5</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('6')">6</button>
-                        </div>
-                        <div class="d-flex justify-content-center mb-2">
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('7')">7</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('8')">8</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('9')">9</button>
-                        </div>
-                        <div class="d-flex justify-content-center">
-                            <button class="btn btn-danger numpad-btn" onclick="clearPin()">C</button>
-                            <button class="btn btn-outline-secondary numpad-btn" onclick="addPinDigit('0')">0</button>
-                            <button class="btn btn-success numpad-btn" onclick="submitPin()">✓</button>
-                        </div>
-                    </div>
-                </div>
+                <form id="loginForm" method="post" action="/admin" class="mx-auto" style="max-width: 360px;">
+                    <input type="password" id="passwordInput" name="password" class="form-control mb-3"
+                        placeholder="Admin password" autocomplete="current-password" required autofocus>
+                    <button type="submit" id="loginButton" class="btn btn-primary w-100">Log in</button>
+                </form>
 
                 <div id="pinError" class="alert alert-danger mt-3" style="display: none;">
-                    Invalid PIN. Please try again.
+                    Invalid password. Please try again.
                 </div>
             </div>
         </div>
@@ -460,105 +411,46 @@
     </div>
 
     <script>
-        // PIN handling
-        let currentPin = '';
+        // Password login
+        document.getElementById('loginForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const passwordInput = document.getElementById('passwordInput');
+            const loginButton = document.getElementById('loginButton');
+            const pinError = document.getElementById('pinError');
 
-        function addPinDigit(digit) {
-            if (currentPin.length < 4) {
-                currentPin += digit;
-                updatePinDisplay();
+            loginButton.disabled = true;
+            pinError.style.display = 'none';
 
-                // Auto-submit if we have 4 digits
-                if (currentPin.length === 4) {
-                    setTimeout(submitPin, 300); // Small delay for better UX
-                }
-            }
-        }
-
-        function clearPin() {
-            currentPin = '';
-            updatePinDisplay();
-            document.getElementById('pinError').style.display = 'none';
-        }
-
-        function updatePinDisplay() {
-            let displayText = '';
-            for (let i = 0; i < 4; i++) {
-                if (i < currentPin.length) {
-                    displayText += '•'; // Use bullet character instead of actual number for security
-                } else {
-                    displayText += '*';
-                }
-            }
-            document.getElementById('pinDisplay').textContent = displayText;
-        }
-
-        async function submitPin() {
             try {
-                // Disable the numpad while validating
-                disableNumpad(true);
-
-                // Show loading state
-                document.getElementById('pinDisplay').textContent = "Verifying...";
-
-                // Send PIN to server for validation
-                const response = await fetch('/admin/validate-pin', {
+                // The server sets the session cookie on success
+                const response = await fetch('/admin/validate-password', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ pin: currentPin }),
+                    body: JSON.stringify({ password: passwordInput.value }),
                     credentials: 'include'
                 });
 
                 const result = await response.json();
 
                 if (result.valid) {
-                    // Set the session cookie
-                    document.cookie = `session_token=${result.session_token}; path=/; max-age=3600`;
-
-                    // PIN is correct
                     document.getElementById('pinPrompt').style.display = 'none';
                     document.getElementById('adminContent').style.display = 'block';
-
-                    // Initialize admin content
                     initializeAdminContent();
                 } else {
-                    // PIN is incorrect
-                    document.getElementById('pinError').style.display = 'block';
-                    document.getElementById('pinError').textContent = result.error || 'Invalid PIN. Please try again.';
-
-                    // Clear the PIN after a brief delay
-                    setTimeout(clearPin, 500);
-
-                    // Add security delay to prevent brute force
-                    disableNumpad(1500);
+                    pinError.textContent = result.error || 'Invalid password. Please try again.';
+                    pinError.style.display = 'block';
                 }
             } catch (error) {
-                console.error('Error validating PIN:', error);
-                document.getElementById('pinError').style.display = 'block';
-                document.getElementById('pinError').textContent = 'Server error. Please try again.';
-
-                // Enable the numpad again
-                disableNumpad(false);
+                console.error('Error validating password:', error);
+                pinError.textContent = 'Server error. Please try again.';
+                pinError.style.display = 'block';
+            } finally {
+                passwordInput.value = '';
+                loginButton.disabled = false;
             }
-        }
-
-        function disableNumpad(disable) {
-            const buttons = document.querySelectorAll('.numpad-btn');
-
-            if (typeof disable === 'number') {
-                // If a number is passed, disable for that duration
-                buttons.forEach(btn => btn.disabled = true);
-
-                setTimeout(() => {
-                    buttons.forEach(btn => btn.disabled = false);
-                }, disable);
-            } else {
-                // Otherwise, just set the disabled state directly
-                buttons.forEach(btn => btn.disabled = disable);
-            }
-        }
+        });
 
         // Test Mode functions
         async function fetchTestModeStatus() {
@@ -582,6 +474,7 @@
                 toggle.disabled = true;
 
                 const response = await fetch('/toggle-test-mode?enable=' + enable, {
+                    method: 'POST',
                     credentials: 'include' // Include session cookies
                 });
                 if (!response.ok) {
@@ -1522,6 +1415,11 @@
                 const masterCheckbox = document.getElementById('masterEmailCheckbox');
                 if (masterCheckbox) masterCheckbox.indeterminate = false;
             }
+        }
+
+        // If the server rendered the page for a logged-in admin, initialize it straight away
+        if (document.getElementById('adminContent').style.display !== 'none') {
+            initializeAdminContent();
         }
 
         </script>

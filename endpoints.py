@@ -9,7 +9,7 @@ from config import logger, TIMEZONE
 from cache import data_cache
 from cache_refresh import refresh_data_cache
 from data_processing import format_age_string
-from admin_endpoints import admin_sessions # Import admin_sessions
+from admin_endpoints import admin_sessions, is_admin_session, unauthorized_response
 
 # Create a router for the main endpoints
 router = APIRouter()
@@ -328,18 +328,16 @@ def home():
 # app.include_router(router)
 
 
-@router.get("/toggle-test-mode", response_class=JSONResponse)
-async def toggle_test_mode_endpoint( # Renamed to avoid conflict with admin_endpoints toggle_test_mode if routes are merged
+@router.post("/toggle-test-mode", response_class=JSONResponse)
+async def toggle_test_mode_endpoint(
     request: Request, # Add request
     background_tasks: BackgroundTasks, 
     enable: bool = False,
     session_token: Optional[str] = Cookie(None) # Add session_token
 ):
-    """Toggle test mode on or off via API
-
-
+    """Toggle test mode on or off via API (admin session required)
     
-    This endpoint is designed to be called from JavaScript in the dashboard UI.
+    This endpoint is called from JavaScript in the admin page.
     When enabled, it will force the system to use cached data (simulate API failure).
     When disabled, it will restore normal operation.
     
@@ -350,6 +348,9 @@ async def toggle_test_mode_endpoint( # Renamed to avoid conflict with admin_endp
     Returns:
         JSON response with the status of the test mode toggle
     """
+    if not is_admin_session(session_token):
+        return unauthorized_response(request.client.host, "toggle test mode")
+
     if enable:
         # First check if we have cached data
         if data_cache.last_valid_data["timestamp"] is None:

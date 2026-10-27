@@ -11,10 +11,10 @@ import secrets
 import json
 from pydantic import BaseModel, EmailStr
 
-from config import logger
+from config import logger, IS_PRODUCTION
 from cache import data_cache
 from cache_refresh import refresh_data_cache
-from admin_service import verify_pin, reset_attempts
+from admin_service import verify_password
 from subscriber_service import get_active_subscribers, bulk_import_subscribers
 from file_processor import process_subscriber_file
 from email_service import send_test_orange_to_red_alert, send_custom_email_to_subscribers # Added new import
@@ -47,9 +47,45 @@ class EmailLimitSettings(BaseModel):
 # In a production app, this would be replaced with a more robust solution
 admin_sessions = {}
 
+SESSION_DURATION = 3600  # Admin sessions expire after 1 hour
+
 def generate_session_token() -> str:
     """Generate a secure random session token"""
     return secrets.token_hex(32)
+
+def is_admin_session(session_token: Optional[str]) -> bool:
+    """Return True if the token belongs to an unexpired admin session; expired sessions are removed."""
+    if not session_token or session_token not in admin_sessions:
+        return False
+    if time.time() - admin_sessions[session_token]["created_at"] > SESSION_DURATION:
+        del admin_sessions[session_token]
+        return False
+    return True
+
+def start_admin_session(response: Response, client_ip: str) -> None:
+    """Create a new admin session and set its cookie on the response."""
+    session_token = generate_session_token()
+    admin_sessions[session_token] = {
+        "ip": client_ip,
+        "created_at": time.time()
+    }
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,          # Not readable by page scripts
+        max_age=SESSION_DURATION,
+        secure=IS_PRODUCTION,   # HTTPS-only on Render; plain HTTP allowed for local dev
+        samesite="strict",
+        path="/"
+    )
+
+def unauthorized_response(client_ip: str, action: str) -> JSONResponse:
+    """Log and return a 401 for an unauthenticated admin request."""
+    logger.warning(f"Unauthorized attempt to {action} from {client_ip}")
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"status": "error", "error": "Authentication required", "message": "Authentication required"}
+    )
 
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request, session_token: Optional[str] = Cookie(None)):
@@ -58,7 +94,7 @@ async def admin_page(request: Request, session_token: Optional[str] = Cookie(Non
     client_ip = request.client.host
     is_authenticated = False
     
-    if session_token and session_token in admin_sessions:
+    if is_admin_session(session_token):
         is_authenticated = True
         logger.info(f"Admin accessed with valid session from {client_ip}")
     
@@ -95,35 +131,20 @@ async def admin_page(request: Request, session_token: Optional[str] = Cookie(Non
 </html>""")
 
 @router.post("/admin", response_class=HTMLResponse)
-async def admin_login(request: Request, response: Response, pin: str = Form(...)):
-    """Handle admin login with PIN verification"""
+async def admin_login(request: Request, password: str = Form(...)):
+    """Handle admin login with password verification"""
     client_ip = request.client.host
     
-    # Verify the PIN
-    is_valid, error_message = verify_pin(pin, client_ip)
+    # Verify the password
+    is_valid, error_message = verify_password(password, client_ip)
     
     if is_valid:
-        # Generate a session token
-        session_token = generate_session_token()
-        admin_sessions[session_token] = {
-            "ip": client_ip,
-            "created_at": time.time()
-        }
-        
-        # Set the session cookie
-        response.set_cookie(
-            key="session_token", 
-            value=session_token,
-            httponly=False,  # Allow JavaScript access for debugging
-            max_age=3600,   # 1 hour session
-            secure=False,   # Set to True in production with HTTPS
-            path="/"        # Make sure cookie is available for all paths
-        )
-        
         logger.info(f"Admin login successful from {client_ip}")
         
-        # Redirect to the admin page
-        return RedirectResponse(url="/admin", status_code=303)
+        # Redirect to the admin page with the session cookie set
+        redirect = RedirectResponse(url="/admin", status_code=303)
+        start_admin_session(redirect, client_ip)
+        return redirect
     else:
         # Login failed
         logger.warning(f"Failed admin login attempt from {client_ip}: {error_message}")
@@ -140,7 +161,7 @@ async def admin_login(request: Request, response: Response, pin: str = Form(...)
                     'id="pinError" class="alert alert-danger mt-3"'
                 )
                 admin_html = admin_html.replace(
-                    '>Invalid PIN. Please try again.<',
+                    '>Invalid password. Please try again.<',
                     f'>{error_message}<'
                 )
                 
@@ -160,30 +181,20 @@ async def admin_login(request: Request, response: Response, pin: str = Form(...)
 </html>""")
 
 @router.get("/admin/logout")
-async def admin_logout(response: Response, session_token: Optional[str] = Cookie(None)):
+async def admin_logout(session_token: Optional[str] = Cookie(None)):
     """Log out the admin user"""
-    if session_token and session_token in admin_sessions:
-        del admin_sessions[session_token]
+    admin_sessions.pop(session_token, None)
     
-    # Clear the session cookie
-    response.delete_cookie(key="session_token")
-    
-    # Redirect to the login page
-    return RedirectResponse(url="/admin", status_code=303)
+    # Redirect to the login page and clear the session cookie
+    redirect = RedirectResponse(url="/admin", status_code=303)
+    redirect.delete_cookie(key="session_token", path="/")
+    return redirect
 
 @router.get("/admin/subscribers", response_class=JSONResponse)
 async def get_subscribers(request: Request, session_token: Optional[str] = Cookie(None)):
     """Get the list of active subscribers"""
-    # Log debugging information
-    logger.info(f"Get subscribers request received. Session token: {session_token is not None}")
-    logger.info(f"Cookies received: {request.cookies}")
-    
-    # TEMPORARY: Skip authentication for testing
-    # if not session_token or session_token not in admin_sessions:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content={"error": "Authentication required"}
-    #     )
+    if not is_admin_session(session_token):
+        return unauthorized_response(request.client.host, "list subscribers")
     
     # Get the subscribers (returns a dict with subscribers key)
     result = get_active_subscribers()
@@ -201,12 +212,8 @@ async def get_subscribers(request: Request, session_token: Optional[str] = Cooki
 @router.get("/admin/test-mode-status", response_class=JSONResponse)
 async def test_mode_status(request: Request, session_token: Optional[str] = Cookie(None)):
     """Get the current test mode status"""
-    # Check authentication
-    if not session_token or session_token not in admin_sessions:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"error": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(request.client.host, "read test mode status")
     
     # Return the current test mode status
     return {
@@ -220,73 +227,6 @@ async def public_test_mode_status():
         "testModeEnabled": data_cache.using_cached_data
     }
 
-@router.get("/toggle-test-mode")
-async def toggle_test_mode(
-    background_tasks: BackgroundTasks, 
-    enable: bool = False,
-    session_token: Optional[str] = Cookie(None)
-):
-    """Toggle test mode on or off
-    
-    This can be called from the admin UI with just a query parameter,
-    or from any other interface with a session cookie for authentication.
-    """
-    # Authenticate using session cookie if provided
-    is_authenticated = session_token in admin_sessions if session_token else False
-    
-    # If not authenticated via cookie, only allow from admin page referer
-    client_ip = "unknown"
-    if not is_authenticated:
-        # This is a simplified security check - in production we would
-        # use a more robust authentication mechanism
-        logger.warning(f"Unauthenticated test mode toggle from {client_ip}, enable={enable}")
-    else:
-        if session_token in admin_sessions:
-            client_ip = admin_sessions[session_token].get("ip", "unknown")
-        logger.info(f"Authenticated test mode toggle from {client_ip}, enable={enable}")
-    
-    # Perform the toggle
-    if enable:
-        # First check if we have cached data
-        if data_cache.last_valid_data["timestamp"] is None:
-            return JSONResponse(
-                status_code=400,
-                content={"status": "error", "message": "No cached data available yet. Please visit the dashboard first to populate the cache."}
-            )
-        
-        # Set the flag to use cached data
-        data_cache.using_cached_data = True
-        
-        # Set all cached fields to true since we're using all cached data
-        for field in data_cache.cached_fields:
-            data_cache.cached_fields[field] = True
-            
-        logger.info("🔵 TEST MODE: Enabled via admin toggle")
-        
-        return JSONResponse(
-            content={"status": "success", "mode": "test", "message": "Test mode enabled. Using cached data."}
-        )
-    else:
-        # Disable test mode and return to normal operation
-        data_cache.using_cached_data = False
-        
-        # Reset all cached field flags to False
-        for field in data_cache.cached_fields:
-            data_cache.cached_fields[field] = False
-        
-        # Force a refresh with fresh data
-        logger.info("🔵 TEST MODE: Disabled via admin toggle")
-        refresh_success = await refresh_data_cache(background_tasks, force=True)
-        
-        return JSONResponse(
-            content={
-                "status": "success", 
-                "mode": "normal", 
-                "refresh_success": refresh_success,
-                "message": "Test mode disabled. Returned to normal operation."
-            }
-        )
-
 @router.post("/admin/import-subscribers", response_class=JSONResponse)
 async def import_subscribers(
     request: Request,
@@ -294,24 +234,10 @@ async def import_subscribers(
     session_token: Optional[str] = Cookie(None)
 ):
     """Handle subscriber import from CSV or XLSX files"""
-    # Log debugging information
-    logger.info(f"Import subscribers request received. Session token: {session_token is not None}")
-    logger.info(f"Cookies received: {request.cookies}")
-    logger.info(f"Content type: {request.headers.get('content-type')}")
-    logger.info(f"File name: {file.filename}")
+    if not is_admin_session(session_token):
+        return unauthorized_response(request.client.host, "import subscribers")
     
-    # TEMPORARY: Skip authentication for testing
-    # if not session_token:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content={"error": "Authentication required: No session token found"}
-    #     )
-    
-    # if session_token not in admin_sessions:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content={"error": "Authentication required: Invalid session token"}
-    #     )
+    logger.info(f"Import subscribers request received. File name: {file.filename}")
     
     # Verify file type
     filename = file.filename
@@ -359,36 +285,26 @@ async def import_subscribers(
     
     return JSONResponse(content=result)
 
-@router.post("/admin/validate-pin", response_class=JSONResponse)
-async def validate_pin_api(request: Request, data: Dict[str, str] = Body(...)):
-    """Validate admin PIN via API for the admin interface"""
+@router.post("/admin/validate-password", response_class=JSONResponse)
+async def validate_password_api(request: Request, data: Dict[str, str] = Body(...)):
+    """Validate the admin password via API and start a session (cookie set by the server)"""
     client_ip = request.client.host
-    pin = data.get("pin", "")
+    password = data.get("password", "")
     
-    if not pin:
+    if not password:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"valid": False, "error": "No PIN provided"}
+            content={"valid": False, "error": "No password provided"}
         )
     
-    # Verify the PIN
-    is_valid, error_message = verify_pin(pin, client_ip)
+    # Verify the password
+    is_valid, error_message = verify_password(password, client_ip)
     
     if is_valid:
-        # Generate a session token
-        session_token = generate_session_token()
-        admin_sessions[session_token] = {
-            "ip": client_ip,
-            "created_at": time.time()
-        }
-        
-        # Return success with the session token
-        return JSONResponse(
-            content={
-                "valid": True,
-                "session_token": session_token
-            }
-        )
+        logger.info(f"Admin login successful from {client_ip}")
+        response = JSONResponse(content={"valid": True})
+        start_admin_session(response, client_ip)
+        return response
     else:
         # Return failure with error message
         return JSONResponse(
@@ -405,12 +321,8 @@ async def test_email_alert(
     session_token: Optional[str] = Cookie(None)
 ):
     """Send test Orange-to-Red transition alert emails to selected subscribers"""
-    # TEMPORARY: Skip authentication for testing
-    # if not session_token or session_token not in admin_sessions:
-    #     return JSONResponse(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         content={"error": "Authentication required"}
-    #     )
+    if not is_admin_session(session_token):
+        return unauthorized_response(request.client.host, "send test email alerts")
     
     # Extract emails from request body
     if not data or "emails" not in data:
@@ -470,12 +382,8 @@ async def handle_send_custom_email(
     logger.info(f"Received request to send custom email from {client_ip}. Subject: {payload.subject}, Recipients: {len(payload.recipients)}")
 
     # Authentication
-    if not session_token or session_token not in admin_sessions:
-        logger.warning(f"Unauthorized attempt to send custom email from {client_ip}")
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"status": "error", "error": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(client_ip, "send custom email")
     
     if not payload.recipients:
         return JSONResponse(
@@ -547,12 +455,8 @@ async def set_test_conditions(
     client_ip = request.client.host
     logger.info(f"POST /admin/test-conditions request from {client_ip} with payload: {payload}")
 
-    if not session_token or session_token not in admin_sessions:
-        logger.warning(f"Unauthorized attempt to set test conditions from {client_ip}")
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"status": "error", "message": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(client_ip, "set test conditions")
 
     # Validate payload keys
     for key in payload.keys():
@@ -640,12 +544,8 @@ async def clear_test_conditions(
     client_ip = request.client.host
     logger.info(f"DELETE /admin/test-conditions request from {client_ip}")
 
-    if not session_token or session_token not in admin_sessions:
-        logger.warning(f"Unauthorized attempt to clear test conditions from {client_ip}")
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"status": "error", "message": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(client_ip, "clear test conditions")
 
     current_session_data = admin_sessions.get(session_token)
     if current_session_data and 'manual_weather_overrides' in current_session_data:
@@ -672,12 +572,8 @@ async def set_email_limit_setting(
 ):
     """Set the 'ignore_email_daily_limit' preference for the current admin session."""
     client_ip = request.client.host
-    if not session_token or session_token not in admin_sessions:
-        logger.warning(f"Unauthorized attempt to set email limit settings from {client_ip}")
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"status": "error", "message": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(client_ip, "set email limit settings")
 
     admin_session_data = admin_sessions[session_token]
     admin_session_data['ignore_email_daily_limit'] = settings.ignore_daily_limit
@@ -695,14 +591,8 @@ async def get_email_limit_setting_status(
 ):
     """Get the current 'ignore_email_daily_limit' preference for the admin session."""
     client_ip = request.client.host
-    if not session_token or session_token not in admin_sessions:
-        # For GET status, if not authenticated, perhaps return a default or less sensitive error
-        # However, this setting is admin-specific, so auth is still appropriate.
-        logger.warning(f"Unauthorized attempt to get email limit status from {client_ip}")
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"status": "error", "message": "Authentication required"}
-        )
+    if not is_admin_session(session_token):
+        return unauthorized_response(client_ip, "get email limit status")
 
     admin_session_data = admin_sessions.get(session_token, {})
     current_status = admin_session_data.get('ignore_email_daily_limit', False) # Default to False (abiding limit)
