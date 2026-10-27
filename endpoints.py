@@ -30,6 +30,10 @@ async def fire_risk(
         wait_for_fresh: If True, wait for fresh data instead of returning stale data
         session_token: Admin session token from cookie.
     """
+    # Only an unexpired admin session may apply its test conditions and email preferences
+    if not is_admin_session(session_token):
+        session_token = None
+
     # First-time fetch (cache empty)
     if data_cache.fire_risk_data is None:
         logger.info("Initial data fetch (cache empty)")

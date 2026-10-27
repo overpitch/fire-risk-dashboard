@@ -73,7 +73,3 @@ def verify_password(provided_password: str, ip_address: str) -> Tuple[bool, str]
             remaining = MAX_ATTEMPTS - len(failed_attempts[ip_address]["attempts"])
             return False, f"Invalid password. {remaining} attempts remaining."
 
-def reset_attempts(ip_address: str) -> None:
-    """Reset failed attempts for an IP address"""
-    if ip_address in failed_attempts:
-        del failed_attempts[ip_address]

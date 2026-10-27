@@ -101,3 +101,32 @@ async def test_logout_ends_session(admin_client):
     response = await admin_client.get("/admin/logout")
     assert response.status_code == 303
     assert "test-admin-session-token" not in admin_sessions
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("age,expect_token", [(0, True), (SESSION_DURATION + 1, False)])
+async def test_fire_risk_only_passes_unexpired_admin_session(client, age, expect_token):
+    """Test conditions from an expired admin session must not be applied to the shared fire risk data."""
+    from unittest.mock import AsyncMock
+    from cache import data_cache
+
+    token = "override-session-token"
+    admin_sessions[token] = {"ip": "test", "created_at": time.time() - age,
+                             "manual_weather_overrides": {"temperature": 120.0}}
+    client.cookies.set("session_token", token)
+    original_data = data_cache.fire_risk_data
+    data_cache.fire_risk_data = None  # forces the endpoint to refresh
+    try:
+        with patch("endpoints.refresh_data_cache", new_callable=AsyncMock) as mock_refresh:
+            await client.get("/fire-risk")
+        passed_token = mock_refresh.call_args.kwargs["session_token"]
+        assert passed_token == (token if expect_token else None)
+    finally:
+        data_cache.fire_risk_data = original_data
+        admin_sessions.pop(token, None)
+
+
+@pytest.mark.asyncio
+async def test_form_login_failure_shows_server_message(client):
+    response = await client.post("/admin", data={"password": "wrong"})
+    assert "4 attempts remaining" in response.text

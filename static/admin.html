@@ -112,9 +112,7 @@
                     <button type="submit" id="loginButton" class="btn btn-primary w-100">Log in</button>
                 </form>
 
-                <div id="pinError" class="alert alert-danger mt-3" style="display: none;">
-                    Invalid password. Please try again.
-                </div>
+                <div id="pinError" class="alert alert-danger mt-3" style="display: none;">Invalid password. Please try again.</div>
             </div>
         </div>
 
@@ -411,6 +409,17 @@
     </div>
 
     <script>
+        // If the session expires while the page is in use, reload to show the login form
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+            if (response.status === 401 && document.getElementById('adminContent').style.display !== 'none') {
+                alert('Your admin session has expired. Please log in again.');
+                window.location.reload();
+            }
+            return response;
+        };
+
         // Password login
         document.getElementById('loginForm').addEventListener('submit', async function (event) {
             event.preventDefault();

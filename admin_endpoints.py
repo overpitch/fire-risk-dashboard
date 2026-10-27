@@ -53,17 +53,24 @@ def generate_session_token() -> str:
     """Generate a secure random session token"""
     return secrets.token_hex(32)
 
+def is_session_expired(session_data: Dict[str, Any]) -> bool:
+    return time.time() - session_data["created_at"] > SESSION_DURATION
+
 def is_admin_session(session_token: Optional[str]) -> bool:
     """Return True if the token belongs to an unexpired admin session; expired sessions are removed."""
     if not session_token or session_token not in admin_sessions:
         return False
-    if time.time() - admin_sessions[session_token]["created_at"] > SESSION_DURATION:
+    if is_session_expired(admin_sessions[session_token]):
         del admin_sessions[session_token]
         return False
     return True
 
 def start_admin_session(response: Response, client_ip: str) -> None:
     """Create a new admin session and set its cookie on the response."""
+    # Drop expired sessions so the in-memory store doesn't grow without bound
+    for token in [t for t, data in admin_sessions.items() if is_session_expired(data)]:
+        del admin_sessions[token]
+
     session_token = generate_session_token()
     admin_sessions[session_token] = {
         "ip": client_ip,
@@ -379,11 +386,12 @@ async def handle_send_custom_email(
 ):
     """Send a custom email to selected subscribers."""
     client_ip = request.client.host
-    logger.info(f"Received request to send custom email from {client_ip}. Subject: {payload.subject}, Recipients: {len(payload.recipients)}")
 
     # Authentication
     if not is_admin_session(session_token):
         return unauthorized_response(client_ip, "send custom email")
+
+    logger.info(f"Received request to send custom email from {client_ip}. Subject: {payload.subject}, Recipients: {len(payload.recipients)}")
     
     if not payload.recipients:
         return JSONResponse(
