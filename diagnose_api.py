@@ -16,6 +16,8 @@ import time
 from datetime import datetime
 import urllib.parse
 
+from api_clients import redact_secrets
+
 # Load environment variables if possible
 try:
     from dotenv import load_dotenv
@@ -117,7 +119,7 @@ def test_api_token():
         return None
     
     token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={SYNOPTIC_API_KEY}"
-    print_result("Token URL", token_url)
+    print_result("Token URL", f"{SYNOPTIC_BASE_URL}/auth?apikey=REDACTED")
     
     try:
         start_time = time.time()
@@ -133,13 +135,13 @@ def test_api_token():
         
         if response.status_code == 200 and "TOKEN" in data:
             token = data["TOKEN"]
-            print_result("Token", token[:10] + "...", "SUCCESS")
+            print_result("Token", "received", "SUCCESS")
             return token
         else:
             print_result("Token Retrieval", "Failed", "ERROR")
             return None
     except Exception as e:
-        print_result("Token Request", f"Exception: {str(e)}", "ERROR")
+        print_result("Token Request", f"Exception: {redact_secrets(e)}", "ERROR")
         return None
 
 def test_station_data(token, station_id):
@@ -151,7 +153,7 @@ def test_station_data(token, station_id):
         return
     
     station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_id}&token={token}"
-    print_result("Request URL", station_url)
+    print_result("Request URL", redact_secrets(station_url))
     
     try:
         start_time = time.time()
@@ -190,7 +192,7 @@ def test_station_data(token, station_id):
                         variables = station["SENSOR_VARIABLES"].keys()
                         print_result("Available Variables", list(variables))
     except Exception as e:
-        print_result("Station Request", f"Exception: {str(e)}", "ERROR")
+        print_result("Station Request", f"Exception: {redact_secrets(e)}", "ERROR")
 
 def main():
     """Run all diagnostics."""
@@ -214,7 +216,7 @@ def main():
         all_stations = ",".join(STATION_IDS)
         print_section(f"ALL STATIONS TEST: {all_stations}")
         station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={all_stations}&token={token}"
-        print_result("Request URL", station_url)
+        print_result("Request URL", redact_secrets(station_url))
         
         try:
             response = requests.get(station_url, timeout=10)
@@ -233,7 +235,7 @@ def main():
                 print_result("STATION Data", "Missing", "ERROR")
                 print_result("Response Data", json.dumps(data, indent=2))
         except Exception as e:
-            print_result("All Stations Request", f"Exception: {str(e)}", "ERROR")
+            print_result("All Stations Request", f"Exception: {redact_secrets(e)}", "ERROR")
     
     print_section("RECOMMENDATIONS")
     print("""

@@ -36,8 +36,6 @@ def test_api_with_fallback():
     print_section("TOKEN ACQUISITION TEST")
     token = api_clients.get_api_token()
     print(f"Successfully got API token: {token is not None}")
-    if token:
-        print(f"Token preview: {token[:10]}...")
     
     print_section("WEATHER DATA TEST")
     station_ids = f"{SOIL_MOISTURE_STATION_ID},{WEATHER_STATION_ID},{WIND_STATION_ID}"

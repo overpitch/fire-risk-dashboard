@@ -32,3 +32,10 @@ WX URL.docx
 
 # Ignore everything in the Ignore folder
 Ignore/
+# Diagnostic, test and debug output (can contain API keys, tokens or session cookies)
+*results*.txt
+*_debug.json
+server_logs.txt
+cookies.txt
+coverage.xml
+.coverage
