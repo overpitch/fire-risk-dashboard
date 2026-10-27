@@ -16,6 +16,8 @@ import socket
 import uuid
 from datetime import datetime
 
+from api_clients import redact_secrets
+
 # Load environment variables if possible
 try:
     from dotenv import load_dotenv
@@ -123,7 +125,7 @@ def test_api_with_detailed_headers():
     
     print_section("API TOKEN TEST WITH DETAILED HEADERS")
     token_url = f"{SYNOPTIC_BASE_URL}/auth?apikey={SYNOPTIC_API_KEY}"
-    print(f"🔑 Token URL: {token_url}")
+    print(f"🔑 Token URL: {SYNOPTIC_BASE_URL}/auth?apikey=REDACTED")
     print(f"📤 Request Headers:")
     print_dict(custom_headers, 2)
     
@@ -138,7 +140,7 @@ def test_api_with_detailed_headers():
         token = data.get("TOKEN")
         
         if token:
-            print(f"✅ Token retrieved: {token[:10]}...")
+            print("✅ Token retrieved")
             
             # Test station data with the token
             for test_case in [
@@ -157,7 +159,7 @@ def test_api_with_detailed_headers():
                 station_id = STATION_IDS[0]
                 station_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={station_id}&token={token}"
                 
-                print(f"🌐 Request URL: {station_url}")
+                print(f"🌐 Request URL: {station_url.replace(token, 'REDACTED')}")
                 print(f"📤 Request Headers:")
                 print_dict(test_case["headers"], 2)
                 
@@ -187,7 +189,7 @@ def test_api_with_detailed_headers():
             print(json.dumps(data, indent=2))
             
     except Exception as e:
-        print(f"❌ Error during API request: {e}")
+        print(f"❌ Error during API request: {redact_secrets(e)}")
 
 if __name__ == "__main__":
     test_api_with_detailed_headers()

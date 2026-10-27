@@ -12,6 +12,13 @@ from config import (
     DEBUG_API_RESPONSES, logger, IS_PRODUCTION
 )
 
+# Matches the secret in "apikey=..." or "token=..." query parameters
+_SECRET_PARAM_PATTERN = re.compile(r'((?:apikey|token)=)[^&\s]+', re.IGNORECASE)
+
+def redact_secrets(text: Any) -> str:
+    """Mask API keys and tokens in text (e.g. URLs inside exception messages) before logging."""
+    return _SECRET_PARAM_PATTERN.sub(r'\1REDACTED', str(text))
+
 # Path for fallback data cache
 FALLBACK_DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "synoptic_fallback_data.json")
 
@@ -70,7 +77,7 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
                 logger.info(f"✅ Successfully received API token from Synoptic API")
                 return token
             else:
-                logger.error(f"🚨 Received malformed token from API: {token[:10]}...")
+                logger.error("🚨 Received malformed token from API")
                 return None
         else:
             logger.error("🚨 Token was empty or missing in response.")
@@ -80,7 +87,7 @@ def get_api_token(request_params: Optional[Dict[str, Any]] = None) -> Optional[s
             return None
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"🚨 Error fetching API token: {e}")
+        logger.error(f"🚨 Error fetching API token: {redact_secrets(e)}")
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_data = e.response.json()
@@ -167,9 +174,6 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
         request_url = f"{SYNOPTIC_BASE_URL}/stations/latest?stid={location_ids}&token={token}"
         logger.info(f"🔍 Requesting weather data for stations: {location_ids}")
 
-        # Add more detailed logging about the request
-        logger.info(f"📡 Full request URL: {request_url}")
-        logger.info(f"🔑 Using token: {token[:10]}...")
         if request_params.get("headers"):
             logger.info(f"🔤 Using headers: {request_params.get('headers')}")
         if request_params.get("proxies"):
@@ -309,7 +313,7 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
             return None
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Exception during API request: {str(e)}")
+        logger.error(f"Exception during API request: {redact_secrets(e)}")
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_data = e.response.json()
