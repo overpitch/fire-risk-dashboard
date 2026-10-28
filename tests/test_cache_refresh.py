@@ -1,5 +1,6 @@
 import pytest
 import asyncio
+import itertools
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timedelta, timezone
 from cache_refresh import refresh_data_cache, schedule_next_refresh
@@ -245,7 +246,8 @@ async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data
     # Patch the global data_cache instance
     with patch('cache_refresh.data_cache', mock_cache):
         # Mock time.time() to simulate time passing during the test
-        with patch('time.time', side_effect=[0, 0.02, 0.03]):  # Returns increasing times
+        clock = itertools.count(0, 0.02)
+        with patch('time.time', side_effect=lambda: next(clock)):  # Increasing times that never run out
             assert await refresh_data_cache() is False
             
     # Verify sleep was not awaited
