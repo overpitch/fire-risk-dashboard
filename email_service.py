@@ -111,7 +111,7 @@ def send_email(sender, recipients, subject, body_text, body_html=None):
 
 # --- Specific Alert Functions ---
 
-def send_orange_to_red_alert(recipients, weather_data):
+def send_orange_to_red_alert(recipients, weather_data, subject_prefix=""):
     """
     Sends the specific 'Orange to Red' fire risk alert email.
 
@@ -119,9 +119,10 @@ def send_orange_to_red_alert(recipients, weather_data):
         recipients (list): List of email addresses to send the alert to.
         weather_data (dict): Dictionary containing current weather parameters
                              (e.g., temp, humidity, wind_speed, soil_moisture).
+        subject_prefix (str): Prepended to the subject, e.g. "[TEST] " for admin test alerts.
     """
     sender = "advisory@scfireweather.org" # Use the designated alert sender
-    subject = "URGENT: Fire Risk Level Increased to RED"
+    subject = f"{subject_prefix}URGENT: Fire Risk Level Increased to RED"
 
     if not jinja_env:
         print("Error: Jinja environment not available. Cannot render templates.")

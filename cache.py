@@ -10,6 +10,59 @@ from pathlib import Path
 
 from config import TIMEZONE, logger
 
+def alert_due_for_transition(
+    current_risk: str,
+    previous_risk_level: Optional[str],
+    risk_level_timestamp: Optional[datetime],
+    last_alerted_timestamp: Optional[datetime],
+    ignore_daily_limit: bool = False,
+) -> bool:
+    """The Orange-to-Red alert rule, shared by live alerts and admin test runs.
+
+    Alerts only when the risk moves from Orange to Red, once per transition and
+    at most once per calendar day unless ignore_daily_limit is True.
+    """
+    current_time = datetime.now(TIMEZONE)
+
+    # No alert needed if current risk is not Red
+    if current_risk != "Red":
+        return False
+
+    # No alert needed if previous risk was not Orange (or is None)
+    if previous_risk_level != "Orange":
+        return False
+
+    # First time detecting risk (no previous timestamp), send alert
+    if risk_level_timestamp is None:
+        logger.info("First time detecting risk level, will send alert if needed.")
+        return True
+
+    # Check if we've already alerted for this transition
+    if last_alerted_timestamp is not None:
+        # If the risk level was set AFTER the last alert, this could be a new transition
+        if risk_level_timestamp > last_alerted_timestamp:
+            if not ignore_daily_limit: # Only check daily limit if not ignoring
+                current_date = current_time.date()
+                last_alert_date = last_alerted_timestamp.date()
+
+                if current_date == last_alert_date:
+                    logger.info(f"Already sent an Orange-to-Red alert today ({current_date}). Limiting to once per calendar day. (ignore_daily_limit={ignore_daily_limit})")
+                    return False
+                else:
+                    logger.info(f"New transition detected on a new calendar day. Last alert was on {last_alert_date}, today is {current_date}. (ignore_daily_limit={ignore_daily_limit})")
+                    return True # New day, send alert
+            else: # Ignoring daily limit
+                logger.info(f"Ignoring daily email limit for this check. New transition detected after last alert.")
+                return True # Ignoring daily limit, new transition after last alert means send
+        else: # Risk level timestamp is not after last alerted timestamp
+            logger.info(f"Already alerted for this specific risk transition instance at {last_alerted_timestamp.isoformat()}. (ignore_daily_limit={ignore_daily_limit})")
+            return False
+
+    # Haven't alerted yet for this transition (last_alerted_timestamp is None, or conditions above met)
+    logger.info(f"Conditions met to send alert (or first alert). (ignore_daily_limit={ignore_daily_limit})")
+    return True
+
+
 class DataCache:
     # Default values for when no data is available
     # These are reasonable fallback values for Sierra City area
@@ -563,45 +616,13 @@ class DataCache:
         Returns:
             bool: True if an alert should be sent, False otherwise.
         """
-        current_time = datetime.now(TIMEZONE)
-        
-        # No alert needed if current risk is not Red
-        if current_risk != "Red":
-            return False
-            
-        # No alert needed if previous risk was not Orange (or is None)
-        if self.previous_risk_level != "Orange":
-            return False
-        
-        # First time detecting risk (no previous timestamp), send alert
-        if self.risk_level_timestamp is None:
-            logger.info("First time detecting risk level, will send alert if needed.")
-            return True
-            
-        # Check if we've already alerted for this transition
-        if self.last_alerted_timestamp is not None:
-            # If the risk level was set AFTER the last alert, this could be a new transition
-            if self.risk_level_timestamp > self.last_alerted_timestamp:
-                if not ignore_daily_limit: # Only check daily limit if not ignoring
-                    current_date = current_time.date()
-                    last_alert_date = self.last_alerted_timestamp.date()
-                    
-                    if current_date == last_alert_date:
-                        logger.info(f"Already sent an Orange-to-Red alert today ({current_date}). Limiting to once per calendar day. (ignore_daily_limit={ignore_daily_limit})")
-                        return False
-                    else:
-                        logger.info(f"New transition detected on a new calendar day. Last alert was on {last_alert_date}, today is {current_date}. (ignore_daily_limit={ignore_daily_limit})")
-                        return True # New day, send alert
-                else: # Ignoring daily limit
-                    logger.info(f"Ignoring daily email limit for this check. New transition detected after last alert.")
-                    return True # Ignoring daily limit, new transition after last alert means send
-            else: # Risk level timestamp is not after last alerted timestamp
-                logger.info(f"Already alerted for this specific risk transition instance at {self.last_alerted_timestamp.isoformat()}. (ignore_daily_limit={ignore_daily_limit})")
-                return False
-        
-        # Haven't alerted yet for this transition (last_alerted_timestamp is None, or conditions above met)
-        logger.info(f"Conditions met to send alert (or first alert). (ignore_daily_limit={ignore_daily_limit})")
-        return True
+        return alert_due_for_transition(
+            current_risk,
+            self.previous_risk_level,
+            self.risk_level_timestamp,
+            self.last_alerted_timestamp,
+            ignore_daily_limit,
+        )
     
     def update_risk_level(self, risk_level: str) -> None:
         """Update the stored risk level with timestamp.

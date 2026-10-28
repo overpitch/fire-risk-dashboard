@@ -13,7 +13,7 @@ from pydantic import BaseModel, EmailStr
 
 from config import logger, IS_PRODUCTION
 from cache import data_cache
-from cache_refresh import refresh_data_cache
+from cache_refresh import refresh_data_cache, run_admin_test_conditions
 from admin_service import verify_password
 from subscriber_service import get_active_subscribers, bulk_import_subscribers
 from file_processor import process_subscriber_file
@@ -538,6 +538,19 @@ async def set_test_conditions(
     current_session_data['manual_weather_overrides'] = overrides
     logger.info(f"Manual weather overrides updated for session {session_token[:8]}...: {overrides} by {client_ip}")
 
+    # Evaluate the test right away against the latest live weather (never touches live state)
+    current_session_data.pop('test_fire_risk_data', None)
+    current_session_data.pop('test_email_send_outcome', None)
+    if overrides and data_cache.fire_risk_data and data_cache.fire_risk_data.get('weather'):
+        try:
+            run_admin_test_conditions(current_session_data, data_cache.fire_risk_data['weather'], overrides)
+        except Exception:
+            logger.exception("Error evaluating admin test conditions")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"status": "error", "message": "Test conditions were saved but could not be evaluated."}
+            )
+
     return JSONResponse(
         content={"status": "success", "message": "Test conditions updated.", "updated_overrides": overrides},
         status_code=status.HTTP_200_OK
@@ -558,6 +571,12 @@ async def clear_test_conditions(
     current_session_data = admin_sessions.get(session_token)
     if current_session_data and 'manual_weather_overrides' in current_session_data:
         del current_session_data['manual_weather_overrides']
+        for key in ('test_fire_risk_data', 'test_email_send_outcome'):
+            current_session_data.pop(key, None)
+        # Start the next test run from the live risk level, but keep when the last test alert was sent
+        alert_state = current_session_data.get('test_alert_state')
+        if alert_state:
+            current_session_data['test_alert_state'] = {'last_alerted_timestamp': alert_state.get('last_alerted_timestamp')}
         logger.info(f"Manual weather overrides cleared for session {session_token[:8]}... by {client_ip}")
         return JSONResponse(
             content={"status": "success", "message": "Test conditions cleared."},

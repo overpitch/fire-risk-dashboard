@@ -48,6 +48,10 @@ THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 10)) # Soil moisture th
 # Convert temperature threshold from Fahrenheit to Celsius for internal use
 THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
 
+# Admin test alerts (from "Test System Recognition of Red Status") go only to this address.
+# If unset, test runs never send email.
+TEST_ALERT_EMAIL = os.getenv("TEST_ALERT_EMAIL")
+
 # Timezone configuration
 TIMEZONE = pytz.timezone('America/Los_Angeles')
 
