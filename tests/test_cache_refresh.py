@@ -376,124 +376,91 @@ async def test_schedule_next_refresh_exception(mock_refresh_data_cache, caplog):
 
 
 # --- Tests for Orange-to-Red Alert Logic ---
+# These use a real DataCache (disk I/O disabled) so the real alert rule and risk-level
+# tracking run; only the weather API, risk calculation, subscribers and email are faked.
+
+RED_EFFECTIVE_VALUES = {"temperature": 90.0, "humidity": 8.0, "wind_speed": 20.0,
+                        "wind_gust": 28.0, "soil_moisture": 5.0}
+
+
+@pytest.fixture
+def real_cache():
+    """A real DataCache that neither reads nor writes the cache files on disk."""
+    with patch.object(DataCache, "_load_cache_from_disk", return_value=(False, None)), \
+         patch.object(DataCache, "_save_cache_to_disk"):
+        cache = DataCache()
+        cache.max_retries = 1
+        cache.retry_delay = 0
+        with patch('cache_refresh.data_cache', cache):
+            yield cache
+
+
+@pytest.fixture
+def fake_outside_world(mock_data):
+    """Fake weather API, data combination, risk calculation, subscribers and email sending."""
+    mock_weather_data, _, mock_combined_data, _ = mock_data
+    with patch('cache_refresh.get_synoptic_data', return_value=mock_weather_data), \
+         patch('cache_refresh.combine_weather_data', side_effect=lambda *a, **k: dict(mock_combined_data)), \
+         patch('cache_refresh.calculate_fire_risk') as mock_calculate_fire_risk, \
+         patch('cache_refresh.get_active_subscribers') as mock_get_subscribers, \
+         patch('cache_refresh.send_orange_to_red_alert', return_value="mock-message-id") as mock_send_alert:
+        yield mock_calculate_fire_risk, mock_get_subscribers, mock_send_alert
+
 
 @pytest.mark.asyncio
-@patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.combine_weather_data')
-@patch('cache_refresh.calculate_fire_risk')
-@patch('cache_refresh.get_active_subscribers')
-@patch('cache_refresh.send_orange_to_red_alert')
-async def test_refresh_data_cache_orange_to_red_alert_sent(
-    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
-    mock_combine_weather_data, mock_get_synoptic_data, mock_data
-):
-    """Test that alert is sent on Orange -> Red transition with subscribers."""
-    mock_weather_data, _, mock_combined_data, _ = mock_data
+async def test_refresh_data_cache_orange_to_red_alert_sent(real_cache, fake_outside_world):
+    """An Orange -> Red transition emails all active subscribers once, with the values used for the risk."""
+    mock_calculate_fire_risk, mock_get_subscribers, mock_send_alert = fake_outside_world
     test_subscribers = ["test1@example.com", "test2@example.com"]
-    risk_explanation = "Conditions extremely dry and windy"
+    mock_calculate_fire_risk.return_value = ("Red", "Conditions extremely dry and windy", RED_EFFECTIVE_VALUES)
+    mock_get_subscribers.return_value = {"subscribers": test_subscribers}
+    real_cache.update_risk_level("Orange")
 
-    # Setup mocks
-    mock_get_synoptic_data.return_value = mock_weather_data
-    mock_combine_weather_data.return_value = mock_combined_data
-    mock_calculate_fire_risk.return_value = ("Red", risk_explanation) # New risk is Red
-    mock_get_subscribers.return_value = test_subscribers
-    mock_send_alert.return_value = "mock-message-id" # Simulate successful send
+    assert await refresh_data_cache() is True
 
-    # Configure mock cache
-    mock_cache = MagicMock(spec=DataCache)
-    mock_cache.update_in_progress = False
-    mock_cache.reset_update_event = MagicMock()
-    mock_cache.max_retries = 1
-    mock_cache.update_timeout = 10
-    mock_cache.retry_delay = 1
-    mock_cache.cached_fields = {}
-    mock_cache.previous_risk_level = "Orange" # CRITICAL: Previous risk was Orange
-    mock_cache.fire_risk_data = {"risk": "Orange"} # Initial state
-
-    # Patch the global data_cache instance and logger
-    with patch('cache_refresh.data_cache', mock_cache), \
-         patch('cache_refresh.logger') as mock_logger:
-        # Run the refresh
-        result = await refresh_data_cache()
-
-        # Assertions
-        assert result is True # Refresh itself should succeed
-        mock_get_subscribers.assert_called_once()
-        mock_send_alert.assert_called_once()
-
-        # Check arguments passed to send_orange_to_red_alert
-        call_args, call_kwargs = mock_send_alert.call_args
-        sent_recipients = call_args[0]
-        sent_weather_data = call_args[1]
-
-        assert sent_recipients == test_subscribers
-        # Check if weather data was formatted correctly (based on cache_refresh logic)
-        assert sent_weather_data['temperature'] == f"{mock_combined_data.get('air_temp', 'N/A')}°C"
-        assert sent_weather_data['humidity'] == f"{mock_combined_data.get('relative_humidity', 'N/A')}%"
-        assert sent_weather_data['wind_speed'] == f"{mock_combined_data.get('wind_speed', 'N/A')} mph"
-        assert sent_weather_data['wind_gust'] == f"{mock_combined_data.get('wind_gust', 'N/A')} mph"
-        assert sent_weather_data['soil_moisture'] == f"{mock_combined_data.get('soil_moisture_15cm', 'N/A')}%"
-
-        # Check logs
-        mock_logger.info.assert_any_call(f"Risk transition detected: Orange -> Red. Preparing alert.")
-        mock_logger.info.assert_any_call(f"Found {len(test_subscribers)} active subscribers for the alert.")
-        mock_logger.info.assert_any_call(f"Orange-to-Red alert email sent successfully to {len(test_subscribers)} subscribers. Message ID: mock-message-id")
-
-        # Verify cache update
-        mock_cache.update_cache.assert_called_once()
-        # Check that previous_risk_level was updated *after* the check
-        assert mock_cache.previous_risk_level == "Red"
+    mock_send_alert.assert_called_once()
+    sent_recipients, sent_weather_data = mock_send_alert.call_args.args[:2]
+    assert sent_recipients == test_subscribers
+    assert sent_weather_data == {
+        'temperature': "90.0°F",
+        'humidity': "8.0%",
+        'wind_speed': "20.0 mph",
+        'wind_gust': "28.0 mph",
+        'soil_moisture': "5.0%",
+    }
+    assert real_cache.previous_risk_level == "Red"
+    assert real_cache.last_alerted_timestamp is not None
+    assert real_cache.fire_risk_data["risk"] == "Red"
 
 
 @pytest.mark.asyncio
-@patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.combine_weather_data')
-@patch('cache_refresh.calculate_fire_risk')
-@patch('cache_refresh.get_active_subscribers')
-@patch('cache_refresh.send_orange_to_red_alert')
-async def test_refresh_data_cache_orange_to_red_no_subscribers(
-    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
-    mock_combine_weather_data, mock_get_synoptic_data, mock_data
-):
-    """Test Orange -> Red transition when no subscribers are found."""
-    mock_weather_data, _, mock_combined_data, _ = mock_data
-    risk_explanation = "Conditions extremely dry and windy"
+async def test_refresh_data_cache_orange_to_red_alert_sent_only_once(real_cache, fake_outside_world):
+    """Staying Red on the next refresh must not send a second alert."""
+    mock_calculate_fire_risk, mock_get_subscribers, mock_send_alert = fake_outside_world
+    mock_calculate_fire_risk.return_value = ("Red", "dry", RED_EFFECTIVE_VALUES)
+    mock_get_subscribers.return_value = {"subscribers": ["test1@example.com"]}
+    real_cache.update_risk_level("Orange")
 
-    # Setup mocks
-    mock_get_synoptic_data.return_value = mock_weather_data
-    mock_combine_weather_data.return_value = mock_combined_data
-    mock_calculate_fire_risk.return_value = ("Red", risk_explanation)
-    mock_get_subscribers.return_value = [] # No subscribers
+    assert await refresh_data_cache() is True
+    assert await refresh_data_cache() is True
 
-    # Configure mock cache
-    mock_cache = MagicMock(spec=DataCache)
-    mock_cache.update_in_progress = False
-    mock_cache.reset_update_event = MagicMock()
-    mock_cache.max_retries = 1
-    mock_cache.update_timeout = 10
-    mock_cache.retry_delay = 1
-    mock_cache.cached_fields = {}
-    mock_cache.previous_risk_level = "Orange"
-    mock_cache.fire_risk_data = {"risk": "Orange"}
+    mock_send_alert.assert_called_once()
 
-    # Patch the global data_cache instance and logger
-    with patch('cache_refresh.data_cache', mock_cache), \
-         patch('cache_refresh.logger') as mock_logger:
-        # Run the refresh
-        result = await refresh_data_cache()
 
-        # Assertions
-        assert result is True
-        mock_get_subscribers.assert_called_once()
-        mock_send_alert.assert_not_called() # Alert should NOT be sent
+@pytest.mark.asyncio
+async def test_refresh_data_cache_orange_to_red_no_subscribers(real_cache, fake_outside_world):
+    """Orange -> Red with no active subscribers sends nothing but still records the new risk level."""
+    mock_calculate_fire_risk, mock_get_subscribers, mock_send_alert = fake_outside_world
+    mock_calculate_fire_risk.return_value = ("Red", "dry", RED_EFFECTIVE_VALUES)
+    mock_get_subscribers.return_value = {"subscribers": []}
+    real_cache.update_risk_level("Orange")
 
-        # Check logs
-        mock_logger.info.assert_any_call(f"Risk transition detected: Orange -> Red. Preparing alert.")
-        mock_logger.warning.assert_any_call("Orange-to-Red transition detected, but no active subscribers found.")
+    assert await refresh_data_cache() is True
 
-        # Verify cache update
-        mock_cache.update_cache.assert_called_once()
-        assert mock_cache.previous_risk_level == "Red"
+    mock_get_subscribers.assert_called_once()
+    mock_send_alert.assert_not_called()
+    assert real_cache.previous_risk_level == "Red"
+    assert real_cache.last_email_send_outcome == "not_triggered_no_recipients"
 
 
 @pytest.mark.asyncio
@@ -504,49 +471,17 @@ async def test_refresh_data_cache_orange_to_red_no_subscribers(
     ("Red", "Red"),
     ("Green", "Red"), # Test non-Orange start
 ])
-@patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.combine_weather_data')
-@patch('cache_refresh.calculate_fire_risk')
-@patch('cache_refresh.get_active_subscribers')
-@patch('cache_refresh.send_orange_to_red_alert')
-async def test_refresh_data_cache_no_alert_on_other_transitions(
-    mock_send_alert, mock_get_subscribers, mock_calculate_fire_risk,
-    mock_combine_weather_data, mock_get_synoptic_data, mock_data,
-    prev_risk, new_risk
-):
-    """Test that alert is NOT sent for transitions other than Orange -> Red."""
-    mock_weather_data, _, mock_combined_data, _ = mock_data
-    risk_explanation = "Some reason"
+async def test_refresh_data_cache_no_alert_on_other_transitions(real_cache, fake_outside_world, prev_risk, new_risk):
+    """Only Orange -> Red alerts; every other transition just records the new risk level."""
+    mock_calculate_fire_risk, mock_get_subscribers, mock_send_alert = fake_outside_world
+    mock_calculate_fire_risk.return_value = (new_risk, "Some reason", RED_EFFECTIVE_VALUES)
+    real_cache.update_risk_level(prev_risk)
 
-    # Setup mocks
-    mock_get_synoptic_data.return_value = mock_weather_data
-    mock_combine_weather_data.return_value = mock_combined_data
-    mock_calculate_fire_risk.return_value = (new_risk, risk_explanation)
+    assert await refresh_data_cache() is True
 
-    # Configure mock cache
-    mock_cache = MagicMock(spec=DataCache)
-    mock_cache.update_in_progress = False
-    mock_cache.reset_update_event = MagicMock()
-    mock_cache.max_retries = 1
-    mock_cache.update_timeout = 10
-    mock_cache.retry_delay = 1
-    mock_cache.cached_fields = {}
-    mock_cache.previous_risk_level = prev_risk # Set previous risk from parameter
-    mock_cache.fire_risk_data = {"risk": prev_risk}
-
-    # Patch the global data_cache instance
-    with patch('cache_refresh.data_cache', mock_cache):
-        # Run the refresh
-        result = await refresh_data_cache()
-
-        # Assertions
-        assert result is True
-        mock_get_subscribers.assert_not_called() # Should not even check subscribers
-        mock_send_alert.assert_not_called()     # Alert should definitely not be sent
-
-        # Verify cache update
-        mock_cache.update_cache.assert_called_once()
-        assert mock_cache.previous_risk_level == new_risk # Previous risk updated to new risk
+    mock_get_subscribers.assert_not_called() # Should not even check subscribers
+    mock_send_alert.assert_not_called()
+    assert real_cache.previous_risk_level == new_risk
 
 
 @pytest.mark.asyncio

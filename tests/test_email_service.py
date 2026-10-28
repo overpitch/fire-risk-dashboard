@@ -1,6 +1,6 @@
 import pytest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 from botocore.exceptions import ClientError
 
 # Import the function to test AFTER patching os.getenv
@@ -32,7 +32,7 @@ WEATHER_DATA_ALERT = {
     'wind_gust': '35 mph',
     'soil_moisture': 'Very Low'
 }
-DASHBOARD_URL_ALERT = os.getenv('DASHBOARD_URL', 'http://test-dashboard.local') # Use env var or default
+DASHBOARD_URL_ALERT = "https://scfireweather.org/dashboard.html" # The link email_service puts in alerts
 
 
 # --- Fixtures ---
@@ -130,16 +130,16 @@ def test_send_orange_to_red_alert_success_with_templates(mock_ses_client_fixture
 
     # Check Jinja calls
     mock_jinja_env_fixture.get_template.assert_has_calls([
-        patch.call('orange_to_red_alert.html'),
-        patch.call('orange_to_red_alert.txt')
+        call('orange_to_red_alert.html'),
+        call('orange_to_red_alert.txt')
     ], any_order=True)
     assert mock_jinja_env_fixture.get_template.call_count == 2
 
     # Check render calls (assuming render returns "Rendered Template Content")
     render_context = {'weather': WEATHER_DATA_ALERT, 'dashboard_url': DASHBOARD_URL_ALERT}
     mock_jinja_env_fixture.get_template.return_value.render.assert_has_calls([
-        patch.call(render_context),
-        patch.call(render_context)
+        call(**render_context),
+        call(**render_context)
     ], any_order=True) # Order depends on which template is fetched first
     assert mock_jinja_env_fixture.get_template.return_value.render.call_count == 2
 
