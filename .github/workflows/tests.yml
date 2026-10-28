@@ -31,11 +31,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
-    # test_e2e.py and test_ui_rendering.py need a running server and browsers;
-    # test_endpoints.py imports an app object that no longer exists (to be fixed).
+    # test_e2e.py and test_ui_rendering.py need a running server and browsers.
     - name: Run tests
       run: |
         python -m pytest tests \
           --ignore=tests/test_e2e.py \
-          --ignore=tests/test_ui_rendering.py \
-          --ignore=tests/test_endpoints.py
+          --ignore=tests/test_ui_rendering.py

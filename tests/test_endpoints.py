@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import BackgroundTasks
 # Removed TestClient import
-from endpoints import app, fire_risk, home, toggle_test_mode # Assuming app is imported here
+from endpoints import fire_risk, home
 from cache import DataCache, data_cache
 from datetime import datetime, timezone
 
@@ -20,11 +20,13 @@ async def test_fire_risk_initial_fetch(client): # Added client fixture
     # First set fire_risk_data to None to trigger the initial fetch path
     # Then update it to our mock data after the refresh call
     with patch('endpoints.refresh_data_cache', mock_refresh):
-        with patch.object(data_cache, "fire_risk_data", None, create=True):
+        with patch.object(data_cache, "fire_risk_data", None, create=True), \
+             patch.object(data_cache, "last_updated", None):
             # Create a side effect to set fire_risk_data after the call
             async def refresh_side_effect(*args, **kwargs):
-                # Update the value
+                # Update the value, as a real refresh does
                 data_cache.fire_risk_data = mock_fire_risk_data
+                data_cache.last_updated = datetime.now(timezone.utc)
                 return True
             
             mock_refresh.side_effect = refresh_side_effect
@@ -43,7 +45,7 @@ async def test_fire_risk_initial_fetch(client): # Added client fixture
 
 @pytest.mark.asyncio
 async def test_fire_risk_stale_data(client):
-    # Create our test data
+    """Data over an hour old is refreshed (and waited for) before responding, not in the background."""
     mock_fire_risk_data = {
         "risk": "low", 
         "explanation": "test",
@@ -56,42 +58,27 @@ async def test_fire_risk_stale_data(client):
         }
     }
     
-    # Mock for refresh_data_cache
-    mock_refresh = AsyncMock()
-    mock_refresh.return_value = True
+    mock_refresh = AsyncMock(return_value=True)
     
-    # Directly spy on the add_task method
-    add_task_called = False
+    with patch('endpoints.refresh_data_cache', mock_refresh), \
+         patch.object(BackgroundTasks, 'add_task') as mock_add_task, \
+         patch.object(data_cache, "fire_risk_data", mock_fire_risk_data), \
+         patch.object(data_cache, "is_stale", return_value=True), \
+         patch.object(data_cache, "is_critically_stale", return_value=False), \
+         patch.object(data_cache, "update_in_progress", False), \
+         patch.object(data_cache, "wait_for_update", new_callable=AsyncMock, return_value=True) as mock_wait:
+        response = await client.get("/fire-risk")
     
-    # Create a replacement for add_task that tracks if it was called
-    def mock_add_task(self, *args, **kwargs):
-        nonlocal add_task_called
-        add_task_called = True
-        # Check that the first argument is our mock refresh
-        if args and args[0] == mock_refresh:
-            return None
+    assert response.status_code == 200
+    result = response.json()
+    assert result["risk"] == "low"
+    assert "cache_info" in result
+    assert "wait_for_fresh_timed_out" not in result["cache_info"]
     
-    # Apply all our patches
-    with patch('endpoints.refresh_data_cache', mock_refresh):
-        # Patch BackgroundTasks.add_task method directly
-        with patch.object(BackgroundTasks, 'add_task', mock_add_task):
-            # Setup data_cache mocks
-            with patch.object(data_cache, "fire_risk_data", mock_fire_risk_data):
-                with patch.object(data_cache, "is_stale", return_value=True):
-                    with patch.object(data_cache, "is_critically_stale", return_value=False):
-                        with patch.object(data_cache, "update_in_progress", False):
-                            # Make the request
-                            response = await client.get("/fire-risk")
-                            
-                            # Verify response is correct
-                            assert response.status_code == 200
-                            
-                            # Check for expected data structure
-                            result = response.json()
-                            assert "cache_info" in result
-                            
-                            # Verify our add_task was called
-                            assert add_task_called, "BackgroundTasks.add_task was not called"
+    mock_refresh.assert_awaited_once()
+    assert mock_refresh.await_args.kwargs == {"force": True}
+    mock_wait.assert_awaited_once()
+    mock_add_task.assert_not_called()
 
 
 @pytest.mark.asyncio
