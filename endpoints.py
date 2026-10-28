@@ -38,12 +38,7 @@ async def fire_risk(
     # First-time fetch (cache empty)
     if data_cache.fire_risk_data is None:
         logger.info("Initial data fetch (cache empty)")
-        # Pass session_token and admin_sessions to refresh_data_cache
-        await refresh_data_cache(
-            background_tasks, 
-            session_token=session_token, 
-            current_admin_sessions=admin_sessions
-        )
+        await refresh_data_cache(background_tasks)
         
         # If still no data after refresh, we have a problem
         if data_cache.fire_risk_data is None:
@@ -71,12 +66,7 @@ async def fire_risk(
                     logger.info("No refresh in progress, initiating a forced refresh")
                     # Reset the update event and start a refresh
                     data_cache.reset_update_event()
-                    refresh_started = await refresh_data_cache(
-                        background_tasks, 
-                        force=True,
-                        session_token=session_token,
-                        current_admin_sessions=admin_sessions
-                    )
+                    refresh_started = await refresh_data_cache(background_tasks, force=True)
                     logger.info(f"Forced refresh started: {refresh_started}")
                 else:
                     logger.info("Refresh already in progress, waiting for it to complete")
@@ -112,13 +102,7 @@ async def fire_risk(
                 # Schedule background refresh if not already in progress
                 if not refresh_in_progress:
                     logger.info("Cache is stale. Scheduling background refresh.")
-                    # Pass session_token and admin_sessions to background task
-                    background_tasks.add_task(
-                        refresh_data_cache, 
-                        background_tasks, # This is the first arg for refresh_data_cache
-                        session_token=session_token, 
-                        current_admin_sessions=admin_sessions
-                    )
+                    background_tasks.add_task(refresh_data_cache, background_tasks)
     
     # If we get here, we have some data to return (potentially stale)
     # An admin with active test conditions sees their own test result; everyone else sees live data
@@ -468,12 +452,7 @@ async def toggle_test_mode_endpoint(
         
         # Force a refresh with fresh data
         logger.info("🔵 TEST MODE: Disabled via UI toggle")
-        refresh_success = await refresh_data_cache(
-            background_tasks, 
-            force=True,
-            session_token=session_token, # Pass session token
-            current_admin_sessions=admin_sessions # Pass admin_sessions
-        )
+        refresh_success = await refresh_data_cache(background_tasks, force=True)
         
         return JSONResponse(
             content={

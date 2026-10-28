@@ -100,3 +100,28 @@ async def test_fire_risk_shows_test_result_only_to_that_admin(client, admin_clie
         public_response = await admin_client.get("/fire-risk")
     assert public_response.json()["risk"] == "Green"
     assert "test_conditions_active" not in public_response.json()
+
+
+def test_undelivered_test_alert_can_be_retried(live_state):
+    session = {}
+    run_red_test(session, test_email=None)          # due, but no address configured
+    mock_send, _ = run_red_test(session)             # address now configured, same Red conditions
+    mock_send.assert_called_once()
+    assert session["test_email_send_outcome"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_setting_conditions_evaluates_immediately_against_live_weather(admin_client, live_state):
+    data_cache.fire_risk_data = {"risk": "Orange", "explanation": "live", "weather": copy.deepcopy(LIVE_WEATHER)}
+    live_before = copy.deepcopy(data_cache.fire_risk_data)
+    with patch.object(cache_refresh, "TEST_ALERT_EMAIL", "admin@example.com"), \
+         patch.object(cache_refresh, "send_orange_to_red_alert", return_value="msg-1") as mock_send, \
+         patch("cache_refresh.refresh_data_cache") as mock_refresh:
+        response = await admin_client.post("/admin/test-conditions", json={
+            "temperature": 99, "humidity": 3, "average_winds": 30, "wind_gust": 40, "soil_moisture": 1})
+    assert response.status_code == 200
+    mock_refresh.assert_not_called()
+    session = admin_sessions["test-admin-session-token"]
+    assert session["test_fire_risk_data"]["risk"] == "Red"
+    assert mock_send.call_args.args[0] == ["admin@example.com"]
+    assert data_cache.fire_risk_data == live_before
