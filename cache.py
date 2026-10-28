@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 import pytz
 from pathlib import Path
 
-from config import TIMEZONE, logger
+from config import TIMEZONE, CACHE_DIR, logger
 
 def alert_due_for_transition(
     current_risk: str,
@@ -96,8 +96,8 @@ class DataCache:
         # Event to signal when an update is complete
         self._update_complete_event = asyncio.Event()
         
-        # Set up cache file path - store in data directory
-        self.cache_dir = Path("data")
+        # Set up cache file path - CACHE_DIR (the persistent disk on Render, "data" locally)
+        self.cache_dir = Path(CACHE_DIR)
         self.cache_file = self.cache_dir / "weather_cache.json"
         
         # Initialize with current time
