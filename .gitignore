@@ -39,3 +39,6 @@ server_logs.txt
 cookies.txt
 coverage.xml
 .coverage
+
+# Subscriber database (holds real email addresses; lives on the Render disk in production)
+subscribers.db
