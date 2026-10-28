@@ -5,7 +5,7 @@ This document outlines the plan for enhancing the admin interface and security m
 ## Current State
 
 - The dashboard.html page has a Test/Normal toggle directly in the navigation bar
-- There's an existing admin.html page with PIN protection (PIN=1446)
+- There's an existing admin.html page with PIN protection
 - The admin page includes test mode toggle and subscriber management functionality
 - Basic PIN protection exists with some security measures (rate limiting, basic hashing)
 
@@ -24,7 +24,7 @@ This document outlines the plan for enhancing the admin interface and security m
 - [x] Create this documentation file
 - [x] Move the Test/Normal toggle from dashboard.html to admin.html (already exists there)
 - [x] Add "Admin utilities" link to the About Us modal footer
-- [x] Ensure PIN protection (1446) is properly implemented
+- [x] Ensure PIN protection is properly implemented
 - [x] Remove current Test/Normal toggle from dashboard.html
 - [x] Test functionality to ensure the toggle works correctly in admin.html
 
@@ -51,7 +51,7 @@ This document outlines the plan for enhancing the admin interface and security m
 
 The current PIN system has several security weaknesses that will be addressed in Phase 2:
 
-1. **Hardcoded PINs**: The PIN (1446) is currently hardcoded in both client and server code.
+1. **Hardcoded PINs**: Resolved. The PIN has been replaced by an `ADMIN_PASSWORD` environment variable.
    - Risk: Anyone with access to the code can see the PIN.
    - Mitigation: Move PIN to environment variables and use proper secure storage.
 
@@ -73,7 +73,7 @@ Each phase requires specific testing:
 
 ### Phase 1 Testing
 - Verify admin page is accessible via "Admin utilities" link
-- Confirm PIN entry works correctly (1446)
+- Confirm password login works correctly
 - Test Test/Normal toggle functionality in admin page
 - Ensure toggle is no longer present in main dashboard
 
@@ -92,7 +92,7 @@ Each phase requires specific testing:
 
 ### Phase 1 Completion
 - Admin page is accessible via "Admin utilities" link in About Us modal
-- PIN protection is working with PIN=1446
+- Password protection is working (`ADMIN_PASSWORD`)
 - Test/Normal toggle is moved from dashboard.html to admin.html
 - All functionality works correctly
 

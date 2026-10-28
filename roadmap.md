@@ -316,7 +316,7 @@
    - [x] Create admin-security.md documentation file
    - [x] Move the Test/Normal toggle from dashboard.html to admin.html
    - [x] Add "Admin utilities" link to the About Us modal footer
-   - [x] Ensure PIN protection (1446) is properly implemented
+   - [x] Ensure PIN protection is properly implemented
    - [x] Remove current Test/Normal toggle from dashboard.html
    - [x] Test functionality to ensure the toggle works correctly
 

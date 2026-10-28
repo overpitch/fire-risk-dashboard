@@ -4,11 +4,7 @@
 
 ## Tech Debt
 
-**Hardcoded Admin PIN:**
-- Issue: Admin PIN "1446" is hardcoded in `admin_service.py` line 9 instead of using environment variables
-- Files: `admin_service.py`
-- Impact: PIN visible in source code; cannot be rotated without code changes; security vulnerability
-- Fix approach: Move ADMIN_PIN to environment variable `ADMIN_PIN` or `ADMIN_PASSWORD` with secure defaults
+**Hardcoded Admin PIN:** (resolved: replaced by the `ADMIN_PASSWORD` environment variable)
 
 **Weak PIN Hashing:**
 - Issue: PIN uses SHA256 without salt (`admin_service.py` line 26), vulnerable to rainbow table attacks

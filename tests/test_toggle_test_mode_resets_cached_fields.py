@@ -4,7 +4,7 @@ from cache import data_cache
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, client):
+async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, admin_client):
     """Test that toggling test mode OFF properly resets all cached field flags."""
     mock_refresh_data_cache.return_value = True
     
@@ -23,7 +23,7 @@ async def test_toggle_test_mode_resets_cached_fields(mock_refresh_data_cache, cl
         assert all(data_cache.cached_fields.values()), "Not all cached fields were set to True in test setup"
             
         # Now disable test mode
-        response = await client.get("/toggle-test-mode?enable=false")
+        response = await admin_client.post("/toggle-test-mode?enable=false")
             
         # Verify response
         assert response.status_code == 200

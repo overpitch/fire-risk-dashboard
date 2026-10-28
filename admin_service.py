@@ -1,12 +1,15 @@
-import hashlib
+import secrets
 import time
 import os
 from typing import Dict, Tuple, Optional
 from datetime import datetime, timedelta
 from config import logger
 
-# Admin PIN (hardcoded for now, can be moved to environment variables later)
-ADMIN_PIN = "1446"
+# Admin password comes from the environment (set ADMIN_PASSWORD in Render).
+# If it is not set, admin login is disabled rather than falling back to a default.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    logger.warning("ADMIN_PASSWORD is not set - admin login is disabled.")
 
 # Store for failed login attempts, structured as:
 # { "ip_address": { "attempts": [timestamp1, timestamp2, ...], "locked_until": timestamp } }
@@ -18,21 +21,17 @@ MAX_ATTEMPTS = 5             # Maximum number of failed attempts before lockout
 LOCKOUT_DURATION = 30 * 60   # Lockout duration in seconds (30 minutes)
 ATTEMPT_WINDOW = 60 * 60     # Time window for counting attempts (1 hour)
 
-def hash_pin(pin: str) -> str:
+def verify_password(provided_password: str, ip_address: str) -> Tuple[bool, str]:
     """
-    Hash the PIN using a secure hash function
-    Using a simple hash without salt for MVP - can be enhanced in future
-    """
-    return hashlib.sha256(pin.encode()).hexdigest()
-
-def verify_pin(provided_pin: str, ip_address: str) -> Tuple[bool, str]:
-    """
-    Verify the provided PIN against the stored PIN
+    Verify the provided password against ADMIN_PASSWORD
     Implements rate limiting to prevent brute force attacks
     
     Returns:
         Tuple[bool, str]: (is_valid, error_message)
     """
+    if not ADMIN_PASSWORD:
+        return False, "Admin login is not configured."
+
     # Check if IP is locked out
     if ip_address in failed_attempts and "locked_until" in failed_attempts[ip_address]:
         lockout_time = failed_attempts[ip_address]["locked_until"]
@@ -55,8 +54,8 @@ def verify_pin(provided_pin: str, ip_address: str) -> Tuple[bool, str]:
         if t > current_time - ATTEMPT_WINDOW
     ]
     
-    # Verify the PIN
-    if hash_pin(provided_pin) == hash_pin(ADMIN_PIN):  # Using the same hash function for both
+    # Verify the password (constant-time comparison)
+    if secrets.compare_digest(provided_password.encode(), ADMIN_PASSWORD.encode()):
         # Successful login, reset attempts
         failed_attempts[ip_address]["attempts"] = []
         return True, ""
@@ -70,11 +69,7 @@ def verify_pin(provided_pin: str, ip_address: str) -> Tuple[bool, str]:
             failed_attempts[ip_address]["locked_until"] = current_time + LOCKOUT_DURATION
             return False, f"Too many failed attempts. Account locked for {LOCKOUT_DURATION // 60} minutes."
         else:
-            # Not locked out yet, but PIN is incorrect
+            # Not locked out yet, but password is incorrect
             remaining = MAX_ATTEMPTS - len(failed_attempts[ip_address]["attempts"])
-            return False, f"Invalid PIN. {remaining} attempts remaining."
+            return False, f"Invalid password. {remaining} attempts remaining."
 
-def reset_attempts(ip_address: str) -> None:
-    """Reset failed attempts for an IP address"""
-    if ip_address in failed_attempts:
-        del failed_attempts[ip_address]

@@ -157,14 +157,15 @@ async def test_wait_for_fresh(mock_refresh, client): # Added client fixture
 
 @pytest.mark.asyncio
 @patch('endpoints.refresh_data_cache', new_callable=AsyncMock)
-async def test_test_mode_toggle(mock_refresh, client): # Added client fixture
+async def test_test_mode_toggle(mock_refresh, admin_client):
+    client = admin_client
     """Test the test mode toggle endpoint and its effect."""
     # Setup: Ensure some valid data exists for caching fallback
     data_cache.last_valid_data["fire_risk_data"] = SAMPLE_FIRE_RISK_DATA.copy()
     data_cache.last_valid_data["timestamp"] = datetime.now(TIMEZONE) - timedelta(hours=1)
 
     # Enable test mode
-    response_enable = await client.get("/toggle-test-mode?enable=true") # Use await and fixture client
+    response_enable = await client.post("/toggle-test-mode?enable=true") # Use await and fixture client
     assert response_enable.status_code == 200
     assert response_enable.json()["mode"] == "test"
     assert data_cache.using_cached_data is True
@@ -185,7 +186,7 @@ async def test_test_mode_toggle(mock_refresh, client): # Added client fixture
         return True
     mock_refresh.side_effect = side_effect_disable
 
-    response_disable = await client.get("/toggle-test-mode?enable=false") # Use await and fixture client
+    response_disable = await client.post("/toggle-test-mode?enable=false") # Use await and fixture client
     assert response_disable.status_code == 200
     assert response_disable.json()["mode"] == "normal"
     assert data_cache.using_cached_data is False

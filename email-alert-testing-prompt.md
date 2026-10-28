@@ -13,7 +13,7 @@ The Fire Risk Dashboard includes an email alert system that sends notifications 
    - Orange-to-Red transition detection in `cache_refresh.py`
 
 2. **Admin UI**:
-   - Protected with PIN authentication (1446)
+   - Protected with password authentication (`ADMIN_PASSWORD` environment variable)
    - Already includes Test/Normal mode toggle
    - Has subscriber management section
 
