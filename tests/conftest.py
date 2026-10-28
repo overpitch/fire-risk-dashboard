@@ -42,7 +42,7 @@ from cache import data_cache
 async def client():
     """Return an httpx.AsyncClient for the FastAPI app."""
     # Use httpx.AsyncClient for async testing with function scope to match event_loop fixture
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 @pytest.fixture(scope="function")
