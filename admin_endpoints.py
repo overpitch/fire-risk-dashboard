@@ -53,6 +53,20 @@ def generate_session_token() -> str:
     """Generate a secure random session token"""
     return secrets.token_hex(32)
 
+def get_client_ip(request: Request) -> str:
+    """The visitor's IP address, as seen by Render's proxy.
+
+    Render's proxy appends the connecting client's address to X-Forwarded-For, so
+    the last entry is the one a visitor can't fake (earlier entries are whatever the
+    visitor sent). Without the header (local development) use the socket address.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        last_hop = forwarded_for.split(",")[-1].strip()
+        if last_hop:
+            return last_hop
+    return request.client.host if request.client else "unknown"
+
 def is_session_expired(session_data: Dict[str, Any]) -> bool:
     return time.time() - session_data["created_at"] > SESSION_DURATION
 
@@ -98,7 +112,7 @@ def unauthorized_response(client_ip: str, action: str) -> JSONResponse:
 async def admin_page(request: Request, session_token: Optional[str] = Cookie(None)):
     """Serve the admin page - requires authentication"""
     # Check if user has a valid session
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     is_authenticated = False
     
     if is_admin_session(session_token):
@@ -140,7 +154,7 @@ async def admin_page(request: Request, session_token: Optional[str] = Cookie(Non
 @router.post("/admin", response_class=HTMLResponse)
 async def admin_login(request: Request, password: str = Form(...)):
     """Handle admin login with password verification"""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     
     # Verify the password
     is_valid, error_message = verify_password(password, client_ip)
@@ -201,7 +215,7 @@ async def admin_logout(session_token: Optional[str] = Cookie(None)):
 async def get_subscribers(request: Request, session_token: Optional[str] = Cookie(None)):
     """Get the list of active subscribers"""
     if not is_admin_session(session_token):
-        return unauthorized_response(request.client.host, "list subscribers")
+        return unauthorized_response(get_client_ip(request), "list subscribers")
     
     # Get the subscribers (returns a dict with subscribers key)
     result = get_active_subscribers()
@@ -220,7 +234,7 @@ async def get_subscribers(request: Request, session_token: Optional[str] = Cooki
 async def test_mode_status(request: Request, session_token: Optional[str] = Cookie(None)):
     """Get the current test mode status"""
     if not is_admin_session(session_token):
-        return unauthorized_response(request.client.host, "read test mode status")
+        return unauthorized_response(get_client_ip(request), "read test mode status")
     
     # Return the current test mode status
     return {
@@ -242,7 +256,7 @@ async def import_subscribers(
 ):
     """Handle subscriber import from CSV or XLSX files"""
     if not is_admin_session(session_token):
-        return unauthorized_response(request.client.host, "import subscribers")
+        return unauthorized_response(get_client_ip(request), "import subscribers")
     
     logger.info(f"Import subscribers request received. File name: {file.filename}")
     
@@ -295,7 +309,7 @@ async def import_subscribers(
 @router.post("/admin/validate-password", response_class=JSONResponse)
 async def validate_password_api(request: Request, data: Dict[str, str] = Body(...)):
     """Validate the admin password via API and start a session (cookie set by the server)"""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     password = data.get("password", "")
     
     if not password:
@@ -329,7 +343,7 @@ async def test_email_alert(
 ):
     """Send test Orange-to-Red transition alert emails to selected subscribers"""
     if not is_admin_session(session_token):
-        return unauthorized_response(request.client.host, "send test email alerts")
+        return unauthorized_response(get_client_ip(request), "send test email alerts")
     
     # Extract emails from request body
     if not data or "emails" not in data:
@@ -385,7 +399,7 @@ async def handle_send_custom_email(
     session_token: Optional[str] = Cookie(None)
 ):
     """Send a custom email to selected subscribers."""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
 
     # Authentication
     if not is_admin_session(session_token):
@@ -460,7 +474,7 @@ async def set_test_conditions(
     session_token: Optional[str] = Cookie(None)
 ):
     """Set or update manual weather overrides in the admin's session."""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     logger.info(f"POST /admin/test-conditions request from {client_ip} with payload: {payload}")
 
     if not is_admin_session(session_token):
@@ -562,7 +576,7 @@ async def clear_test_conditions(
     session_token: Optional[str] = Cookie(None)
 ):
     """Clear any active manual weather overrides from the admin's session."""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     logger.info(f"DELETE /admin/test-conditions request from {client_ip}")
 
     if not is_admin_session(session_token):
@@ -598,7 +612,7 @@ async def set_email_limit_setting(
     session_token: Optional[str] = Cookie(None)
 ):
     """Set the 'ignore_email_daily_limit' preference for the current admin session."""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     if not is_admin_session(session_token):
         return unauthorized_response(client_ip, "set email limit settings")
 
@@ -617,7 +631,7 @@ async def get_email_limit_setting_status(
     session_token: Optional[str] = Cookie(None)
 ):
     """Get the current 'ignore_email_daily_limit' preference for the admin session."""
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
     if not is_admin_session(session_token):
         return unauthorized_response(client_ip, "get email limit status")
 

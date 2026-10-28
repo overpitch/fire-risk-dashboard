@@ -129,3 +129,30 @@ async def test_fire_risk_shows_test_result_only_for_unexpired_session(client, ag
 async def test_form_login_failure_shows_server_message(client):
     response = await client.post("/admin", data={"password": "wrong"})
     assert "4 attempts remaining" in response.text
+
+
+async def _login(client, password, forwarded_for=None):
+    headers = {"X-Forwarded-For": forwarded_for} if forwarded_for else {}
+    response = await client.post("/admin/validate-password", json={"password": password}, headers=headers)
+    return response.json()
+
+
+@pytest.mark.asyncio
+async def test_lockout_applies_per_visitor_not_to_everyone(client):
+    """Behind Render's proxy, one visitor's failed guesses must not lock out the admin."""
+    for _ in range(admin_service.MAX_ATTEMPTS):
+        await _login(client, "wrong", forwarded_for="203.0.113.10")
+    locked = await _login(client, TEST_PASSWORD, forwarded_for="203.0.113.10")
+    assert locked["valid"] is False and "Too many failed attempts" in locked["error"]
+
+    other_visitor = await _login(client, TEST_PASSWORD, forwarded_for="198.51.100.20")
+    assert other_visitor["valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_spoofed_forwarded_addresses_do_not_bypass_lockout(client):
+    """A visitor can prepend fake addresses, but the proxy-appended last address is what counts."""
+    for i in range(admin_service.MAX_ATTEMPTS):
+        await _login(client, "wrong", forwarded_for=f"10.0.0.{i}, 203.0.113.10")
+    result = await _login(client, TEST_PASSWORD, forwarded_for="10.9.9.9, 203.0.113.10")
+    assert result["valid"] is False and "Too many failed attempts" in result["error"]
