@@ -3,7 +3,9 @@ import os
 from typing import Dict, List, Tuple
 from config import logger
 
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'subscribers.db')
+# On Render, set SUBSCRIBERS_DB_PATH to a file on the attached persistent disk (e.g. /var/data/subscribers.db);
+# files in the app folder are replaced on every deploy. Locally it defaults to subscribers.db in the app folder.
+DATABASE_PATH = os.getenv("SUBSCRIBERS_DB_PATH") or os.path.join(os.path.dirname(__file__), 'subscribers.db')
 
 def get_db_connection():
     """Establishes a connection to the SQLite database."""
