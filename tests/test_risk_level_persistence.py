@@ -122,3 +122,16 @@ async def test_no_duplicate_alerts_after_restart(alert_env):
     after_restart = alert_env.start_server()
     assert after_restart.last_alerted_timestamp is not None
     (await alert_env.refresh_with_risk(after_restart, "Red")).assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_alert_state_saved_in_configured_cache_dir(alert_env, tmp_path):
+    """CACHE_DIR decides where the risk level and alert time are saved (the persistent disk on Render)."""
+    disk = tmp_path / "persistent-disk"
+    with patch('cache.CACHE_DIR', str(disk)):
+        cache = alert_env.start_server()
+        cache.update_risk_level("Orange")
+        assert (disk / "weather_cache.json").exists()
+        assert not (tmp_path / "data" / "weather_cache.json").exists()
+
+        assert alert_env.start_server().previous_risk_level == "Orange"

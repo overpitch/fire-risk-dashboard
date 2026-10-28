@@ -52,6 +52,10 @@ THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
 # 0 = ignore the header and use the connecting address (default outside Render).
 TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "1" if IS_PRODUCTION else "0"))
 
+# Folder for the weather cache file, which also remembers the last risk level and alert time.
+# On Render, point this at the persistent disk; the app folder is replaced on every deploy.
+CACHE_DIR = os.getenv("CACHE_DIR", "data")
+
 # Admin test alerts (from "Test System Recognition of Red Status") go only to this address.
 # If unset, test runs never send email.
 TEST_ALERT_EMAIL = os.getenv("TEST_ALERT_EMAIL")
