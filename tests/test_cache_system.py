@@ -53,12 +53,9 @@ def test_update_cache(cache):
     cache.update_cache(synoptic_data, fire_risk_data)
 
     assert cache.synoptic_data == synoptic_data
-    assert cache.wunderground_data is None  # wunderground_data is no longer used
     assert cache.fire_risk_data == fire_risk_data
     assert cache.last_updated is not None
-    assert cache.last_update_success is True
     assert cache.last_valid_data["synoptic_data"] == synoptic_data
-    assert cache.last_valid_data["wunderground_data"] is None  # wunderground_data is no longer used
     assert cache.last_valid_data["fire_risk_data"] == fire_risk_data
     assert cache.last_valid_data["timestamp"] is not None
 
@@ -70,12 +67,9 @@ def test_update_cache_with_none_data(cache):
     cache.update_cache(synoptic_data, fire_risk_data)
 
     assert cache.synoptic_data is None  # Check that the None value is stored
-    assert cache.wunderground_data is None  # wunderground_data is no longer used
     assert cache.fire_risk_data == fire_risk_data
     assert cache.last_updated is not None
-    assert cache.last_update_success is True
     assert cache.last_valid_data["synoptic_data"] is None  # Check that the None value is stored
-    assert cache.last_valid_data["wunderground_data"] is None # wunderground_data is no longer used
     assert cache.last_valid_data["fire_risk_data"] == fire_risk_data
     assert cache.last_valid_data["timestamp"] is not None
 
@@ -137,7 +131,6 @@ async def test_refresh_failure_sets_cached_flag(mock_sleep, real_cache):
     mock_calculate_fire_risk.assert_not_called()
     mock_send_alert.assert_not_called()
 
-    assert real_cache.last_update_success is False
     assert real_cache.using_cached_data is True
     assert all(real_cache.cached_fields.values())
     assert real_cache.fire_risk_data["risk"] == "Orange"  # The last known risk is kept

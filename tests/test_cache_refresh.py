@@ -6,8 +6,6 @@ from datetime import datetime, timedelta, timezone
 from cache_refresh import refresh_data_cache, schedule_next_refresh
 from cache import DataCache
 from api_clients import get_synoptic_data
-# Mock for the removed get_wunderground_data function
-from tests.conftest import get_wunderground_data
 from data_processing import combine_weather_data
 from fire_risk_logic import calculate_fire_risk
 # Import mocks for email/subscriber services
@@ -17,22 +15,20 @@ from unittest.mock import call
 @pytest.fixture
 def mock_data():
     mock_weather_data = {"STATION": []}
-    mock_wunderground_data = {"observations": []}
     mock_combined_data = {"air_temp": 25, "relative_humidity": 50, "wind_speed": 10, "soil_moisture_15cm": 20, "wind_gust": 15}
     mock_fire_risk = "low", "explanation"
-    return mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk
+    return mock_weather_data, mock_combined_data, mock_fire_risk
 
 
 @pytest.mark.asyncio
 async def test_refresh_data_cache_success(real_cache, fake_outside_world, mock_data):
     """A refresh stores the combined weather and the calculated risk in the cache."""
-    _, _, mock_combined_data, _ = mock_data
+    _, mock_combined_data, _ = mock_data
     mock_calculate_fire_risk, _, _ = fake_outside_world
     mock_calculate_fire_risk.return_value = ("Orange", "explanation", RED_EFFECTIVE_VALUES)
 
     assert await refresh_data_cache() is True
 
-    assert real_cache.last_update_success is True
     assert real_cache.last_updated is not None
     assert real_cache.fire_risk_data["risk"] == "Orange"
     assert real_cache.fire_risk_data["explanation"] == "explanation"
@@ -43,11 +39,9 @@ async def test_refresh_data_cache_success(real_cache, fake_outside_world, mock_d
 
 @pytest.mark.asyncio
 @patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.get_wunderground_data')
 @patch('cache_refresh.format_age_string')
-async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wunderground_data, mock_get_synoptic_data):
+async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_synoptic_data):
     mock_get_synoptic_data.return_value = None  # Simulate API failure
-    mock_get_wunderground_data.return_value = None
     mock_format_age.return_value = "20 minutes old"  # Mock age string formatting
 
     # Use a mock instance of DataCache
@@ -123,7 +117,6 @@ async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wundergr
                 mock_logger.error.assert_any_call("All data refresh attempts failed")
             
     # Verify cache markers were properly set
-    assert mock_cache.last_update_success is False
     assert mock_cache.using_cached_data is True
     
     # Verify all fields are marked as cached
@@ -149,7 +142,7 @@ async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wundergr
 @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
 async def test_refresh_data_cache_retry(mock_sleep, real_cache, fake_outside_world, mock_data):
     """If processing fails once, the refresh waits and tries again."""
-    _, _, mock_combined_data, _ = mock_data
+    _, mock_combined_data, _ = mock_data
     mock_calculate_fire_risk, _, _ = fake_outside_world
     mock_calculate_fire_risk.return_value = ("Orange", "explanation", RED_EFFECTIVE_VALUES)
     real_cache.max_retries = 2
@@ -160,7 +153,6 @@ async def test_refresh_data_cache_retry(mock_sleep, real_cache, fake_outside_wor
 
     assert mock_combine.call_count == 2
     mock_sleep.assert_awaited_once_with(real_cache.retry_delay)
-    assert real_cache.last_update_success is True
     assert real_cache.fire_risk_data["risk"] == "Orange"
 
 
@@ -174,16 +166,14 @@ async def test_refresh_data_cache_gives_up_after_max_retries(mock_sleep, real_ca
         assert await refresh_data_cache() is False
 
     assert mock_combine.call_count == 2
-    assert real_cache.last_update_success is False
     assert real_cache.using_cached_data is True
     assert all(real_cache.cached_fields.values())
 
 
 @pytest.mark.asyncio
 @patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.get_wunderground_data')
 @patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
-async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data):
+async def test_refresh_data_cache_timeout(mock_sleep, mock_get_synoptic_data):
     # Use AsyncMock objects with side_effect to simulate long API calls
     # This creates a coroutine that needs to be awaited
     async def slow_api_call():
@@ -191,7 +181,6 @@ async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data
         return None
         
     mock_get_synoptic_data.side_effect = slow_api_call
-    mock_get_wunderground_data.side_effect = slow_api_call
 
     # Use a mock instance of DataCache
     mock_cache = MagicMock(spec=DataCache)
@@ -230,14 +219,12 @@ async def test_refresh_data_cache_timeout(mock_sleep, mock_get_wunderground_data
 
 @pytest.mark.asyncio
 @patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.get_wunderground_data')
 @patch('cache_refresh.format_age_string')
-async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_wunderground_data, mock_get_synoptic_data, mock_data):
-    mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_synoptic_data, mock_data):
+    mock_weather_data, mock_combined_data, mock_fire_risk = mock_data
     mock_format_age.return_value = "20 minutes old"  # Mock age string formatting
 
     mock_get_synoptic_data.return_value = None
-    mock_get_wunderground_data.return_value = None
 
     # Create a mock DataCache instance
     mock_cache = MagicMock(spec=DataCache)
@@ -268,7 +255,6 @@ async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_wundergr
             "wind_gust": {"value": 16, "timestamp": past, "stations": {}}
         },
         "synoptic_data": mock_weather_data,
-        "wunderground_data": mock_wunderground_data,
         "fire_risk_data": {"risk": "moderate"},
         "timestamp": past,
         "weather": {
@@ -310,7 +296,6 @@ async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_wundergr
                 assert await refresh_data_cache() is False
 
         # Verify cache state after refresh
-        assert mock_cache.last_update_success is False
         assert mock_cache.using_cached_data is True
         
         # Verify all fields are marked as cached
@@ -361,7 +346,7 @@ RED_EFFECTIVE_VALUES = {"temperature": 90.0, "humidity": 8.0, "wind_speed": 20.0
 @pytest.fixture
 def fake_outside_world(mock_data):
     """Fake weather API, data combination, risk calculation, subscribers and email sending."""
-    mock_weather_data, _, mock_combined_data, _ = mock_data
+    mock_weather_data, mock_combined_data, _ = mock_data
     with patch('cache_refresh.get_synoptic_data', return_value=mock_weather_data), \
          patch('cache_refresh.combine_weather_data', side_effect=lambda *a, **k: dict(mock_combined_data)), \
          patch('cache_refresh.calculate_fire_risk') as mock_calculate_fire_risk, \

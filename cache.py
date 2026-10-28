@@ -76,14 +76,12 @@ class DataCache:
     
     def __init__(self):
         self.synoptic_data: Optional[Dict[str, Any]] = None
-        self.wunderground_data: Optional[Dict[str, Any]] = None
         self.fire_risk_data: Optional[Dict[str, Any]] = None
         self.previous_risk_level: Optional[str] = None # Added to track the last known risk level
         self.risk_level_timestamp: Optional[datetime] = None # When the risk level was last updated
         self.last_alerted_timestamp: Optional[datetime] = None # When the last alert was sent
         self.last_updated: Optional[datetime] = None
         self.update_in_progress: bool = False
-        self.last_update_success: bool = False
         self.max_retries: int = 5  # Increased from 3 to 5
         self.retry_delay: int = 5  # seconds
         self.update_timeout: int = 30  # seconds - increased from 15s to give more time for refresh
@@ -129,7 +127,6 @@ class DataCache:
                 },
                 # Keep the whole API responses for backwards compatibility
                 "synoptic_data": None,
-                "wunderground_data": None,
                 "fire_risk_data": None,
                 "timestamp": current_time,
             }
@@ -143,13 +140,11 @@ class DataCache:
             }
             # IMPORTANT: Set to FALSE by default - do not start in test mode
             self.using_cached_data: bool = False  # Start in normal mode, not test mode
-            self.using_default_values: bool = True  # Still track that we're using defaults
             
             logger.info("⚠️ New deployment detected - starting in NORMAL mode (not test mode)")
         else:
             # Disk cache was loaded successfully, cached_fields and using_cached_data 
             # will be already set by _load_cache_from_disk
-            self.using_default_values = False
             # Also load previous risk level if available
             if "previous_risk_level" in disk_cache:
                 self.previous_risk_level = disk_cache["previous_risk_level"]
@@ -179,11 +174,9 @@ class DataCache:
         
         # Save the current cached fields state before updating
         cached_fields_state = self.cached_fields.copy()
-        using_cached_data_state = self.using_cached_data
         
         with self._lock:
             self.synoptic_data = synoptic_data
-            self.wunderground_data = None  # No longer used
             
             # If we're using cached data, make sure the fire_risk_data has a cached_data field
             # Use self.using_cached_data directly now
@@ -212,7 +205,6 @@ class DataCache:
             
             self.fire_risk_data = fire_risk_data
             self.last_updated = current_time
-            self.last_update_success = True
             
             # MODIFIED CACHE STATE HANDLING:
             # First, check wind data - ensure it's correctly marked as cached/non-cached
@@ -254,7 +246,6 @@ class DataCache:
             # Always update timestamp and store the current values (even when they are None)
             # This ensures last_valid_data is always updated consistently
             self.last_valid_data["synoptic_data"] = synoptic_data
-            self.last_valid_data["wunderground_data"] = None  # No longer used
             self.last_valid_data["fire_risk_data"] = fire_risk_data
             self.last_valid_data["timestamp"] = current_time
             

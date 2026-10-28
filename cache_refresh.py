@@ -7,7 +7,6 @@ from fastapi import BackgroundTasks
 
 from config import TIMEZONE, TEST_ALERT_EMAIL, logger
 from api_clients import get_synoptic_data
-from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
 from cache import data_cache, alert_due_for_transition
@@ -354,7 +353,6 @@ async def refresh_data_cache(
                 await asyncio.sleep(data_cache.retry_delay)
     
     data_cache.update_in_progress = False
-    data_cache.last_update_success = success
     
     if not success:
         logger.error("All data refresh attempts failed")

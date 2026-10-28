@@ -1,8 +1,6 @@
-from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, UploadFile, File, Body, status, Depends
+from fastapi import APIRouter, Request, Form, Cookie, Response, BackgroundTasks, HTTPException, UploadFile, File, Body, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-import shutil
 import os
-from fastapi.templating import Jinja2Templates
 import pathlib
 import os
 import time
@@ -28,16 +26,6 @@ class CustomEmailPayload(BaseModel):
     html_content: str
     recipients: List[EmailStr]
 
-# Pydantic model for test conditions payload
-class TestConditionsPayload(BaseModel):
-    temperature: Optional[float] = None
-    humidity: Optional[float] = None
-    average_winds: Optional[float] = None # Matches JS key
-    wind_gust: Optional[float] = None
-    soil_moisture: Optional[float] = None # Matches JS key
-
-    # Validator to ensure at least one field is present could be added if needed
-    # For now, an empty dict is allowed by POST, which effectively does nothing.
 
 class EmailLimitSettings(BaseModel):
     ignore_daily_limit: bool
@@ -537,12 +525,10 @@ async def set_test_conditions(
     # If a key is NOT in payload, it remains as is in the session.
     # To achieve selective update (only update what's in payload):
     
-    updated_something = False
     for key, value in payload.items(): # Iterate over original payload to respect explicit nulls if we decide to handle them
         if key in ALLOWED_METRIC_KEYS:
             if value is not None and isinstance(value, (int, float)):
                 overrides[key] = float(value)
-                updated_something = True
             elif value is None: 
                 # If we want POST to be able to clear a specific key by sending null:
                 if key in overrides:

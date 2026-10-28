@@ -73,7 +73,6 @@ def reset_cache(): # Reverted fixture to sync
     # Store original cache state
     original_cache = {
         "synoptic_data": data_cache.synoptic_data,
-        "wunderground_data": data_cache.wunderground_data,
         "fire_risk_data": data_cache.fire_risk_data,
         "last_updated": data_cache.last_updated,
         "last_valid_data": data_cache.last_valid_data.copy(),
@@ -83,7 +82,6 @@ def reset_cache(): # Reverted fixture to sync
     
     # Reset cache for test
     data_cache.synoptic_data = None
-    data_cache.wunderground_data = None
     data_cache.fire_risk_data = None
     data_cache.last_updated = None
     data_cache.using_cached_data = False
@@ -94,7 +92,6 @@ def reset_cache(): # Reverted fixture to sync
     
     # Restore original cache state
     data_cache.synoptic_data = original_cache["synoptic_data"]
-    data_cache.wunderground_data = original_cache["wunderground_data"]
     data_cache.fire_risk_data = original_cache["fire_risk_data"]
     data_cache.last_updated = original_cache["last_updated"]
     data_cache.last_valid_data = original_cache["last_valid_data"]
@@ -122,21 +119,6 @@ def mock_synoptic_response():
             }
         ]
     }
-
-@pytest.fixture # Reverted scope to function
-def mock_wunderground_response():
-    """Return a mock Weather Underground API response."""
-    return {
-        "observations": [
-            {
-                "imperial": {
-                    "windGust": 3.0
-                }
-            }
-        ]
-    }
-
-
 
 @pytest.fixture
 def real_cache():
@@ -170,12 +152,6 @@ def mock_failed_synoptic_api():
         yield
 
 @pytest.fixture
-def mock_failed_wunderground_api():
-    """Mock a failed Weather Underground API response."""
-    with patch('tests.mock_utils.get_wunderground_data', return_value=None):
-        yield
-
-@pytest.fixture
 def mock_partial_api_failure(mock_synoptic_response):
     """Mock a partial API failure where some fields are missing."""
     # Create a copy of the mock response with some fields set to None
@@ -203,19 +179,6 @@ def mock_get():
         mock_func.return_value = mock_response
         yield mock_func
 
-# Mock implementation of get_wunderground_data for tests
-def get_wunderground_data(station_id=None):
-    """Mock function for the removed get_wunderground_data API client function."""
-    return {
-        "observations": [
-            {
-                "imperial": {
-                    "windGust": 3.0
-                }
-            }
-        ]
-    }
-
 @pytest.fixture
 def live_server_url():
     """Mock live_server_url for e2e tests instead of launching a server."""
@@ -229,7 +192,7 @@ def live_server_url():
     yield url
 
 @pytest.fixture
-def populate_cache_with_valid_data(mock_synoptic_response, mock_wunderground_response):
+def populate_cache_with_valid_data(mock_synoptic_response):
     """Populate the cache with valid data."""
     # Create a fire risk data object
     weather_data = {
@@ -259,7 +222,6 @@ def populate_cache_with_valid_data(mock_synoptic_response, mock_wunderground_res
     pacific_tz = pytz.timezone('America/Los_Angeles')
     current_time = datetime.now(pacific_tz)
     
-    # Modified to match the new update_cache signature (removed wunderground_data parameter)
     data_cache.update_cache(mock_synoptic_response, fire_risk_data)
     
     return fire_risk_data
