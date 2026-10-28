@@ -273,15 +273,15 @@ async function handlePostOverrideRecalculation(baseSuccessMessage) {
             switch (fireRiskData.email_send_outcome) {
                 case 'success':
                     console.log('handlePostOverrideRecalculation - Displaying email success message.');
-                    displayFeedbackMessage('Alert email sent successfully.', 'success', 5000);
+                    displayFeedbackMessage('Test alert email sent to the test address (subscribers were not emailed).', 'success', 5000);
                     break;
                 case 'failed':
                     console.log('handlePostOverrideRecalculation - Displaying email failed message.');
-                    displayFeedbackMessage('Failed to send alert email.', 'error', 5000);
+                    displayFeedbackMessage('Failed to send test alert email.', 'error', 5000);
                     break;
                 case 'not_triggered_no_recipients':
                     console.log('handlePostOverrideRecalculation - Displaying email not_triggered_no_recipients message.');
-                    displayFeedbackMessage('Email alert not sent: No active subscribers.', 'info', 5000);
+                    displayFeedbackMessage('Test alert not sent: no test email address is configured (TEST_ALERT_EMAIL).', 'info', 5000);
                     break;
                 case 'not_triggered_conditions_met':
                     console.log('handlePostOverrideRecalculation - Email alert not triggered: Conditions for sending not met (e.g., not Orange to Red, or already alerted today).');

@@ -1,20 +1,92 @@
 import asyncio
+import copy
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from fastapi import BackgroundTasks
 
-from config import TIMEZONE, logger
+from config import TIMEZONE, TEST_ALERT_EMAIL, logger
 from api_clients import get_synoptic_data
 from tests.mock_utils import get_wunderground_data
 from data_processing import combine_weather_data, format_age_string
 from fire_risk_logic import calculate_fire_risk
-from cache import data_cache
+from cache import data_cache, alert_due_for_transition
 # Import admin_sessions to check type, though not strictly necessary for Optional[Dict]
 # from admin_endpoints import admin_sessions # Not needed if we just pass it as Dict
 # Import the specific alert function and subscriber function
 from email_service import send_orange_to_red_alert
 from subscriber_service import get_active_subscribers
+
+def apply_overrides_for_display(weather: Dict[str, Any], effective_values: Dict[str, Any]) -> None:
+    """Write effective (overridden) values back into weather data in the units the frontend expects."""
+    if effective_values.get('temperature') is not None:
+        # Fahrenheit override -> Celsius for storage
+        weather['air_temp'] = (effective_values['temperature'] - 32) * 5/9
+    if effective_values.get('humidity') is not None:
+        weather['relative_humidity'] = effective_values['humidity']
+    if effective_values.get('wind_speed') is not None:
+        # mph -> m/s (frontend converts back to mph for display)
+        weather['wind_speed'] = effective_values['wind_speed'] / 2.237
+    if effective_values.get('wind_gust') is not None:
+        weather['wind_gust'] = effective_values['wind_gust'] / 2.237
+    if effective_values.get('soil_moisture') is not None:
+        weather['soil_moisture_15cm'] = effective_values['soil_moisture']
+
+
+def run_admin_test_conditions(
+    admin_session_data: Dict[str, Any],
+    latest_weather: Dict[str, Any],
+    manual_overrides: Dict[str, float]
+) -> None:
+    """Evaluate an admin's test conditions without affecting live state.
+
+    The result is stored in the admin's session (shown only to that admin), alert
+    state is tracked per session, and any test alert goes only to TEST_ALERT_EMAIL.
+    """
+    test_weather = copy.deepcopy(latest_weather)
+    risk, explanation, effective_values = calculate_fire_risk(test_weather, manual_overrides=manual_overrides)
+    if effective_values:
+        apply_overrides_for_display(test_weather, effective_values)
+    logger.info(f"🔧 Admin test conditions evaluated: risk={risk}, overrides={manual_overrides}")
+
+    # Per-session alert state, starting from the live risk level so an Orange->Red test works as before
+    state = admin_session_data.setdefault('test_alert_state', {
+        'previous_risk_level': data_cache.previous_risk_level,
+        'risk_level_timestamp': None,
+        'last_alerted_timestamp': None,
+    })
+    ignore_daily_limit = admin_session_data.get('ignore_email_daily_limit', False)
+
+    if alert_due_for_transition(risk, state['previous_risk_level'], state['risk_level_timestamp'],
+                                state['last_alerted_timestamp'], ignore_daily_limit):
+        if not TEST_ALERT_EMAIL:
+            logger.warning("Test alert triggered but TEST_ALERT_EMAIL is not set; no email sent.")
+            outcome = "not_triggered_no_recipients"
+        else:
+            alert_weather_data = {
+                'temperature': f"{effective_values.get('temperature', 'N/A')}°F",
+                'humidity': f"{effective_values.get('humidity', 'N/A')}%",
+                'wind_speed': f"{effective_values.get('wind_speed', 'N/A')} mph",
+                'wind_gust': f"{effective_values.get('wind_gust', 'N/A')} mph",
+                'soil_moisture': f"{effective_values.get('soil_moisture', 'N/A')}%"
+            }
+            message_id = send_orange_to_red_alert([TEST_ALERT_EMAIL], alert_weather_data, subject_prefix="[TEST] ")
+            if message_id:
+                logger.info(f"Test Orange-to-Red alert sent to the test address. Message ID: {message_id}")
+                state['last_alerted_timestamp'] = datetime.now(TIMEZONE)
+                outcome = "success"
+            else:
+                outcome = "failed"
+    else:
+        outcome = "not_triggered_conditions_met"
+
+    if risk != state['previous_risk_level']:
+        state['previous_risk_level'] = risk
+        state['risk_level_timestamp'] = datetime.now(TIMEZONE)
+
+    admin_session_data['test_fire_risk_data'] = {"risk": risk, "explanation": explanation, "weather": test_weather}
+    admin_session_data['test_email_send_outcome'] = outcome
+
 
 async def refresh_data_cache(
     background_tasks: Optional[BackgroundTasks] = None, 
@@ -149,48 +221,14 @@ async def refresh_data_cache(
             else:
                 logger.info("Cache Refresh: No session_token provided, not checking for admin overrides.")
             
+            # Admin test overrides never touch the live risk, the public dashboard or subscriber alerts:
+            # the live risk is computed from real data only, and test runs are handled by run_admin_test_conditions.
+            if manual_overrides:
+                run_admin_test_conditions(admin_session_data, latest_weather, manual_overrides)
+
             # Capture all three return values: risk, explanation, and effective_weather_values
-            risk, explanation, effective_eval_data = calculate_fire_risk(latest_weather, manual_overrides=manual_overrides)
+            risk, explanation, effective_eval_data = calculate_fire_risk(latest_weather)
 
-            # Update latest_weather with effective values when admin overrides are active
-            if manual_overrides and effective_eval_data:
-                logger.info(f"🔧 Applying admin overrides to weather data for frontend display")
-                
-                # Map effective_eval_data back to latest_weather format
-                if effective_eval_data.get('temperature') is not None:
-                    # Convert temperature from Fahrenheit back to Celsius for storage
-                    temp_f = effective_eval_data['temperature']
-                    latest_weather['air_temp'] = (temp_f - 32) * 5/9
-                    logger.info(f"🔧 Override temperature: {temp_f}°F -> {latest_weather['air_temp']:.2f}°C")
-                
-                if effective_eval_data.get('humidity') is not None:
-                    latest_weather['relative_humidity'] = effective_eval_data['humidity']
-                    logger.info(f"🔧 Override humidity: {effective_eval_data['humidity']}%")
-                
-                if effective_eval_data.get('wind_speed') is not None:
-                    # Convert mph back to m/s for storage (frontend will convert back to mph for display)
-                    wind_speed_ms = effective_eval_data['wind_speed'] / 2.237
-                    latest_weather['wind_speed'] = wind_speed_ms
-                    logger.info(f"🔧 Override wind speed: {effective_eval_data['wind_speed']} mph -> {wind_speed_ms:.2f} m/s")
-                
-                if effective_eval_data.get('wind_gust') is not None:
-                    # Convert mph back to m/s for storage (frontend will convert back to mph for display)
-                    wind_gust_ms = effective_eval_data['wind_gust'] / 2.237
-                    latest_weather['wind_gust'] = wind_gust_ms
-                    logger.info(f"🔧 Override wind gust: {effective_eval_data['wind_gust']} mph -> {wind_gust_ms:.2f} m/s")
-                
-                if effective_eval_data.get('soil_moisture') is not None:
-                    latest_weather['soil_moisture_15cm'] = effective_eval_data['soil_moisture']
-                    logger.info(f"🔧 Override soil moisture: {effective_eval_data['soil_moisture']}%")
-
-            # Determine if daily email limit should be ignored for this admin
-            ignore_email_daily_limit_pref = False
-            if session_token and current_admin_sessions and session_token in current_admin_sessions:
-                admin_session_data = current_admin_sessions[session_token]
-                ignore_email_daily_limit_pref = admin_session_data.get('ignore_email_daily_limit', False)
-                if ignore_email_daily_limit_pref:
-                    logger.info(f"Admin session {session_token[:8]}... has 'ignore_email_daily_limit' set to True.")
-            
             # --- Wind Data Check ---
             # Log wind data state to diagnose refresh issues
             wind_gust_value = latest_weather.get('wind_gust')
@@ -233,16 +271,15 @@ async def refresh_data_cache(
             logger.info(f"🚨 Previous risk level: {data_cache.previous_risk_level}")
             logger.info(f"🚨 Risk level timestamp: {data_cache.risk_level_timestamp}")
             logger.info(f"🚨 Last alerted timestamp: {data_cache.last_alerted_timestamp}")
-            logger.info(f"🚨 Ignore daily limit preference: {ignore_email_daily_limit_pref}")
             
-            should_send_alert = data_cache.should_send_alert_for_transition(risk, ignore_daily_limit=ignore_email_daily_limit_pref)
+            should_send_alert = data_cache.should_send_alert_for_transition(risk)
             logger.info(f"🚨 should_send_alert_for_transition() returned: {should_send_alert}")
             
             # Check if we should send an alert for this risk level, considering the admin's preference
             if should_send_alert:
                 email_alert_triggered_this_cycle = True # Mark that we entered the alert logic path
                 logger.info(f"🚨 ENTERING EMAIL ALERT LOGIC!")
-                logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert. (ignore_daily_limit={ignore_email_daily_limit_pref})")
+                logger.info(f"Risk transition detected: {data_cache.previous_risk_level} -> {risk}. Preparing alert.")
                 try:
                     # 1. Get active subscribers
                     subscribers_result = get_active_subscribers()

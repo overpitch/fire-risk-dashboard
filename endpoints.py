@@ -1,6 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import Dict, Any, Optional
+import copy
 import os
 import pathlib
 from datetime import datetime
@@ -120,8 +121,18 @@ async def fire_risk(
                     )
     
     # If we get here, we have some data to return (potentially stale)
+    # An admin with active test conditions sees their own test result; everyone else sees live data
+    admin_session_data = admin_sessions.get(session_token) if session_token else None
+    test_result = None
+    if admin_session_data and admin_session_data.get('manual_weather_overrides'):
+        test_result = admin_session_data.get('test_fire_risk_data')
+    if test_result:
+        result = copy.deepcopy(test_result)
+        result["test_conditions_active"] = True
+    else:
+        result = data_cache.fire_risk_data.copy()
+
     # Add cache information to the response
-    result = data_cache.fire_risk_data.copy()
     result["cache_info"] = {
         # The isoformat() will include timezone info for timezone-aware datetimes
         "last_updated": data_cache.last_updated.isoformat() if data_cache.last_updated else None,
@@ -300,8 +311,11 @@ async def fire_risk(
             "warning_issues": []
         }
 
-    # Add email send outcome to the response
-    email_outcome = data_cache.get_and_clear_last_email_send_outcome()
+    # Add email send outcome to the response (an admin's test runs report their own outcome)
+    if test_result:
+        email_outcome = admin_session_data.pop('test_email_send_outcome', None)
+    else:
+        email_outcome = data_cache.get_and_clear_last_email_send_outcome()
     if email_outcome:
         result["email_send_outcome"] = email_outcome
         logger.info(f"Included email_send_outcome in /fire-risk response: {email_outcome}")

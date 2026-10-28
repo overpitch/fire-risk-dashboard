@@ -558,6 +558,8 @@ async def clear_test_conditions(
     current_session_data = admin_sessions.get(session_token)
     if current_session_data and 'manual_weather_overrides' in current_session_data:
         del current_session_data['manual_weather_overrides']
+        for key in ('test_fire_risk_data', 'test_email_send_outcome', 'test_alert_state'):
+            current_session_data.pop(key, None)
         logger.info(f"Manual weather overrides cleared for session {session_token[:8]}... by {client_ip}")
         return JSONResponse(
             content={"status": "success", "message": "Test conditions cleared."},
