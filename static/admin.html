@@ -107,8 +107,13 @@
                 <p>Please enter the admin password to access the portal.</p>
 
                 <form id="loginForm" method="post" action="/admin" class="mx-auto" style="max-width: 360px;">
-                    <input type="password" id="passwordInput" name="password" class="form-control mb-3"
-                        placeholder="Admin password" autocomplete="current-password" required autofocus>
+                    <!-- Shown as plain text by default so the admin can see what they type -->
+                    <div class="input-group mb-3">
+                        <input type="text" id="passwordInput" name="password" class="form-control"
+                            placeholder="Admin password" autocomplete="current-password" required autofocus
+                            autocapitalize="off" autocorrect="off" spellcheck="false">
+                        <button type="button" id="togglePasswordVisibility" class="btn btn-outline-secondary">Hide</button>
+                    </div>
                     <button type="submit" id="loginButton" class="btn btn-primary w-100">Log in</button>
                 </form>
 
@@ -419,6 +424,15 @@
             }
             return response;
         };
+
+        // Show/hide the password as it is typed
+        document.getElementById('togglePasswordVisibility').addEventListener('click', function () {
+            const passwordInput = document.getElementById('passwordInput');
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            this.textContent = isHidden ? 'Hide' : 'Show';
+            passwordInput.focus();
+        });
 
         // Password login
         document.getElementById('loginForm').addEventListener('submit', async function (event) {
