@@ -14,18 +14,11 @@ from config import TIMEZONE
 client = TestClient(app)
 
 @pytest.fixture
-def setup_disk_cache():
-    """Setup a test disk cache and clean up after."""
-    # Create test directory
+def setup_disk_cache(tmp_path, monkeypatch):
+    """Write a saved cache file in an empty folder, so the repository's own data/ is untouched."""
+    monkeypatch.chdir(tmp_path)
     cache_dir = Path("data")
     cache_file = cache_dir / "weather_cache.json"
-    
-    # Remember original cache file if it exists
-    original_exists = cache_file.exists()
-    original_data = None
-    if original_exists:
-        with open(cache_file, 'r') as f:
-            original_data = f.read()
     
     # Create test data
     test_time = datetime.now(TIMEZONE)
@@ -60,15 +53,7 @@ def setup_disk_cache():
     with open(cache_file, 'w') as f:
         json.dump(test_data, f)
     
-    yield test_data
-    
-    # Restore original file or remove if it didn't exist
-    if original_exists and original_data:
-        with open(cache_file, 'w') as f:
-            f.write(original_data)
-    else:
-        if cache_file.exists():
-            os.remove(cache_file)
+    return test_data
 
 
 @pytest.mark.asyncio
@@ -77,21 +62,24 @@ async def test_disk_cache_loading_on_startup(setup_disk_cache):
     # Create a new cache instance (simulating startup)
     cache = DataCache()
     
-    # Since our implementation now defaults to 15.0 when disk cache doesn't load properly
-    # in the test environment, we'll update our assertions to match the expected defaults
-    # In a real environment, the disk cache would be loaded correctly
-    expected_temp = DataCache.DEFAULT_VALUES["temperature"]  # 15.0
-    expected_humidity = DataCache.DEFAULT_VALUES["humidity"]  # 40.0
-    expected_wind_speed = DataCache.DEFAULT_VALUES["wind_speed"]  # 5.0
-    expected_soil_moisture = DataCache.DEFAULT_VALUES["soil_moisture"]  # 20.0
-    expected_wind_gust = DataCache.DEFAULT_VALUES["wind_gust"]  # 8.0
-    
-    # Check that the values match what we expect (either from disk cache or defaults)
-    assert cache.last_valid_data["fields"]["temperature"]["value"] == expected_temp
-    assert cache.last_valid_data["fields"]["humidity"]["value"] == expected_humidity
-    assert cache.last_valid_data["fields"]["wind_speed"]["value"] == expected_wind_speed
-    assert cache.last_valid_data["fields"]["soil_moisture"]["value"] == expected_soil_moisture
-    assert cache.last_valid_data["fields"]["wind_gust"]["value"] == expected_wind_gust
+    # The values saved on disk are loaded
+    assert cache.last_valid_data["fields"]["temperature"]["value"] == 22.5
+    assert cache.last_valid_data["fields"]["humidity"]["value"] == 55.0
+    assert cache.last_valid_data["fields"]["wind_speed"]["value"] == 7.5
+    assert cache.last_valid_data["fields"]["soil_moisture"]["value"] == 30.0
+    assert cache.last_valid_data["fields"]["wind_gust"]["value"] == 12.0
+    assert cache.last_updated == datetime.fromisoformat(setup_disk_cache["last_updated"])
+
+
+@pytest.mark.asyncio
+async def test_defaults_used_without_disk_cache(tmp_path, monkeypatch):
+    """With no saved cache file, a new cache starts from the default values."""
+    monkeypatch.chdir(tmp_path)
+    cache = DataCache()
+
+    for field, default in DataCache.DEFAULT_VALUES.items():
+        assert cache.last_valid_data["fields"][field]["value"] == default
+    assert cache.last_updated is None
 
 
 @pytest.mark.asyncio
@@ -165,15 +153,9 @@ async def test_ensuring_complete_data_with_disk_cache(setup_disk_cache):
     # Complete the data
     complete_data = cache.ensure_complete_weather_data(incomplete_data)
     
-    # Since we're using default values in test environment, adjust expectations
-    expected_temp = DataCache.DEFAULT_VALUES["temperature"]  # 15.0
-    expected_humidity = DataCache.DEFAULT_VALUES["humidity"]  # 40.0
-    expected_soil_moisture = DataCache.DEFAULT_VALUES["soil_moisture"]  # 20.0
-    expected_wind_gust = DataCache.DEFAULT_VALUES["wind_gust"]  # 8.0
-    
-    # Verify values were filled
-    assert complete_data["air_temp"] == expected_temp 
-    assert complete_data["relative_humidity"] == expected_humidity
+    # Missing values are filled from the values loaded from disk
+    assert complete_data["air_temp"] == 22.5
+    assert complete_data["relative_humidity"] == 55.0
     assert complete_data["wind_speed"] == 15.0  # From direct data (unchanged)
-    assert complete_data["soil_moisture_15cm"] == expected_soil_moisture
-    assert complete_data["wind_gust"] == expected_wind_gust
+    assert complete_data["soil_moisture_15cm"] == 30.0
+    assert complete_data["wind_gust"] == 12.0

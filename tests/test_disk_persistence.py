@@ -11,19 +11,13 @@ from config import TIMEZONE
 
 
 @pytest.fixture
-def temp_cache_dir():
+def temp_cache_dir(tmp_path, monkeypatch):
     """Create a temporary cache directory for testing."""
-    # Use a test-specific directory to avoid interfering with the actual cache
-    test_dir = Path("data_test")
-    
-    # Create the directory if it doesn't exist
+    # Run in an empty folder so DataCache() never loads the repository's data/weather_cache.json
+    monkeypatch.chdir(tmp_path)
+    test_dir = tmp_path / "data_test"
     os.makedirs(test_dir, exist_ok=True)
-    
-    # Return the path for tests to use
-    yield test_dir
-    
-    # Clean up after the test
-    shutil.rmtree(test_dir)
+    return test_dir
 
 
 @pytest.fixture
@@ -107,10 +101,12 @@ def test_load_cache_from_disk(sample_data_cache, temp_cache_dir):
     cache.cache_file = test_cache_file
     
     # Force load from disk
-    result = cache._load_cache_from_disk()
+    loaded, disk_cache = cache._load_cache_from_disk()
     
     # Verify the load was successful
-    assert result is True
+    assert loaded is True
+    assert disk_cache["last_updated"] == test_time
+    assert cache.last_updated == datetime.fromisoformat(test_time)
     assert cache.last_valid_data["fields"]["temperature"]["value"] == test_temp
     assert isinstance(cache.last_valid_data["fields"]["temperature"]["timestamp"], datetime)
 

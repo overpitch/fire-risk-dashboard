@@ -136,8 +136,19 @@ def mock_wunderground_response():
         ]
     }
 
-# Define test station IDs (since WUNDERGROUND_STATION_IDS was removed from config.py)
-TEST_STATION_IDS = ["KCASIERR68", "KCASIERR63", "KCASIERR72"] 
+
+
+@pytest.fixture
+def real_cache():
+    """A real DataCache, used by cache_refresh, that neither reads nor writes the cache files on disk."""
+    from cache import DataCache
+    with patch.object(DataCache, "_load_cache_from_disk", return_value=(False, None)), \
+         patch.object(DataCache, "_save_cache_to_disk"):
+        cache = DataCache()
+        cache.max_retries = 1
+        cache.retry_delay = 0
+        with patch('cache_refresh.data_cache', cache):
+            yield cache
 
 
 # --- Fixture using patch to mock API calls within cache_refresh ---
@@ -252,21 +263,6 @@ def populate_cache_with_valid_data(mock_synoptic_response, mock_wunderground_res
     data_cache.update_cache(mock_synoptic_response, fire_risk_data)
     
     return fire_risk_data
-
-
-# --- Known failures ---
-
-KNOWN_FAILURES_FILE = os.path.join(os.path.dirname(__file__), "known_failures.txt")
-
-def pytest_collection_modifyitems(config, items):
-    """Mark tests listed in known_failures.txt as expected failures (non-strict, so fixed tests just pass)."""
-    if not os.path.exists(KNOWN_FAILURES_FILE):
-        return
-    with open(KNOWN_FAILURES_FILE) as f:
-        known = {line.strip() for line in f if line.strip() and not line.startswith("#")}
-    for item in items:
-        if item.nodeid in known:
-            item.add_marker(pytest.mark.xfail(reason="Listed in tests/known_failures.txt", strict=False))
 
 
 # --- Real-cache alert test environment ---

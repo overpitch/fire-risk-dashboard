@@ -24,40 +24,21 @@ def mock_data():
 
 
 @pytest.mark.asyncio
-@patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.get_wunderground_data')
-@patch('cache_refresh.combine_weather_data')
-@patch('cache_refresh.calculate_fire_risk')
-async def test_refresh_data_cache_success(mock_calculate_fire_risk, mock_combine_weather_data, mock_get_wunderground_data, mock_get_synoptic_data, mock_data):
-    mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+async def test_refresh_data_cache_success(real_cache, fake_outside_world, mock_data):
+    """A refresh stores the combined weather and the calculated risk in the cache."""
+    _, _, mock_combined_data, _ = mock_data
+    mock_calculate_fire_risk, _, _ = fake_outside_world
+    mock_calculate_fire_risk.return_value = ("Orange", "explanation", RED_EFFECTIVE_VALUES)
 
-    mock_get_synoptic_data.return_value = mock_weather_data
-    mock_get_wunderground_data.return_value = mock_wunderground_data
-    mock_combine_weather_data.return_value = mock_combined_data
-    mock_calculate_fire_risk.return_value = mock_fire_risk
+    assert await refresh_data_cache() is True
 
-    # Create a risk data object with the expected structure
-    risk_data = {"risk": "low", "explanation": "explanation", "weather": mock_combined_data}
-    
-    # Use a mock instance of DataCache instead of the class
-    mock_cache = MagicMock(spec=DataCache)
-    mock_cache.fire_risk_data = risk_data
-    mock_cache.update_in_progress = False
-    mock_cache.reset_update_event = MagicMock()
-    mock_cache.max_retries = 3
-    mock_cache.update_timeout = 10
-    mock_cache.retry_delay = 5
-    mock_cache.cached_fields = {}
-    mock_cache.previous_risk_level = "Green" # Default previous risk
-
-    # Patch the global data_cache instance
-    with patch('cache_refresh.data_cache', mock_cache):
-        # Run the test
-        assert await refresh_data_cache() is True
-        mock_cache.update_cache.assert_called_once()
-        assert mock_cache.fire_risk_data["risk"] == "low" # Risk calculated
-        assert mock_cache.previous_risk_level == "low" # Previous risk updated
-        assert mock_cache.last_update_success is True
+    assert real_cache.last_update_success is True
+    assert real_cache.last_updated is not None
+    assert real_cache.fire_risk_data["risk"] == "Orange"
+    assert real_cache.fire_risk_data["explanation"] == "explanation"
+    assert real_cache.fire_risk_data["weather"]["air_temp"] == mock_combined_data["air_temp"]
+    assert real_cache.previous_risk_level == "Orange"
+    assert real_cache.update_in_progress is False
 
 
 @pytest.mark.asyncio
@@ -129,14 +110,17 @@ async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wundergr
                 }
                 
                 # Run the function under test
-                result = await refresh_data_cache()
+                with patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+                    result = await refresh_data_cache()
                 assert result is False
+                
+                # Each attempt fails without data, with a wait between attempts
+                assert mock_get_synoptic_data.call_count == 3
+                assert mock_sleep.await_count == 2
+                mock_combine.assert_not_called()
                 
                 # Verify error logging
                 mock_logger.error.assert_any_call("All data refresh attempts failed")
-                
-                # Check that the warning was logged
-                mock_logger.warning.assert_any_call("Data refresh taking too long (over 10s), aborting")
             
     # Verify cache markers were properly set
     assert mock_cache.last_update_success is False
@@ -162,47 +146,37 @@ async def test_refresh_data_cache_api_failure(mock_format_age, mock_get_wundergr
 
 
 @pytest.mark.asyncio
-@patch('cache_refresh.get_synoptic_data')
-@patch('cache_refresh.get_wunderground_data')
-@patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)  # Mock asyncio.sleep
-async def test_refresh_data_cache_retry(mock_sleep, mock_get_wunderground_data, mock_get_synoptic_data, mock_data):
-    mock_weather_data, mock_wunderground_data, mock_combined_data, mock_fire_risk = mock_data
+@patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
+async def test_refresh_data_cache_retry(mock_sleep, real_cache, fake_outside_world, mock_data):
+    """If processing fails once, the refresh waits and tries again."""
+    _, _, mock_combined_data, _ = mock_data
+    mock_calculate_fire_risk, _, _ = fake_outside_world
+    mock_calculate_fire_risk.return_value = ("Orange", "explanation", RED_EFFECTIVE_VALUES)
+    real_cache.max_retries = 2
 
-    # Set up normal API returns
-    mock_get_synoptic_data.return_value = mock_weather_data
-    mock_get_wunderground_data.return_value = mock_wunderground_data
-    
-    with patch('cache_refresh.combine_weather_data') as mock_combine:
-        with patch('cache_refresh.calculate_fire_risk') as mock_calc:
-            # First attempt with combine_weather_data raises an exception, second succeeds
-            def combine_side_effect(*args, **kwargs):
-                if not hasattr(combine_side_effect, 'called'):
-                    combine_side_effect.called = True
-                    raise ValueError("First attempt should fail")
-                return mock_combined_data
-            
-            mock_combine.side_effect = combine_side_effect
-            mock_calc.return_value = mock_fire_risk
-            
-            # Create a risk data object with the expected structure
-            risk_data = {"risk": "low", "explanation": "explanation", "weather": mock_combined_data}
-            
-            # Use a mock instance of DataCache
-            mock_cache = MagicMock(spec=DataCache)
-            mock_cache.fire_risk_data = risk_data
-            mock_cache.max_retries = 2
-            mock_cache.retry_delay = 0.01
-            mock_cache.update_in_progress = False
-            mock_cache.reset_update_event = MagicMock()
-            mock_cache.update_timeout = 10
-            mock_cache.cached_fields = {}
-            
-            # Patch the global data_cache instance
-            with patch('cache_refresh.data_cache', mock_cache):
-                assert await refresh_data_cache() is True
-                mock_cache.update_cache.assert_called_once()
-                assert mock_cache.fire_risk_data["risk"] == "low"
-                mock_sleep.assert_awaited_once()  # Check if asyncio.sleep was called
+    with patch('cache_refresh.combine_weather_data',
+               side_effect=[ValueError("First attempt should fail"), dict(mock_combined_data)]) as mock_combine:
+        assert await refresh_data_cache() is True
+
+    assert mock_combine.call_count == 2
+    mock_sleep.assert_awaited_once_with(real_cache.retry_delay)
+    assert real_cache.last_update_success is True
+    assert real_cache.fire_risk_data["risk"] == "Orange"
+
+
+@pytest.mark.asyncio
+@patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock)
+async def test_refresh_data_cache_gives_up_after_max_retries(mock_sleep, real_cache, fake_outside_world):
+    """If every attempt fails, the refresh reports failure and marks all fields as cached."""
+    real_cache.max_retries = 2
+
+    with patch('cache_refresh.combine_weather_data', side_effect=ValueError("always fails")) as mock_combine:
+        assert await refresh_data_cache() is False
+
+    assert mock_combine.call_count == 2
+    assert real_cache.last_update_success is False
+    assert real_cache.using_cached_data is True
+    assert all(real_cache.cached_fields.values())
 
 
 @pytest.mark.asyncio
@@ -332,7 +306,8 @@ async def test_refresh_data_cache_cached_data(mock_format_age, mock_get_wundergr
             }
             
             # Our new implementation returns False when all API calls fail
-            assert await refresh_data_cache() is False
+            with patch('cache_refresh.asyncio.sleep', new_callable=AsyncMock):
+                assert await refresh_data_cache() is False
 
         # Verify cache state after refresh
         assert mock_cache.last_update_success is False
@@ -381,18 +356,6 @@ async def test_schedule_next_refresh_exception(mock_refresh_data_cache, caplog):
 
 RED_EFFECTIVE_VALUES = {"temperature": 90.0, "humidity": 8.0, "wind_speed": 20.0,
                         "wind_gust": 28.0, "soil_moisture": 5.0}
-
-
-@pytest.fixture
-def real_cache():
-    """A real DataCache that neither reads nor writes the cache files on disk."""
-    with patch.object(DataCache, "_load_cache_from_disk", return_value=(False, None)), \
-         patch.object(DataCache, "_save_cache_to_disk"):
-        cache = DataCache()
-        cache.max_retries = 1
-        cache.retry_delay = 0
-        with patch('cache_refresh.data_cache', cache):
-            yield cache
 
 
 @pytest.fixture

@@ -150,7 +150,7 @@ async def refresh_data_cache(
                 
         except Exception as e:
             logger.error(f"Error during concurrent data fetch: {e}")
-            return None, None
+            return None
     
     while not success and retries < data_cache.max_retries:
         try:
@@ -161,6 +161,10 @@ async def refresh_data_cache(
                 
             # Fetch data from Synoptic API
             weather_data = await fetch_all_data()
+            if weather_data is None:
+                # Count it as a failed attempt (and wait before retrying); don't calculate risk
+                # or check alerts without fresh data
+                raise RuntimeError("Synoptic API call failed, no new data")
             
             # Initialize variables for tracking cached data usage
             any_field_using_cache = False
@@ -329,26 +333,18 @@ async def refresh_data_cache(
                     "cached_fields": data_cache.cached_fields.copy()
                 }
             
-            # Check if we got any fresh data from API
-            # If it's None, the refresh essentially failed to get new data
-            if weather_data is None:
-                 logger.warning("Synoptic API call failed, refresh did not obtain new data.")
-                 # Keep success as False if it wasn't already True from a previous retry
-                 # success = False # This line is implicitly handled by loop condition
-            else:
-                # Update cache with new data
-                data_cache.update_cache(weather_data, fire_risk_data)
-                # If we got here with some data, the refresh was successful in processing
-                success = True
-                
-                # Explicitly set the update complete event after successful update
-                try:
-                    logger.info("✅ Explicitly setting update complete event after successful refresh")
-                    data_cache._update_complete_event.set()
-                except Exception as e:
-                    logger.error(f"⚠️ Error explicitly setting update complete event: {e}")
-                
-                logger.info("✅ Data cache refresh successful (processed available data)")
+            # Update cache with new data
+            data_cache.update_cache(weather_data, fire_risk_data)
+            success = True
+            
+            # Explicitly set the update complete event after successful update
+            try:
+                logger.info("✅ Explicitly setting update complete event after successful refresh")
+                data_cache._update_complete_event.set()
+            except Exception as e:
+                logger.error(f"⚠️ Error explicitly setting update complete event: {e}")
+            
+            logger.info("✅ Data cache refresh successful (processed available data)")
 
         except Exception as e:
             retries += 1
