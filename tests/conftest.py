@@ -267,3 +267,65 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.nodeid in known:
             item.add_marker(pytest.mark.xfail(reason="Listed in tests/known_failures.txt", strict=False))
+
+
+# --- Real-cache alert test environment ---
+
+class _ControllableDatetimeMeta(type):
+    # Real datetimes must still pass isinstance checks (e.g. when cache.py serializes to JSON)
+    def __instancecheck__(cls, obj):
+        return isinstance(obj, datetime)
+
+
+class _ControllableDatetime(datetime, metaclass=_ControllableDatetimeMeta):
+    """datetime whose now() can be pinned by tests (used in place of cache.datetime)."""
+    pinned = None
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.pinned if cls.pinned is not None else datetime.now(tz)
+
+
+class AlertTestEnv:
+    """Real DataCache instances backed by a temporary data/ folder, with a settable clock.
+
+    Only the weather API, risk calculation, subscriber list and email sending are faked,
+    so the real alert rule, risk-level tracking and disk persistence are exercised.
+    """
+    RED_EFFECTIVE_VALUES = {"temperature": 90.0, "humidity": 8.0, "wind_speed": 20.0,
+                            "wind_gust": 28.0, "soil_moisture": 5.0}
+    LIVE_WEATHER = {"air_temp": 32, "relative_humidity": 8, "wind_speed": 9, "wind_gust": 12,
+                    "soil_moisture_15cm": 5}
+
+    def set_time(self, when):
+        _ControllableDatetime.pinned = when
+
+    def start_server(self):
+        """A fresh DataCache, as created when the server (re)starts; it loads saved state from disk."""
+        from cache import DataCache
+        cache = DataCache()
+        cache.max_retries = 1
+        cache.retry_delay = 0
+        return cache
+
+    async def refresh_with_risk(self, cache, risk):
+        """Run a real refresh where the calculated risk is `risk`; returns the email-sending mock."""
+        from cache_refresh import refresh_data_cache
+        with patch('cache_refresh.data_cache', cache), \
+             patch('cache_refresh.get_synoptic_data', return_value={"STATION": []}), \
+             patch('cache_refresh.combine_weather_data', side_effect=lambda *a, **k: dict(self.LIVE_WEATHER)), \
+             patch('cache_refresh.calculate_fire_risk', return_value=(risk, "test", self.RED_EFFECTIVE_VALUES)), \
+             patch('cache_refresh.get_active_subscribers', return_value={"subscribers": ["test@example.com"]}), \
+             patch('cache_refresh.send_orange_to_red_alert', return_value="test-message-id") as mock_send:
+            assert await refresh_data_cache() is True
+        return mock_send
+
+
+@pytest.fixture
+def alert_env(tmp_path, monkeypatch):
+    """AlertTestEnv running in an empty temporary folder (DataCache uses ./data/weather_cache.json)."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data").mkdir()
+    with patch('cache.datetime', _ControllableDatetime):
+        yield AlertTestEnv()
+    _ControllableDatetime.pinned = None
