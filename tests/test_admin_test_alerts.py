@@ -125,3 +125,18 @@ async def test_setting_conditions_evaluates_immediately_against_live_weather(adm
     assert session["test_fire_risk_data"]["risk"] == "Red"
     assert mock_send.call_args.args[0] == ["admin@example.com"]
     assert data_cache.fire_risk_data == live_before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ignore_daily_limit,expected_sends", [(False, 1), (True, 2)])
+async def test_daily_limit_survives_clearing_test_conditions(admin_client, live_state, ignore_daily_limit, expected_sends):
+    """Red test, clear, Red test again: the second alert obeys the daily limit unless the admin ignores it."""
+    data_cache.fire_risk_data = {"risk": "Orange", "explanation": "live", "weather": copy.deepcopy(LIVE_WEATHER)}
+    admin_sessions["test-admin-session-token"]["ignore_email_daily_limit"] = ignore_daily_limit
+    red = {"temperature": 99, "humidity": 3, "average_winds": 30, "wind_gust": 40, "soil_moisture": 1}
+    with patch.object(cache_refresh, "TEST_ALERT_EMAIL", "admin@example.com"), \
+         patch.object(cache_refresh, "send_orange_to_red_alert", return_value="msg-1") as mock_send:
+        for _ in range(2):
+            assert (await admin_client.post("/admin/test-conditions", json=red)).status_code == 200
+            assert (await admin_client.delete("/admin/test-conditions")).status_code == 200
+    assert mock_send.call_count == expected_sends

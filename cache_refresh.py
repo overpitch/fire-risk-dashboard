@@ -58,12 +58,13 @@ def run_admin_test_conditions(
         apply_overrides_for_display(test_weather, effective_values)
     logger.info(f"🔧 Admin test conditions evaluated: risk={risk}, overrides={manual_overrides}")
 
-    # Per-session alert state, starting from the live risk level so an Orange->Red test works as before
-    state = admin_session_data.setdefault('test_alert_state', {
-        'previous_risk_level': data_cache.previous_risk_level,
-        'risk_level_timestamp': None,
-        'last_alerted_timestamp': None,
-    })
+    # Per-session alert state. Each new test run starts from the live risk level so an Orange->Red
+    # test works as before; the last test alert time is kept across runs so the daily limit applies.
+    state = admin_session_data.setdefault('test_alert_state', {'last_alerted_timestamp': None})
+    if state.get('previous_risk_level') is None:
+        state['previous_risk_level'] = data_cache.previous_risk_level
+        # After an earlier test alert, mark the start of this run so the daily-limit check is used
+        state['risk_level_timestamp'] = datetime.now(TIMEZONE) if state['last_alerted_timestamp'] else None
     ignore_daily_limit = admin_session_data.get('ignore_email_daily_limit', False)
 
     alert_due = alert_due_for_transition(risk, state['previous_risk_level'], state['risk_level_timestamp'],
