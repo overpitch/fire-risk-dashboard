@@ -84,5 +84,13 @@ else:
     logger.info("Running in production mode - development endpoints disabled")
 
 # Log all registered routes for debugging
+# (FastAPI keeps each included router as one entry in app.routes, so list the routers' own routes)
+included_routers = [("", main_router), ("", admin_router)]
+if not IS_PRODUCTION:
+    included_routers.append(("/dev", dev_router))
 for route in app.routes:
-    logger.info(f"Registered route: {route.path}")
+    if hasattr(route, "path"):
+        logger.info(f"Registered route: {route.path}")
+for prefix, router in included_routers:
+    for route in router.routes:
+        logger.info(f"Registered route: {prefix}{route.path}")

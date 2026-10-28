@@ -1,7 +1,8 @@
+# Test tools: installed by CI and for local testing, not on the live server
 -r requirements.txt
-pytest>=8.2.0 # Updated to meet pytest-asyncio requirement
-pytest-asyncio==0.26.0 # Updated to latest version
-pytest-cov==4.1.0
-beautifulsoup4==4.12.2
-httpx==0.27.0
-pytest-playwright
+pytest==9.2.0
+pytest-asyncio==1.4.1
+pytest-cov==7.1.0
+beautifulsoup4==4.15.0
+httpx==0.28.1
+pytest-playwright==0.10.0
