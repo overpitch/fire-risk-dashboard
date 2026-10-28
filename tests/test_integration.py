@@ -245,7 +245,7 @@ async def test_api_client_integration(real_cache):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("readings, expected_risk", [
     ((25.5, 60.2, 15.3, 20.1, 35.7), "Orange"),  # Hot and windy, but humid with moist soil
-    ((30.0, 10.0, 12.0, 20.0, 5.0), "Red"),      # Every threshold exceeded
+    ((35.0, 5.0, 25.0, 35.0, 3.0), "Red"),       # Every threshold exceeded (by far, whatever THRESH_* is set)
 ])
 async def test_data_processing_integration(real_cache, readings, expected_risk):
     """Station readings flow through processing and the risk rules into the dashboard data."""
