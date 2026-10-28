@@ -33,7 +33,6 @@ jobs:
 
     # test_e2e.py and test_ui_rendering.py need a running server and browsers;
     # test_endpoints.py imports an app object that no longer exists (to be fixed).
-    # Tests in tests/known_failures.txt run as expected failures.
     - name: Run tests
       run: |
         python -m pytest tests \

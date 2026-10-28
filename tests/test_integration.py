@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 # Removed app import, assuming it's available via client fixture context
 from cache import data_cache
 from config import TIMEZONE
-# Use TEST_STATION_IDS from conftest for tests
-from tests.conftest import TEST_STATION_IDS
 
 # Removed local client = TestClient(app)
 
@@ -160,7 +158,9 @@ async def test_wait_for_fresh(mock_refresh, client): # Added client fixture
 async def test_test_mode_toggle(mock_refresh, admin_client):
     client = admin_client
     """Test the test mode toggle endpoint and its effect."""
-    # Setup: Ensure some valid data exists for caching fallback
+    # Setup: the dashboard is showing current data, and earlier valid data exists for caching fallback
+    data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
+    data_cache.last_updated = datetime.now(TIMEZONE)
     data_cache.last_valid_data["fire_risk_data"] = SAMPLE_FIRE_RISK_DATA.copy()
     data_cache.last_valid_data["timestamp"] = datetime.now(TIMEZONE) - timedelta(hours=1)
 
@@ -200,132 +200,66 @@ async def test_test_mode_toggle(mock_refresh, admin_client):
 
 # --- refresh_data_cache Integration Tests (Mocking API Clients) ---
 
-@pytest.mark.asyncio
-async def test_api_client_integration():
-    """Test integration within refresh_data_cache using mocked API clients."""
-    # Mock the API clients to return minimal valid data structure
-    synoptic_data = {
-        "STATION": [{"STID": "CEYC1", "OBSERVATIONS": {}}]
-    }
-    wunderground_data = {
-        station_id: {"observations": [{"imperial": {}}]} for station_id in TEST_STATION_IDS
-    }
-
-    # Setup the mock functions
-    async def mock_synoptic_function():
-        return synoptic_data
-    
-    async def mock_wunderground_function():
-        return wunderground_data
-        
-    # Create proper AsyncMock objects
-    mock_synoptic_data = AsyncMock()
-    mock_synoptic_data.return_value = synoptic_data
-    mock_wunderground_data = AsyncMock()
-    mock_wunderground_data.return_value = wunderground_data
-
-    # Patch the actual API client functions within the cache_refresh module
-    with patch('cache_refresh.get_synoptic_data', mock_synoptic_data), \
-         patch('cache_refresh.get_wunderground_data', mock_wunderground_data):
-
-        from cache_refresh import refresh_data_cache
-        mock_background_tasks = Mock(spec=BackgroundTasks)
-        
-        # Create a mock DataCache to avoid any issues with the real instance
-        mock_cache = MagicMock(spec=data_cache.__class__)
-        mock_cache.max_retries = 2
-        mock_cache.retry_delay = 0.01
-        mock_cache.update_timeout = 1
-        
-        # Patch the global data_cache instance
-        with patch('cache_refresh.data_cache', mock_cache):
-            # Execute the function under test
-            success = await refresh_data_cache(background_tasks=mock_background_tasks, force=True)
-
-            # Assertions
-            assert success is True
-            mock_synoptic_data.assert_called_once()
-            mock_wunderground_data.assert_called_once()
-            assert mock_cache.update_cache.called  # Check that update_cache was called
-            assert mock_cache.last_update_success is True
-
-
-@pytest.mark.asyncio
-async def test_data_processing_integration():
-    """Test data processing integration within refresh_data_cache."""
-    # Mock API responses with specific data
-    mock_synoptic_response = {
+def synoptic_response(air_temp, humidity, wind_speed, wind_gust, soil_moisture):
+    """A Synoptic API response from the three stations the dashboard reads."""
+    return {
         "STATION": [
-            {"STID": "CEYC1", "OBSERVATIONS": {
-                "air_temp_value_1": {"value": 25.5},
-                "relative_humidity_value_1": {"value": 60.2},
-                "wind_speed_value_1": {"value": 15.3}}},
+            {"STID": "SEYC1", "OBSERVATIONS": {
+                "air_temp_value_1": {"value": air_temp},
+                "relative_humidity_value_1": {"value": humidity}}},
             {"STID": "C3DLA", "OBSERVATIONS": {
-                "soil_moisture_value_1": {"value": 35.7}}} # Use a key process_synoptic expects
+                "soil_moisture_value_1": {"value": soil_moisture}}},
+            {"STID": "629PG", "OBSERVATIONS": {
+                "wind_speed_value_1": {"value": wind_speed},
+                "wind_gust_value_1": {"value": wind_gust}}}
         ]
     }
-    mock_wunderground_response = {
-        station_id: {"observations": [{"imperial": {"windGust": 20.1}}]}
-        for station_id in TEST_STATION_IDS
-    }
-    
-    # Create proper AsyncMock objects
-    mock_synoptic_data = AsyncMock()
-    mock_synoptic_data.return_value = mock_synoptic_response
-    mock_wunderground_data = AsyncMock()
-    mock_wunderground_data.return_value = mock_wunderground_response
 
-    # Patch the actual API client functions within the cache_refresh module
-    with patch('cache_refresh.get_synoptic_data', mock_synoptic_data), \
-         patch('cache_refresh.get_wunderground_data', mock_wunderground_data):
 
-        from cache_refresh import refresh_data_cache
-        from fire_risk_logic import calculate_fire_risk
-        
-        # Create weather data dictionary with expected values
-        expected_weather = {
-            "air_temp": 25.5,
-            "relative_humidity": 60.2,
-            "wind_speed": 15.3,
-            "soil_moisture_15cm": 35.7,
-            "wind_gust": 20.1,
-            "data_sources": {
-                "weather_station": "CEYC1",
-                "soil_moisture_station": "C3DLA",
-                "wind_gust_station": list(TEST_STATION_IDS)[0]
-            }
-        }
-        
-        # Calculate expected fire risk
-        expected_risk, expected_explanation = calculate_fire_risk(expected_weather)
-        expected_risk_data = {
-            "risk": expected_risk,
-            "explanation": expected_explanation,
-            "weather": expected_weather
-        }
-        
-        # Create a mock DataCache to avoid any issues with the real instance
-        mock_cache = MagicMock(spec=data_cache.__class__)
-        mock_cache.max_retries = 2
-        mock_cache.retry_delay = 0.01
-        mock_cache.update_timeout = 1
-        mock_cache.fire_risk_data = expected_risk_data
-        
-        # Patch combine_weather_data to return our expected_weather
-        with patch('cache_refresh.combine_weather_data', return_value=expected_weather):
-            # Patch the global data_cache instance
-            with patch('cache_refresh.data_cache', mock_cache):
-                # Execute the function under test
-                mock_background_tasks = Mock(spec=BackgroundTasks)
-                success = await refresh_data_cache(background_tasks=mock_background_tasks, force=True)
-                
-                # Assertions
-                assert success is True
-                mock_synoptic_data.assert_called_once()
-                mock_wunderground_data.assert_called_once()
-                assert mock_cache.update_cache.called  # Check that update_cache was called
-                
-                # Check the mock_cache object has been updated with our expected data
-                # Since it's a MagicMock, we don't actually check values - they'd just return the MagicMock
-                # But we can check that certain methods were called
-                mock_cache.update_cache.assert_called()
+async def refresh_with_response(response):
+    """Run a real refresh where only the Synoptic API call (and email) is faked."""
+    from cache_refresh import refresh_data_cache
+    with patch('cache_refresh.get_synoptic_data', return_value=response) as mock_synoptic, \
+         patch('cache_refresh.send_orange_to_red_alert') as mock_send_alert:
+        success = await refresh_data_cache(background_tasks=Mock(spec=BackgroundTasks), force=True)
+    mock_synoptic.assert_called_once()
+    mock_send_alert.assert_not_called()  # No previous Orange level, so never an alert
+    return success
+
+
+@pytest.mark.asyncio
+async def test_api_client_integration(real_cache):
+    """A response with no observations still refreshes, filling every value from the cache defaults."""
+    response = {"STATION": [{"STID": "SEYC1", "OBSERVATIONS": {}}]}
+
+    assert await refresh_with_response(response) is True
+
+    weather = real_cache.fire_risk_data["weather"]
+    assert weather["air_temp"] == real_cache.DEFAULT_VALUES["temperature"]
+    assert weather["soil_moisture_15cm"] == real_cache.DEFAULT_VALUES["soil_moisture"]
+    assert "Temperature data missing from station SEYC1" in weather["data_status"]["issues"]
+    assert real_cache.last_update_success is True
+    assert real_cache.using_cached_data is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("readings, expected_risk", [
+    ((25.5, 60.2, 15.3, 20.1, 35.7), "Orange"),  # Hot and windy, but humid with moist soil
+    ((30.0, 10.0, 12.0, 20.0, 5.0), "Red"),      # Every threshold exceeded
+])
+async def test_data_processing_integration(real_cache, readings, expected_risk):
+    """Station readings flow through processing and the risk rules into the dashboard data."""
+    air_temp, humidity, wind_speed, wind_gust, soil_moisture = readings
+
+    assert await refresh_with_response(synoptic_response(*readings)) is True
+
+    weather = real_cache.fire_risk_data["weather"]
+    assert weather["air_temp"] == air_temp
+    assert weather["relative_humidity"] == humidity
+    assert weather["wind_speed"] == wind_speed
+    assert weather["wind_gust"] == wind_gust
+    assert weather["soil_moisture_15cm"] == soil_moisture
+    assert weather["data_status"]["issues"] == []
+    assert real_cache.fire_risk_data["risk"] == expected_risk
+    assert real_cache.previous_risk_level == expected_risk
+    assert real_cache.using_cached_data is False
