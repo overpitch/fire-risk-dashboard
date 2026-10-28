@@ -83,7 +83,6 @@ def test_load_cache_from_disk(sample_data_cache, temp_cache_dir):
                 }
             },
             "synoptic_data": None,
-            "wunderground_data": None,
             "fire_risk_data": None,
             "timestamp": test_time
         },
@@ -220,7 +219,6 @@ def test_init_with_disk_cache(temp_cache_dir):
                 }
             },
             "synoptic_data": None,
-            "wunderground_data": None,
             "fire_risk_data": None,
             "timestamp": test_time
         },

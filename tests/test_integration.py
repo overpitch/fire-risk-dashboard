@@ -45,11 +45,9 @@ async def reset_cache():
     """Reset the cache before each test."""
     # Reset cache state manually
     data_cache.synoptic_data = None
-    data_cache.wunderground_data = None
     data_cache.fire_risk_data = None
     data_cache.last_updated = None
     data_cache.update_in_progress = False
-    data_cache.last_update_success = False
     data_cache.last_valid_data = {
         "fields": {
             "temperature": {"value": None, "timestamp": None},
@@ -59,7 +57,6 @@ async def reset_cache():
             "wind_gust": {"value": None, "timestamp": None, "stations": {}},
         },
         "synoptic_data": None,
-        "wunderground_data": None,
         "fire_risk_data": None,
         "timestamp": None,
     }
@@ -79,7 +76,6 @@ async def test_initial_cache_empty(mock_refresh, client): # Added client fixture
     async def side_effect(*args, **kwargs):
         data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
         data_cache.last_updated = datetime.now(TIMEZONE)
-        data_cache.last_update_success = True
         data_cache._update_complete_event.set() # Simulate event set by refresh
         return True
     mock_refresh.side_effect = side_effect
@@ -103,7 +99,6 @@ async def test_cache_stale_refresh_background(mock_refresh, client): # Added cli
     # Setup: Populate cache and make it stale
     data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
     data_cache.last_updated = datetime.now(TIMEZONE) - timedelta(minutes=90) # Stale
-    data_cache.last_update_success = True
 
     # Configure mock refresh (won't be awaited by endpoint in this case)
     mock_refresh.return_value = True
@@ -127,7 +122,6 @@ async def test_wait_for_fresh(mock_refresh, client): # Added client fixture
     data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy()
     stale_time = datetime.now(TIMEZONE) - timedelta(minutes=90)
     data_cache.last_updated = stale_time
-    data_cache.last_update_success = True
 
     # Configure mock to simulate a successful refresh completing
     fresh_data = SAMPLE_FIRE_RISK_DATA.copy()
@@ -137,7 +131,6 @@ async def test_wait_for_fresh(mock_refresh, client): # Added client fixture
         # Simulate refresh updating the cache
         data_cache.fire_risk_data = fresh_data
         data_cache.last_updated = fresh_time
-        data_cache.last_update_success = True
         data_cache._update_complete_event.set() # Refresh sets the event
         return True
     mock_refresh.side_effect = side_effect
@@ -180,7 +173,6 @@ async def test_test_mode_toggle(mock_refresh, admin_client):
     async def side_effect_disable(*args, **kwargs):
         data_cache.fire_risk_data = SAMPLE_FIRE_RISK_DATA.copy() # Simulate refresh
         data_cache.last_updated = datetime.now(TIMEZONE)
-        data_cache.last_update_success = True
         data_cache.using_cached_data = False # Refresh disables this
         data_cache._update_complete_event.set()
         return True
@@ -238,7 +230,6 @@ async def test_api_client_integration(real_cache):
     assert weather["air_temp"] == real_cache.DEFAULT_VALUES["temperature"]
     assert weather["soil_moisture_15cm"] == real_cache.DEFAULT_VALUES["soil_moisture"]
     assert "Temperature data missing from station SEYC1" in weather["data_status"]["issues"]
-    assert real_cache.last_update_success is True
     assert real_cache.using_cached_data is True
 
 

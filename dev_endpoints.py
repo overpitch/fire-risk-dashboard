@@ -455,8 +455,6 @@ async def test_partial_failure(background_tasks: BackgroundTasks):
     # Force a refresh, which should only use cached data for the missing fields
     await refresh_data_cache(background_tasks, force=True)
     
-    # Store information about which fields have been simulated as failing
-    failed_fields = ["temperature", "soil_moisture"]
     
     # Create a custom HTML response that clearly shows some fields as cached and others as fresh
     from datetime import datetime, timedelta

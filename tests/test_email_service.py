@@ -13,7 +13,7 @@ with patch.dict(os.environ, {
     'DASHBOARD_URL': 'http://test-dashboard.local'
 }):
     # Import functions and objects needed for testing
-    from email_service import send_test_email, send_email, send_orange_to_red_alert, ses_client, jinja_env
+    from email_service import send_email, send_orange_to_red_alert, ses_client, jinja_env
 
 # --- Test Data ---
 SENDER_TEST = "test_sender@example.com"
@@ -56,25 +56,20 @@ def mock_jinja_env_fixture():
         mock_env.get_template.return_value = mock_template
         yield mock_env
 
-# --- Tests for send_test_email (existing function, adapted) ---
-def test_send_test_email_success(mock_ses_client_fixture):
-    """Test successful simple test email sending."""
-    # Call the function (using the simplified test function)
-    message_id = send_test_email(RECIPIENT_TEST)
+# --- Tests for the generic send_email ---
+def test_send_email_success(mock_ses_client_fixture):
+    """A plain-text email is passed to SES and its message ID returned."""
+    message_id = send_email(SENDER_TEST, [RECIPIENT_TEST], SUBJECT_TEST, BODY_TEST)
 
-    # Assertions for the underlying send_email call
     assert message_id == EXPECTED_MESSAGE_ID
     mock_ses_client_fixture.send_email.assert_called_once_with(
-        Source=SENDER_ALERT, # send_test_email uses the alert sender now
+        Source=SENDER_TEST,
         Destination={'ToAddresses': [RECIPIENT_TEST]},
         Message={
-            'Subject': {'Charset': 'UTF-8', 'Data': 'SES Test Email from Fire Risk Dashboard'},
+            'Subject': {'Charset': 'UTF-8', 'Data': SUBJECT_TEST},
             'Body': {
-                'Text': {
-                    'Charset': 'UTF-8',
-                    'Data': 'This is a test email sent via AWS SES using boto3 from the Fire Risk Dashboard application.'
-                }
-                # No HTML body for this simple test
+                'Text': {'Charset': 'UTF-8', 'Data': BODY_TEST}
+                # No HTML body when none is given
             }
         }
     )

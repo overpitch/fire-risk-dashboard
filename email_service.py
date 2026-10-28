@@ -162,15 +162,6 @@ def send_orange_to_red_alert(recipients, weather_data, subject_prefix=""):
 
 # --- Test Functions (Optional) ---
 
-def send_test_email(recipient):
-    """Sends a simple test email to a single recipient."""
-    sender = "advisory@scfireweather.org" # Or a different test sender
-    subject = "SES Test Email from Fire Risk Dashboard"
-    body_text = "This is a test email sent via AWS SES using boto3 from the Fire Risk Dashboard application."
-    print(f"Attempting to send test email to {recipient}...")
-    return send_email(sender, [recipient], subject, body_text)
-
-
 def send_test_orange_to_red_alert(recipient_email):
     """
     Sends a test Orange to Red alert email to a specified recipient.

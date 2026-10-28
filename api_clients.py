@@ -234,12 +234,10 @@ def get_weather_data(location_ids: str, retry_count: int = 0, max_retries: int =
                     logger.info(f"🕒 Backing off for {backoff_time:.2f} seconds before retry {retry_count + 1}/{max_retries}")
                     time.sleep(backoff_time)
                     
-                    # Check if the error specifically mentions "Invalid token"
-                    invalid_token_error = False
+                    # Log if the error specifically mentions "Invalid token"
                     try:
                         error_message = response.json().get("SUMMARY", {}).get("RESPONSE_MESSAGE", "")
                         if "Invalid token" in error_message:
-                            invalid_token_error = True
                             logger.warning(f"🔑 API reports invalid token format: {error_message}")
                     except:
                         pass

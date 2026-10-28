@@ -36,7 +36,6 @@ def setup_disk_cache(tmp_path, monkeypatch):
                 }
             },
             "synoptic_data": None,
-            "wunderground_data": None,
             "fire_risk_data": {
                 "risk": "Orange",
                 "explanation": "Low to Moderate fire risk."

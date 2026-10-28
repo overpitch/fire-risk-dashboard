@@ -76,7 +76,7 @@ async def test_cached_data_display_in_javascript(client, reset_cache, populate_c
     assert re.search(soil_moisture_js_pattern, response.text, re.DOTALL) is not None
 
 @pytest.mark.asyncio
-async def test_fire_risk_endpoint_with_cached_data(client, reset_cache, mock_failed_synoptic_api, mock_failed_wunderground_api, populate_cache_with_valid_data):
+async def test_fire_risk_endpoint_with_cached_data(client, reset_cache, mock_failed_synoptic_api, populate_cache_with_valid_data):
     """Test that the /fire-risk endpoint returns cached data when APIs fail."""
     # First, populate the cache with valid data
     original_data = populate_cache_with_valid_data

@@ -4,15 +4,6 @@ from config import (
     THRESH_GUSTS, THRESH_SOIL_MOIST, logger
 )
 
-# Mapping from session override keys to internal weather data keys
-OVERRIDE_KEY_MAP = {
-    "temperature": "air_temp",
-    "humidity": "relative_humidity",
-    "average_winds": "wind_speed", # As per admin_endpoints.py and JS
-    "wind_gust": "wind_gust",
-    "soil_moisture": "soil_moisture_15cm" # As per admin_endpoints.py and JS
-}
-
 def calculate_fire_risk(
     weather: Dict[str, Any], 
     manual_overrides: Optional[Dict[str, float]] = None

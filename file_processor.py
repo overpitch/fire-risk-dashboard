@@ -189,17 +189,15 @@ def process_xlsx_file(content: bytes) -> Tuple[List[str], Dict]:
         
         # First, detect if the file has a header row (look for recognizable email headers)
         has_headers = False
-        header_row_idx = None
         
         # Check the first row for common email headers
         if len(df) > 0:
             first_row = df.iloc[0]
-            for col_idx, col_name in enumerate(df.columns):
+            for col_idx in range(len(df.columns)):
                 cell_value = str(first_row[col_idx]).strip().lower()
                 # Check for common header names that would indicate this is a header row
                 if any(header in cell_value for header in ['email', 'e-mail', 'address']) and '@' not in cell_value:
                     has_headers = True
-                    header_row_idx = 0
                     logger.debug(f"Detected header row: {first_row.values}")
                     break
         
