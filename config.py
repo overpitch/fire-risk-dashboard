@@ -48,6 +48,10 @@ THRESH_SOIL_MOIST = float(os.getenv("THRESH_SOIL_MOIST", 10)) # Soil moisture th
 # Convert temperature threshold from Fahrenheit to Celsius for internal use
 THRESH_TEMP_CELSIUS = (THRESH_TEMP - 32) * 5/9
 
+# Number of proxies in front of the app that append to X-Forwarded-For (Render's proxy = 1).
+# 0 = ignore the header and use the connecting address (default outside Render).
+TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "1" if IS_PRODUCTION else "0"))
+
 # Admin test alerts (from "Test System Recognition of Red Status") go only to this address.
 # If unset, test runs never send email.
 TEST_ALERT_EMAIL = os.getenv("TEST_ALERT_EMAIL")

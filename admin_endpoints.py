@@ -11,7 +11,7 @@ import secrets
 import json
 from pydantic import BaseModel, EmailStr
 
-from config import logger, IS_PRODUCTION
+from config import logger, IS_PRODUCTION, TRUSTED_PROXY_HOPS
 from cache import data_cache
 from cache_refresh import refresh_data_cache, run_admin_test_conditions
 from admin_service import verify_password
@@ -54,17 +54,21 @@ def generate_session_token() -> str:
     return secrets.token_hex(32)
 
 def get_client_ip(request: Request) -> str:
-    """The visitor's IP address, as seen by Render's proxy.
+    """The visitor's IP address, as seen by the trusted proxy in front of the app.
 
-    Render's proxy appends the connecting client's address to X-Forwarded-For, so
-    the last entry is the one a visitor can't fake (earlier entries are whatever the
-    visitor sent). Without the header (local development) use the socket address.
+    Each trusted proxy appends the address it received the request from to
+    X-Forwarded-For, so with TRUSTED_PROXY_HOPS proxies the entry that many places
+    from the end is the visitor's; entries before it are whatever the visitor sent.
+    With no trusted proxies (local development) the connecting address is used.
     """
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        last_hop = forwarded_for.split(",")[-1].strip()
-        if last_hop:
-            return last_hop
+    if TRUSTED_PROXY_HOPS > 0:
+        # Read every header line, so a separate visitor-supplied line can't hide the proxy's entry
+        entries = [entry.strip()
+                   for line in request.headers.getlist("x-forwarded-for")
+                   for entry in line.split(",")]
+        entries = [entry for entry in entries if entry]
+        if len(entries) >= TRUSTED_PROXY_HOPS:
+            return entries[-TRUSTED_PROXY_HOPS]
     return request.client.host if request.client else "unknown"
 
 def is_session_expired(session_data: Dict[str, Any]) -> bool:

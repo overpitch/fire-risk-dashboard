@@ -21,6 +21,14 @@ MAX_ATTEMPTS = 5             # Maximum number of failed attempts before lockout
 LOCKOUT_DURATION = 30 * 60   # Lockout duration in seconds (30 minutes)
 ATTEMPT_WINDOW = 60 * 60     # Time window for counting attempts (1 hour)
 
+def _prune_failed_attempts() -> None:
+    """Drop records with no recent attempts and no active lockout, so the store stays small."""
+    now = time.time()
+    for ip in [ip for ip, record in failed_attempts.items()
+               if record.get("locked_until", 0) <= now
+               and not any(t > now - ATTEMPT_WINDOW for t in record["attempts"])]:
+        del failed_attempts[ip]
+
 def verify_password(provided_password: str, ip_address: str) -> Tuple[bool, str]:
     """
     Verify the provided password against ADMIN_PASSWORD
@@ -31,6 +39,8 @@ def verify_password(provided_password: str, ip_address: str) -> Tuple[bool, str]
     """
     if not ADMIN_PASSWORD:
         return False, "Admin login is not configured."
+
+    _prune_failed_attempts()
 
     # Check if IP is locked out
     if ip_address in failed_attempts and "locked_until" in failed_attempts[ip_address]:
@@ -56,8 +66,8 @@ def verify_password(provided_password: str, ip_address: str) -> Tuple[bool, str]
     
     # Verify the password (constant-time comparison)
     if secrets.compare_digest(provided_password.encode(), ADMIN_PASSWORD.encode()):
-        # Successful login, reset attempts
-        failed_attempts[ip_address]["attempts"] = []
+        # Successful login, forget this visitor's failed attempts
+        del failed_attempts[ip_address]
         return True, ""
     else:
         # Failed login, record the attempt
