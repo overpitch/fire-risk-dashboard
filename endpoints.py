@@ -10,7 +10,7 @@ from config import logger, TIMEZONE
 from cache import data_cache
 from cache_refresh import refresh_data_cache
 from data_processing import format_age_string
-from admin_endpoints import admin_sessions, is_admin_session, unauthorized_response
+from admin_endpoints import admin_sessions, get_client_ip, is_admin_session, unauthorized_response
 
 # Create a router for the main endpoints
 router = APIRouter()
@@ -351,7 +351,7 @@ async def toggle_test_mode_endpoint(
         JSON response with the status of the test mode toggle
     """
     if not is_admin_session(session_token):
-        return unauthorized_response(request.client.host, "toggle test mode")
+        return unauthorized_response(get_client_ip(request), "toggle test mode")
 
     if enable:
         # First check if we have cached data

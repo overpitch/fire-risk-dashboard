@@ -129,3 +129,83 @@ async def test_fire_risk_shows_test_result_only_for_unexpired_session(client, ag
 async def test_form_login_failure_shows_server_message(client):
     response = await client.post("/admin", data={"password": "wrong"})
     assert "4 attempts remaining" in response.text
+
+
+async def _login(client, password, forwarded_for=None):
+    """forwarded_for: one X-Forwarded-For value, or a list of values sent as separate header lines."""
+    values = [forwarded_for] if isinstance(forwarded_for, str) else (forwarded_for or [])
+    headers = [("X-Forwarded-For", value) for value in values]
+    response = await client.post("/admin/validate-password", json={"password": password}, headers=headers)
+    return response.json()
+
+
+async def _fail_until_locked(client, forwarded_for):
+    for _ in range(admin_service.MAX_ATTEMPTS):
+        await _login(client, "wrong", forwarded_for=forwarded_for)
+
+
+def _is_locked(result):
+    return result["valid"] is False and "Too many failed attempts" in result["error"]
+
+
+@pytest.fixture
+def behind_one_proxy():
+    with patch("admin_endpoints.TRUSTED_PROXY_HOPS", 1):
+        yield
+
+
+@pytest.mark.asyncio
+async def test_lockout_applies_per_visitor_not_to_everyone(client, behind_one_proxy):
+    """Behind Render's proxy, one visitor's failed guesses must not lock out the admin."""
+    await _fail_until_locked(client, "203.0.113.10")
+    assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for="203.0.113.10"))
+    assert (await _login(client, TEST_PASSWORD, forwarded_for="198.51.100.20"))["valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_spoofed_forwarded_addresses_do_not_bypass_lockout(client, behind_one_proxy):
+    """A visitor can prepend fake addresses, but the proxy-appended last address is what counts."""
+    for i in range(admin_service.MAX_ATTEMPTS):
+        await _login(client, "wrong", forwarded_for=f"10.0.0.{i}, 203.0.113.10")
+    assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for="10.9.9.9, 203.0.113.10"))
+
+
+@pytest.mark.asyncio
+async def test_separate_spoofed_header_line_does_not_bypass_lockout(client, behind_one_proxy):
+    for i in range(admin_service.MAX_ATTEMPTS):
+        await _login(client, "wrong", forwarded_for=[f"10.0.0.{i}", "203.0.113.10"])
+    assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for=["10.9.9.9", "203.0.113.10"]))
+
+
+@pytest.mark.asyncio
+async def test_blank_trailing_entry_is_ignored(client, behind_one_proxy):
+    await _fail_until_locked(client, "203.0.113.10, ")
+    assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for="203.0.113.10"))
+
+
+@pytest.mark.asyncio
+async def test_two_proxy_hops_uses_the_visitor_entry(client):
+    with patch("admin_endpoints.TRUSTED_PROXY_HOPS", 2):
+        await _fail_until_locked(client, "10.0.0.1, 203.0.113.10, 104.16.0.1")
+        assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for="10.0.0.9, 203.0.113.10, 104.16.0.2"))
+        assert (await _login(client, TEST_PASSWORD, forwarded_for="198.51.100.20, 104.16.0.1"))["valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_header_ignored_without_trusted_proxy(client):
+    """Outside Render (no trusted proxy) the header is ignored, so rotating it can't dodge the lockout."""
+    with patch("admin_endpoints.TRUSTED_PROXY_HOPS", 0):
+        for i in range(admin_service.MAX_ATTEMPTS):
+            await _login(client, "wrong", forwarded_for=f"203.0.113.{i}")
+        assert _is_locked(await _login(client, TEST_PASSWORD, forwarded_for="203.0.113.99"))
+
+
+@pytest.mark.asyncio
+async def test_lockout_records_are_cleaned_up(client, behind_one_proxy):
+    await _login(client, "wrong", forwarded_for="203.0.113.10")
+    await _login(client, TEST_PASSWORD, forwarded_for="203.0.113.10")
+    assert "203.0.113.10" not in admin_service.failed_attempts  # success forgets the visitor
+
+    admin_service.failed_attempts["198.51.100.1"] = {"attempts": [time.time() - admin_service.ATTEMPT_WINDOW - 1]}
+    await _login(client, "wrong", forwarded_for="203.0.113.10")
+    assert "198.51.100.1" not in admin_service.failed_attempts  # stale record pruned
